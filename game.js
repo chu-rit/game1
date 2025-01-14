@@ -176,7 +176,13 @@ function listenToGame(gameId) {
             // 게임 화면 표시
             gameContainer.classList.remove('hidden');
             matchButton.classList.add('hidden');
-            matchStatus.textContent = '게임이 시작되었습니다!';
+            // matchStatus.textContent = '게임이 시작되었습니다!';
+            
+            // 게임 규칙 버튼 숨기기
+            if (rulesButton) {
+                rulesButton.classList.add('hidden');
+                matchStatus.classList.add('hidden');
+            }
             
             // 게임 상태 업데이트
             updateGameState(game);
@@ -398,12 +404,12 @@ function updateTurnState(game) {
         // 내가 이미 선택한 경우
         if (selectedNumber !== null) {
             isMyTurn = false;
-            matchStatus.textContent = '상대방의 턴입니다.';
+            // matchStatus.textContent = '상대방의 턴입니다.';
         }
         // 새 라운드 시작
         else if (!game.lastMove) {
             isMyTurn = game.currentTurn === playerRole;
-            matchStatus.textContent = isMyTurn ? '당신의 턴입니다!' : '상대방의 턴입니다.';
+            // matchStatus.textContent = isMyTurn ? '당신의 턴입니다!' : '상대방의 턴입니다.';
         }
         
         displayNumberButtons();
@@ -500,7 +506,7 @@ async function selectNumber(number) {
         // UI 업데이트
         isMyTurn = false; // 턴 상태 명확히 설정
         displayNumberButtons();
-        matchStatus.textContent = '상대방의 차례입니다.';
+        // matchStatus.textContent = '상대방의 차례입니다.';
         
         console.log('숫자 선택 완료 및 턴 전환:', {
             number,
@@ -578,6 +584,24 @@ async function handleRoundEnd(game) {
 
         console.log('라운드 승자:', winner);
 
+        // 승자가 있는 경우 resultDiv에 승자 표시
+        if (winner) {
+            if (winner === 'player1') {
+                resultDiv.textContent = '플레이어가 이겼습니다!';
+            } else if (winner === 'player2') {
+                resultDiv.textContent = '상대가 이겼습니다!';
+            }
+        } else {
+            resultDiv.textContent = '무승부입니다!';
+        }
+
+        // resultDiv의 텍스트가 없으면 가리기
+        if (!resultDiv.textContent) {
+            resultDiv.classList.add('hidden'); // 'hidden' 클래스를 추가하여 가림
+        } else {
+            resultDiv.classList.remove('hidden'); // 텍스트가 있으면 보이게 함
+        }
+
         // 업데이트할 데이터 준비
         const updateData = {
             // 명시적으로 currentRound 증가
@@ -628,11 +652,11 @@ async function handleRoundEnd(game) {
         displayNumberButtons();
         updateScoreDisplay();
         
-        if (isMyTurn) {
-            matchStatus.textContent = '당신의 차례입니다.';
-        } else {
-            matchStatus.textContent = '상대방의 차례입니다.';
-        }
+        // if (isMyTurn) {
+        //     matchStatus.textContent = '당신의 차례입니다.';
+        // } else {
+        //     matchStatus.textContent = '상대방의 차례입니다.';
+        // }
 
     } catch (error) {
         console.error('라운드 종료 중 오류:', error);
@@ -705,7 +729,7 @@ async function restartGame() {
             restartButton.classList.add('hidden');
         }
         
-        resultDiv.textContent = '새 게임이 시작되었습니다!';
+        // resultDiv.textContent = '새 게임이 시작되었습니다!';
         
         // 상태가 Firebase에서 업데이트되면 updateGameState에서 playerNumbers가 업데이트됨
         
@@ -766,6 +790,9 @@ function showGameScreen() {
         if (gameContainer) {
             gameContainer.classList.remove('hidden');
         }
+        if (rulesButton) {
+            rulesButton.classList.add('hidden');
+        }
     } catch (error) {
         console.error('Error in showGameScreen:', error);
     }
@@ -817,7 +844,7 @@ async function joinGame() {
             onValue(waitingRef, (snapshot) => {
                 if (!snapshot.exists()) {
                     // 대기실이 비워지면 게임 시작
-                    matchStatus.textContent = '게임 시작!';
+                    // matchStatus.textContent = '게임 시작!';
                     gameContainer.classList.remove('hidden');
                     isMyTurn = true;
                     updateGameState();
@@ -840,7 +867,7 @@ async function joinGame() {
             
             // 게임 시작
             await initializeGame(gameId, playerRole);
-            matchStatus.textContent = '게임 시작!';
+            // matchStatus.textContent = '게임 시작!';
             gameContainer.classList.remove('hidden');
             isMyTurn = false;
             updateGameState();
