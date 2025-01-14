@@ -1,0 +1,404 @@
+body {
+    font-family: Arial, sans-serif;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    text-align: center;
+}
+
+.hidden {
+    display: none;
+}
+
+.score-board {
+    display: flex;
+    justify-content: space-around;
+    margin: 20px 0;
+}
+
+#number-select {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    margin: 30px 0;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#number-select button {
+    width: 80px;
+    height: 80px;
+    font-size: 32px;
+    font-weight: bold;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+#number-select button:hover:not(:disabled) {
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.black-number {
+    background-color: #222;
+    color: white;
+    border: none;
+}
+
+.white-number {
+    background-color: #fff;
+    color: #222;
+    border: 2px solid #222;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+#result {
+    margin: 20px 0;
+    font-size: 18px;
+}
+
+.rules {
+    text-align: left;
+    margin-top: 40px;
+    padding: 20px;
+    background-color: #f5f5f5;
+    border-radius: 5px;
+}
+
+#matchmaking-ui {
+    margin: 30px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+#match-button {
+    font-size: 18px;
+    padding: 12px 30px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    min-width: 200px;
+}
+
+#match-button:hover {
+    background-color: #45a049;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+#match-button:disabled {
+    background-color: #cccccc;
+    transform: none;
+    box-shadow: none;
+}
+
+.rules-button {
+    font-size: 16px;
+    padding: 12px 24px;
+    background-color: #666;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    min-width: 200px;
+}
+
+.rules-button:hover {
+    background-color: #555;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+#match-status {
+    margin-top: 15px;
+    color: #666;
+    font-size: 16px;
+    text-align: center;
+}
+
+h1 {
+    color: #333;
+    margin-bottom: 30px;
+}
+
+.score-board h3 {
+    color: #444;
+}
+
+#result {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    margin: 20px 0;
+}
+
+.rules h2 {
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.rules p {
+    margin: 10px 0;
+    color: #555;
+    line-height: 1.5;
+}
+
+.number-button {
+    width: 80px;
+    height: 80px;
+    margin: 8px;
+    font-size: 32px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: bold;
+}
+
+.number-button:hover:not(:disabled) {
+    transform: scale(1.05);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+}
+
+.number-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.number-button.selected {
+    background-color: #4CAF50;
+    color: white;
+    border-color: #45a049;
+}
+
+.number-button.disabled {
+    opacity: 0.6;
+}
+
+.opponent-tiles {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.opponent-tiles-container {
+    background-color: #f0f0f0;
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+}
+
+.opponent-tiles-label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+#opponent-tiles-count {
+    display: flex;
+    justify-content: space-around;
+}
+
+.tile-count {
+    padding: 5px 10px;
+    border-radius: 5px;
+}
+
+.black-tile-count {
+    background-color: #333;
+    color: white;
+}
+
+.white-tile-count {
+    background-color: #f0f0f0;
+    color: black;
+    border: 1px solid #ccc;
+}
+
+.opponent-tiles-display {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    margin: 10px auto;
+    padding: 12px;
+    max-width: 250px;
+    background: #f5f5f5;
+    border-radius: 8px;
+}
+
+.opponent-tile {
+    width: 20px;
+    height: 28px;
+    border-radius: 3px;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.opponent-tile.black {
+    background-color: #222;
+    border: none;
+}
+
+.opponent-tile.white {
+    background-color: #fff;
+    border: 1px solid #222;
+}
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 30px 50px;
+    border-radius: 10px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.modal-content h3 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.modal-content p {
+    margin: 12px 20px;
+    line-height: 1.5;
+}
+
+.modal-content ul {
+    margin: 12px 40px;
+    line-height: 1.5;
+}
+
+.modal-content li {
+    margin: 8px 0;
+}
+
+.close-button {
+    position: absolute;
+    right: 15px;
+    top: 15px;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+    transition: color 0.3s;
+}
+
+.close-button:hover {
+    color: #333;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* 반응형 디자인 미디어 쿼리 추가 */
+@media screen and (max-width: 768px) {
+    body {
+        padding: 10px;
+        max-width: 100%;
+    }
+
+    #number-select {
+        gap: 10px;
+        max-width: 100%;
+    }
+
+    #number-select button, .number-button {
+        width: calc(25% - 15px); /* 모바일에서 4개씩 배치 */
+        height: 60px;
+        font-size: 24px;
+        margin: 5px;
+        padding: 5px;
+    }
+
+    .score-board {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .score-board h3 {
+        margin: 10px 0;
+    }
+
+    h1 {
+        font-size: 24px;
+        margin-bottom: 20px;
+    }
+
+    .rules {
+        padding: 10px;
+        margin-top: 20px;
+    }
+
+    #match-button {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px;
+    }
+}
+
+/* 데스크톱 및 태블릿 스타일 최적화 */
+@media screen and (min-width: 769px) {
+    #number-select button, .number-button {
+        width: 80px;
+        height: 80px;
+        font-size: 32px;
+        margin: 8px;
+    }
+
+    body {
+        max-width: 800px;
+    }
+}
+
+/* 터치 기기를 위한 추가 최적화 */
+@media (hover: none) and (pointer: coarse) {
+    #number-select button, .number-button {
+        min-touch-target-size: 44px; /* 접근성 고려 최소 터치 영역 */
+        touch-action: manipulation; /* 과도한 확대 방지 */
+    }
+
+    button:hover:not(:disabled) {
+        transform: none; /* 터치 기기에서 호버 효과 제거 */
+    }
+}
