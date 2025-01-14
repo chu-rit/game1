@@ -587,17 +587,9 @@ async function handleRoundEnd(game) {
         // 승자가 있는 경우 resultDiv에 승자 표시
         if (winner) {
             if (winner === 'player1') {
-                if (playerRole === 'player1') {
-                    resultDiv.textContent = '당신이 이겼습니다!';
-                } else {
-                    resultDiv.textContent = '상대가 이겼습니다!';
-                }
+                resultDiv.textContent = playerRole === 'player1' ? '당신이 이겼습니다!' : '상대가 이겼습니다!';
             } else if (winner === 'player2') {
-                if (playerRole === 'player2') {
-                    resultDiv.textContent = '당신이 이겼습니다!';
-                } else {
-                    resultDiv.textContent = '상대가 이겼습니다!';
-                }
+                resultDiv.textContent = playerRole === 'player2' ? '당신이 이겼습니다!' : '상대가 이겼습니다!';
             }
         } else {
             resultDiv.textContent = '무승부입니다!';
