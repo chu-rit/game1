@@ -587,9 +587,17 @@ async function handleRoundEnd(game) {
         // 승자가 있는 경우 resultDiv에 승자 표시
         if (winner) {
             if (winner === 'player1') {
-                resultDiv.textContent = '플레이어가 이겼습니다!';
+                if (playerRole === 'player1') {
+                    resultDiv.textContent = '당신이 이겼습니다!';
+                } else {
+                    resultDiv.textContent = '상대가 이겼습니다!';
+                }
             } else if (winner === 'player2') {
-                resultDiv.textContent = '상대가 이겼습니다!';
+                if (playerRole === 'player2') {
+                    resultDiv.textContent = '당신이 이겼습니다!';
+                } else {
+                    resultDiv.textContent = '상대가 이겼습니다!';
+                }
             }
         } else {
             resultDiv.textContent = '무승부입니다!';
@@ -670,9 +678,17 @@ function handleGameEnd(game) {
     
     // 결과 메시지 표시
     if (player1Won) {
-        resultDiv.textContent = playerRole === 'player1' ? '승리했습니다!' : '패배했습니다!';
+        if (playerRole === 'player1') {
+            resultDiv.textContent = '당신이 승리했습니다!';
+        } else {
+            resultDiv.textContent = '상대가 승리했습니다!';
+        }
     } else if (player2Won) {
-        resultDiv.textContent = playerRole === 'player2' ? '승리했습니다!' : '패배했습니다!';
+        if (playerRole === 'player2') {
+            resultDiv.textContent = '당신이 승리했습니다!';
+        } else {
+            resultDiv.textContent = '상대가 승리했습니다!';
+        }
     }
     
     // 게임 컨트롤 비활성화
