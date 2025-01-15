@@ -862,10 +862,17 @@ async function joinGame() {
             matchStatus.textContent = '상대방을 기다리는 중...';
             
             // 대기실 감시
+            const timeoutId = setTimeout(async () => {
+                console.log('상대방을 찾는 데 실패했습니다. 컴퓨터와 매칭됩니다.');
+                // 컴퓨터와 매칭 로직을 추가합니다.
+                await initializeGame(gameId, 'computer');
+                matchStatus.textContent = '컴퓨터와 매칭되었습니다!';
+            }, 7000);
+
             onValue(waitingRef, (snapshot) => {
+                clearTimeout(timeoutId); // 상대방이 연결되면 타이머를 해제
                 if (!snapshot.exists()) {
                     // 대기실이 비워지면 게임 시작
-                    // matchStatus.textContent = '게임 시작!';
                     gameContainer.classList.remove('hidden');
                     isMyTurn = true;
                     updateGameState();
