@@ -25,7 +25,7 @@ let gameId = null;
 let shuffledTileOrder = null;
 
 // 게임 상태
-let playerNumbers = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+let playerNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 'J'];
 let selectedNumber = null;
 let isMyTurn = false;
 let playerTotalScore = 0;
@@ -140,7 +140,7 @@ async function initializeGame(gameId, role) {
     }
     
     // 게임 상태 초기화
-    playerNumbers = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+    playerNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 'J'];
     selectedNumber = null;
     isMyTurn = role === 'player1'; // player1이 첫 턴
     playerTotalScore = 0;
@@ -283,7 +283,7 @@ function updateGameState(game) {
         });
         
         // 모든 숫자에서 사용된 숫자 제외
-        playerNumbers = [0, 1, 2, 3, 4, 5, 6, 7, 8].filter(n => !myUsedNumbers.includes(n));
+        playerNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 'J'].filter(n => !myUsedNumbers.includes(n));
         
         console.log('남은 숫자:', playerNumbers);
         
@@ -521,6 +521,19 @@ async function selectNumber(number) {
             console.log('game.lastMove 설정:', game.lastMove);
         } else {
             console.log('game.lastMove 설정 안됨');
+        }
+        
+        // 조커 타일 선택 처리 추가
+        if (number === 'J') {
+            // 조커 타일이 선택된 경우
+            const opponentNumber = game.lastMove?.number;
+            if (opponentNumber === 1) {
+                // 1에게는 진다
+                console.log('조커가 1에게 졌습니다.');
+            } else {
+                // 1을 제외한 모든 숫자에 대해 이긴다
+                console.log('조커가', opponentNumber, '을 이겼습니다.');
+            }
         }
         
     } catch (error) {
@@ -936,7 +949,7 @@ window.onload = function() {
 
 // 게임 리셋
 function resetGame() {
-    playerNumbers = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+    playerNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 'J'];
     selectedNumber = null;
     displayNumberButtons();
 }
@@ -953,7 +966,7 @@ function displayNumberButtons() {
     numberSelect.innerHTML = '';
     
     // 사용 가능한 숫자 결정 로직
-    const allNumbers = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+    const allNumbers = [1, 2, 3, 4, 5, 6, 7, 8, 'J'];
     let availableNumbers = allNumbers;
     
     // 디버그: playerNumbers 상태 확인
@@ -980,6 +993,8 @@ function displayNumberButtons() {
         if (number % 2 === 0) {
             // 짝수: 검은색 타일
             button.classList.add('black-number');
+        } else if (number === 'J') {
+            button.classList.add('joker-number');
         } else {
             // 홀수: 흰색 타일
             button.classList.add('white-number');
