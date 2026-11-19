@@ -546,6 +546,7 @@ function drawWallTile(g,st,x,y){
       var hv=hashf(px,py,17);
       var base=hv<0.32?"#543c40":(hv<0.74?"#5f4648":"#6a4f4e");
       pf(g,bx,py,bx1-bx,bh-1,base);
+      if(bx>x0) pf(g,bx,py,1,bh-1,"#241a20");
       pf(g,bx,py,bx1-bx,1,"#7d5f5c");
       pf(g,bx,py+bh-2,bx1-bx,1,"#3c2a30");
       if(hv<0.22) dith(g,bx+2,py+2,Math.max(1,bx1-bx-4),3,"#7a5c59",0.45,py);
