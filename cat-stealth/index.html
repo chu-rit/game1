@@ -181,9 +181,10 @@ function tileAt(st,x,y){
   if(x<0||y<0||x>=N||y>=N) return "#";
   return st.grid[y][x];
 }
+var DECOR={"~":1}; /* 걸어다닐 수 있는 바닥 꾸미기 */
 function isBlocked(st,x,y){
   var ch=tileAt(st,x,y);
-  return ch==="#"||st.theme[ch]!==undefined;
+  return ch==="#"||(st.theme[ch]!==undefined&&!DECOR[ch]);
 }
 function walkable(st,x,y){ return !isBlocked(st,x,y); }
 function man(a,b){ return Math.abs(a.x-b.x)+Math.abs(a.y-b.y); }
@@ -746,21 +747,20 @@ function draw(){
   var st=G.st, theme=st.theme;
   /* 실행 재생 진행 */
   if(G.mode==="exec"&&G.exec){
-    var el=G.exec.t0===undefined?0:(G.t-G.exec.t0);
+    var el=G.t-G.exec.t0;
     if(G.exec.fishArc){
       var fa=G.exec.fishArc, ft=(G.t-fa.t0)/300;
       if(ft>=1){ G.exec.fishArc=null; }
     }
     if(el>=STEP_MS){
-      G.exec.t0=G.t; el=0;
       if(G.exec.i<G.exec.frames.length-1){
+        G.exec.t0=G.t;
         G.exec.i++;
         applyFrame(G.exec.frames[G.exec.i]);
-      }
-      if(G.exec.i>=G.exec.frames.length-1){
-        var lastEv=G.exec.frames[G.exec.i].events, stopped=false;
-        for(var le=0;le<lastEv.length;le++){ if(lastEv[le].k==="caught"||lastEv[le].k==="goal"){ stopped=true; } }
-        if(stopped||G.exec.i>=G.exec.frames.length-1&&el>=STEP_MS*1.2){ finishExec(); return; }
+      }else if(!G.exec.doneT){
+        G.exec.doneT=G.t;
+      }else if(G.t-G.exec.doneT>=420){
+        finishExec(); return;
       }
     }
   }
@@ -872,7 +872,7 @@ function draw(){
     }
   }
   /* 착지한 생선 */
-  if(st.fish&&!G.execFishing){
+  if(st.fish&&!(G.mode==="exec"&&G.exec&&G.exec.fishArc)){
     var bob=Math.sin(G.t/250)*1.5;
     ctx.drawImage(SPR.fish,st.fish.x*TILE,st.fish.y*TILE+bob);
   }
