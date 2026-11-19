@@ -467,8 +467,8 @@ function haptic(ms){ if (navigator.vibrate) { try { navigator.vibrate(ms); } cat
    e: [type, r, c, dr, dc]   type: w=walker, c=chaser, d=dasher
    ========================================================= */
 var WAVES = [
-  { // 1 : 첫 턴 — 느린 워커 2
-    e: [['w',1,1,1,0],['w',1,4,1,0]],
+  { // 1 : 첫 턴 — 느린 워커 2 (바로 폭발을 체험)
+    e: [['w',3,1,1,0],['w',3,4,1,0]],
     walls: [], barrels: []
   },
   { // 2 : 추격자 등장
@@ -979,7 +979,7 @@ function renderHud(){
     el.hearts.innerHTML = h;
     el.hearts.dataset.sig = h;
   }
-  el.subV.textContent = 'TURN ' + S.turn + ' · 적 ' + S.enemies.length;
+  el.subV.textContent = 'TURN ' + S.turn + ' · 적 ' + S.enemies.length + ' · ☠' + S.kills;
   el.bombCnt.textContent = S.bombsLeft;
   var planning = S.phase === 'plan';
   el.bombBtn.disabled = !planning || S.bombsLeft <= 0;
@@ -1011,7 +1011,7 @@ function renderTips(){
     } else if (doomed > 0){
       html = '<span class="good">☠ 처치 예정 ' + doomed + '</span> · 남은 폭탄 ' + S.bombsLeft;
     } else if (S.wave === 1 && S.turn <= 2){
-      html = '숫자 = 적이 밟을 칸 · 인접 칸을 눌러 이동';
+      html = '이동 ' + S.path.length + '/3 · 인접 칸을 눌러 경로 · 💣는 끝 칸에';
     } else {
       html = '이동 ' + S.path.length + '/3 · 폭탄 ' + S.bombsLeft;
     }
@@ -1237,7 +1237,7 @@ async function detonateSequence(){
       setTimeout(function(){
         for (var q = 0; q < cs.length; q++) flashCells.delete(key(cs[q].r, cs[q].c));
         renderAll();
-      }, 290);
+      }, 320);
     })(cells.slice());
 
     await sleep(75);
