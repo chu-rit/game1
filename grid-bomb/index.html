@@ -209,7 +209,7 @@ body{
 @keyframes hitShake{0%,100%{transform:translate(0)}25%{transform:translate(-4px,2px)}75%{transform:translate(4px,-2px)}}
 
 /* bombs */
-.bomb{
+#bombs .bomb{
   position:absolute;display:flex;align-items:center;justify-content:center;
   font-size:calc(var(--tile)*.52);line-height:1;z-index:3;
   transform:translate(0,0);
@@ -217,7 +217,7 @@ body{
   filter:drop-shadow(0 0 10px rgba(255,176,46,.8));
 }
 @keyframes bombIn{0%{transform:scale(0) rotate(-40deg)}100%{transform:scale(1) rotate(0)}}
-.bomb::after{
+#bombs .bomb::after{
   content:"";position:absolute;inset:16%;border-radius:50%;
   border:2px solid rgba(255,176,46,.5);animation:bombRing 1.1s ease-out infinite;
 }
@@ -248,13 +248,13 @@ body{
 .btn:disabled{opacity:.38;}
 .btn.small{height:34px;font-size:12px;font-weight:700;color:#9db2ca;flex:1;gap:5px;letter-spacing:.02em;}
 .btn.icon{flex:0 0 44px;height:34px;font-size:15px;}
-.btn.bomb{
+.btn.btn-bomb{
   flex:0 0 34%;height:58px;gap:6px;font-size:15px;font-weight:800;
   background:linear-gradient(160deg,#2a1f11,#17110a);
   box-shadow:inset 0 0 0 1.5px rgba(255,176,46,.55), 0 6px 18px rgba(0,0,0,.35);
   color:#ffd88a;
 }
-.btn.bomb .cnt{
+.btn.btn-bomb .cnt{
   font-size:12px;font-weight:900;background:var(--amber);color:#1a1004;
   min-width:18px;height:18px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;
 }
@@ -342,7 +342,7 @@ body{
       <button class="btn small" id="resetBtn">⟲ 초기화</button>
     </div>
     <div class="btnrow2">
-      <button class="btn bomb" id="bombBtn">💣 폭탄 <span class="cnt" id="bombCnt">2</span></button>
+      <button class="btn btn-bomb" id="bombBtn">💣 폭탄 <span class="cnt" id="bombCnt">2</span></button>
       <button class="btn go" id="goBtn">실행 GO!</button>
     </div>
   </div>
