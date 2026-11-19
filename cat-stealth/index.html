@@ -1177,11 +1177,12 @@ function drawGoalPulse(g,st,now){
   dith(g,x0-3,y0-3,CELL+6,CELL+6,"rgba(120,255,190,"+(0.06+0.06*pulse)+")",0.25,3);
 }
 
-function stepBadge(g,x,y,n,col){
-  fillRR(g,x-1,y-1,9,9,2,"rgba(14,10,16,0.92)");
-  pf(g,x,y,7,7,"#1b2530");
-  pf(g,x,y,7,1,"rgba(150,210,255,0.6)");
-  text3(g,String(n),x+2,y+1,"#cfebff");
+function stepBadge(g,x,y,n,amber){
+  fillRR(g,x-1,y-1,11,11,2,"rgba(12,9,14,0.86)");
+  pf(g,x,y,9,9,amber?"#3a2a14":"#182430");
+  pf(g,x,y,9,1,amber?"#e0ad5c":"#7fb4dc");
+  pf(g,x,y+8,9,1,amber?"#6b4a22":"#2c4256");
+  text3(g,String(n),x+3,y+2,amber?"#ffe1a8":"#d8f0ff");
 }
 
 function drawPlanOverlay(g,st,now){
@@ -1224,7 +1225,7 @@ function drawPlanOverlay(g,st,now){
     for(var pi3=0;pi3<G.plan.length;pi3++){
       if(G.plan[pi3].t!=="move") continue;
       stepN++;
-      stepBadge(g,G.plan[pi3].x*CELL+CELL-11,G.plan[pi3].y*CELL+CELL-11,stepN,"amber");
+      stepBadge(g,G.plan[pi3].x*CELL+3,G.plan[pi3].y*CELL+3,stepN,true);
     }
     for(var pfx=0;pfx<G.plan.length;pfx++){
       if(G.plan[pfx].t==="fish"){
@@ -1243,15 +1244,15 @@ function drawPlanOverlay(g,st,now){
   for(var ti=0;ti<targets.length;ti++){
     var tt=targets[ti], x0=tt.x*CELL, y0=tt.y*CELL;
     if(!G.fishMode){
-      dith(g,x0+5,y0+5,CELL-10,CELL-10,"rgba("+col+","+(0.10+0.06*blink)+")",0.4,0);
+      dith2(g,x0+4,y0+4,CELL-8,CELL-8,"rgba("+col+","+(0.10+0.06*blink)+")",0.45,0);
       /* 점선 사각 테두리 */
-      for(var e=0;e<CELL-10;e+=6){
-        pf(g,x0+5+e,y0+5,3,1,"rgba("+col+","+(0.45+0.35*blink)+")");
-        pf(g,x0+5+e,y0+CELL-6,3,1,"rgba("+col+","+(0.45+0.35*blink)+")");
-        pf(g,x0+5,y0+5+e,1,3,"rgba("+col+","+(0.45+0.35*blink)+")");
-        pf(g,x0+CELL-6,y0+5+e,1,3,"rgba("+col+","+(0.45+0.35*blink)+")");
+      for(var e=0;e<CELL-8;e+=6){
+        pf(g,x0+4+e,y0+4,4,1,"rgba("+col+","+(0.62+0.3*blink)+")");
+        pf(g,x0+4+e,y0+CELL-5,4,1,"rgba("+col+","+(0.62+0.3*blink)+")");
+        pf(g,x0+4,y0+4+e,1,4,"rgba("+col+","+(0.62+0.3*blink)+")");
+        pf(g,x0+CELL-5,y0+4+e,1,4,"rgba("+col+","+(0.62+0.3*blink)+")");
       }
-      pf(g,x0+CELL/2,y0+CELL/2-1,2,2,"rgba("+col+","+(0.55+0.3*blink)+")");
+      pf(g,x0+CELL/2-1,y0+CELL/2-1,3,3,"rgba("+col+","+(0.7+0.3*blink)+")");
     }else{
       dith(g,x0+3,y0+3,CELL-6,CELL-6,"rgba("+col+","+(0.10+0.05*blink)+")",0.4,1);
       for(var an2=0;an2<14;an2++){
