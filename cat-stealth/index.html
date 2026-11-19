@@ -113,7 +113,7 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
 
 var N=9, CELL=40, CV=N*CELL;
 var DIRS=[[0,-1],[1,0],[0,1],[-1,0]]; /* 0↑ 1→ 2↓ 3← */
-var SIGHT_LEN=4, FISH_RANGE=2, FISH_LURE_R=3, FISH_LURE_T=2, CHASE_LOST=3;
+var SIGHT_LEN=4, FISH_RANGE=2, FISH_LURE_R=3, CHASE_LOST=3;
 var STEP_MS=200, ANIM_MS=210, FISH_MS=190, UNDO_MAX=80;
 
 /* ---------------------------- 스테이지 데이터 ---------------------------- */
@@ -168,7 +168,7 @@ function loadStage(idx){
   if(s.start) player={x:s.start[0],y:s.start[1]};
   if(s.goalPos) goal={x:s.goalPos[0],y:s.goalPos[1]};
   G.st={ idx:idx, grid:grid, theme:s.theme, name:s.name,
-         player:player, goal:goal, fish:null, fishLeft:s.fish, turn:1,
+         player:player, goal:goal, fishes:[], fishLeft:s.fish, turn:1,
          cats:s.cats.map(makeCat) };
   G.st.player.rx=player.x; G.st.player.ry=player.y;
   G.fishMode=false; G.pending=null; G.undoStack=[]; G.playerDir=0;
@@ -241,6 +241,16 @@ function bfsNext(st,from,target,ignoreCats){
   return node;
 }
 function faceToward(cat,t){ cat.dir=dirFromTo(cat,t); }
+/* 바닥에 놓인 생선들 중 가장 가까운 것(없으면 null) */
+function nearestFish(st,cat){
+  if(!st.fishes||!st.fishes.length) return null;
+  var best=null,bd=1e9;
+  for(var i=0;i<st.fishes.length;i++){
+    var d=man(cat,st.fishes[i]);
+    if(d<bd){ bd=d; best=st.fishes[i]; }
+  }
+  return best;
+}
 function nearestPatrolIdx(cat){
   var best=0,bd=1e9;
   for(var i=0;i<cat.patrol.length;i++){
@@ -271,16 +281,19 @@ function catStep(st,cat,events){
       events.push({k:"calm",id:cat.id});
     }
   }else if(cat.state==="lured"){
-    if(cat.type==="C"&&st.fish){
-      var f=bfsNext(st,cat,st.fish);
+    /* 생선은 바닥에 영구히 남으므로 유인에도 수명이 없습니다.
+       사거리 안에 생선이 있는 동안은 계속 가장 가까운 생선 쪽을 향해요. */
+    var nf=nearestFish(st,cat);
+    if(nf&&cat.type==="C"){
+      var f=bfsNext(st,cat,nf);
       /* 유인된 고양이는 생선 쪽으로 걸어가되, 생선 위나 작은 인간의 칸은 밟지 않아요
          → 생선 바로 옆 칸에 멈춰 서서 킁킁거리므로 생선이 몸에 가려 사라져 보이지 않습니다 */
-      if(f&&!(f.x===st.player.x&&f.y===st.player.y)&&!(f.x===st.fish.x&&f.y===st.fish.y)){ cat.dir=dirFromTo(cat,f); cat.x=f.x; cat.y=f.y; }
+      if(f&&!(f.x===st.player.x&&f.y===st.player.y)&&!(f.x===nf.x&&f.y===nf.y)){ cat.dir=dirFromTo(cat,f); cat.x=f.x; cat.y=f.y; }
       /* 생선 바로 옆에 다다르면 걸음을 멈추고 생선 쪽을 바라봅니다 */
-      if(man(cat,st.fish)<=1) faceToward(cat,st.fish);
-    }
-    cat.lure--;
-    if(cat.lure<=0){
+      if(man(cat,nf)<=1) faceToward(cat,nf);
+    }else if(nf){
+      faceToward(cat,nf);
+    }else{
       cat.state="idle"; cat.chaseSteps=0;
       if(cat.type==="C"){ var ii=nearestPatrolIdx(cat); cat.pi=ii; cat.psign=(cat.pi===0)?1:-1; }
       else{ cat.dir=cat.home.dir; }
@@ -303,20 +316,25 @@ function catStep(st,cat,events){
 function simStep(st,action,events){
   if(action){
     if(action.t==="move"){ st.player.x=action.x; st.player.y=action.y; }
-    else if(action.t==="fish"){ st.fish={x:action.x,y:action.y,ttl:FISH_LURE_T+1}; st.fishLeft--; events.push({k:"fish",x:action.x,y:action.y}); }
+    else if(action.t==="fish"){ st.fishes.push({x:action.x,y:action.y}); st.fishLeft--; events.push({k:"fish",x:action.x,y:action.y}); }
   }
-  if(st.fish){
-    for(var i=0;i<st.cats.length;i++){
-      var c=st.cats[i];
-      if(c.state==="idle"&&man(c,st.fish)<=FISH_LURE_R){
-        c.state="lured"; c.lure=Math.min(FISH_LURE_T+1,st.fish.ttl||FISH_LURE_T+1); faceToward(c,st.fish);
-        events.push({k:"lure",id:c.id});
-      }
+  /* 생선은 한 번 바닥에 놓이면 그 판이 끝날 때까지 사라지지 않습니다.
+     사거리 안에 생선이 있는 한 고양이는 계속 유인 상태를 유지하고, 없어졌을 때만 풀립니다. */
+  for(var i=0;i<st.cats.length;i++){
+    var c=st.cats[i];
+    if(c.state!=="idle"&&c.state!=="lured") continue;
+    var lf=nearestFish(st,c);
+    if(lf&&man(c,lf)<=FISH_LURE_R){
+      if(c.state!=="lured"){ c.state="lured"; events.push({k:"lure",id:c.id}); }
+      faceToward(c,lf);
+    }else if(c.state==="lured"){
+      c.state="idle"; c.chaseSteps=0;
+      if(c.type==="C"){ var li=nearestPatrolIdx(c); c.pi=li; c.psign=(li===0)?1:-1; }
+      else{ c.dir=c.home.dir; }
+      events.push({k:"calm",id:c.id});
     }
   }
   for(var j=0;j<st.cats.length;j++){ catStep(st,st.cats[j],events); }
-  /* 생선은 던진 턴부터 ttl턴 동안 바닥에 남아 냄새를 풍기고, 수명이 다하면 그 턴 끝에 사라집니다 */
-  if(st.fish){ st.fish.ttl--; if(st.fish.ttl<=0) st.fish=null; }
   for(var k2=0;k2<st.cats.length;k2++){
     var c2=st.cats[k2];
     if(c2.state==="idle"&&inBeam(st,c2,st.player)){
@@ -1201,14 +1219,16 @@ function drawWarnMarks(g,st,now){
 }
 
 function drawFishEntity(g,st,now){
-  if(!st.fish) return;
-  /* 마지막 한 턴은 반투명으로 깜빡이며 곧 사라질 것을 알려 줍니다(완전히 사라지지는 않아요) */
-  var fade=(st.fish.ttl<=1&&Math.floor(now/160)%2===0)?0.45:1;
+  /* 던져 둔 생선은 모두 바닥에 그대로 남아 있습니다(수명·페이드 없음) */
+  if(!st.fishes||!st.fishes.length) return;
   var bob=Math.sin(now/300)>0?1:0;
-  var cx=st.fish.x*CELL+CELL/2, cy=st.fish.y*CELL+CELL/2+bob;
-  shadowPix(g,cx,st.fish.y*CELL+CELL-8,8,3,0.30);
-  dith(g,cx-11,cy-9,22,18,"rgba(255,170,205,0.16)",0.4,1);
-  drawFish(g,cx,cy,now,fade,true);
+  for(var i=0;i<st.fishes.length;i++){
+    var f=st.fishes[i];
+    var cx=f.x*CELL+CELL/2, cy=f.y*CELL+CELL/2+bob;
+    shadowPix(g,cx,f.y*CELL+CELL-8,8,3,0.30);
+    dith(g,cx-11,cy-9,22,18,"rgba(255,170,205,0.16)",0.4,1);
+    drawFish(g,cx,cy,now,1,true);
+  }
 }
 
 /* ================= 메인 드로우 ================= */
@@ -1404,7 +1424,7 @@ function beginTurn(action){
   if(action.t==="move") G.playerDir=action.dir;
   else if(action.t==="fish") G.playerDir=dirFromTo({x:st.player.x,y:st.player.y,dir:G.playerDir},{x:action.x,y:action.y});
   st.player.x=next.player.x; st.player.y=next.player.y;
-  st.fish=next.fish?{x:next.fish.x,y:next.fish.y,ttl:next.fish.ttl}:null;
+  st.fishes=next.fishes.slice();
   st.fishLeft=next.fishLeft;
   for(var i=0;i<st.cats.length;i++){
     var c=st.cats[i], nc=next.cats[i];
