@@ -113,7 +113,7 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
 
 var N=9, CELL=40, CV=N*CELL;
 var DIRS=[[0,-1],[1,0],[0,1],[-1,0]]; /* 0↑ 1→ 2↓ 3← */
-var SIGHT_LEN=4, FISH_THROW=4, FISH_LURE_R=3, FISH_LURE_T=2, CHASE_LOST=3;
+var SIGHT_LEN=4, FISH_RANGE=2, FISH_LURE_R=3, FISH_LURE_T=2, CHASE_LOST=3;
 var STEP_MS=200, ANIM_MS=210, FISH_MS=190, UNDO_MAX=80;
 
 /* ---------------------------- 스테이지 데이터 ---------------------------- */
@@ -1340,15 +1340,19 @@ function validMoves(){
   return out;
 }
 function validFishTiles(){
+  /* 상하좌우 직선 2칸까지만 · 대각선 불가 · 장애물(벽/가구/고양이)을 만나면 그 방향은 거기서 끊김 */
   var p=G.st.player, out=[];
-  for(var y=0;y<N;y++) for(var x=0;x<N;x++){
-    if(!walkable(G.st,x,y)) continue;
-    var dx=Math.abs(x-p.x), dy=Math.abs(y-p.y);
-    if(Math.max(dx,dy)===0||Math.max(dx,dy)>FISH_THROW) continue;
-    var occupied=false;
-    for(var i=0;i<G.st.cats.length;i++){ if(G.st.cats[i].x===x&&G.st.cats[i].y===y){ occupied=true; } }
-    if(occupied) continue;
-    out.push({x:x,y:y});
+  var free=function(x,y){
+    if(!walkable(G.st,x,y)) return false;
+    for(var i=0;i<G.st.cats.length;i++){ if(G.st.cats[i].x===x&&G.st.cats[i].y===y) return false; }
+    return true;
+  };
+  for(var d=0;d<4;d++){
+    for(var step=1;step<=FISH_RANGE;step++){
+      var x=p.x+DIRS[d][0]*step, y=p.y+DIRS[d][1]*step;
+      if(!free(x,y)) break;
+      out.push({x:x,y:y});
+    }
   }
   return out;
 }
@@ -1487,7 +1491,7 @@ cvEl.addEventListener("pointerdown",function(e){
     for(var i=0;i<ft.length;i++){
       if(ft[i].x===tx&&ft[i].y===ty){ beginTurn({t:"fish",x:tx,y:ty}); return; }
     }
-    setWarn("그곳에는 던질 수 없어요 (사거리 "+FISH_THROW+"칸 내 빈 바닥)","fish");
+    setWarn("그곳에는 던질 수 없어요 (상하좌우 직선 2칸 · 장애물 불가)","fish");
     return;
   }
   var vm=G.moveTiles&&G.moveTiles.length?G.moveTiles:validMoves();
@@ -1500,7 +1504,7 @@ $("bReset").addEventListener("click",function(){ resetStage(); });
 $("bFish").addEventListener("click",function(){
   if(G.mode!=="play"||G.pending||G.st.fishLeft<=0) return;
   G.fishMode=!G.fishMode;
-  setWarn(G.fishMode?"던질 칸을 누르세요 🐟 (사거리 "+FISH_THROW+"칸 · 🐟 다시 누르면 취소)":"", G.fishMode?"fish":"");
+  setWarn(G.fishMode?"던질 칸을 누르세요 🐟 (상하좌우 직선 2칸 · 장애물 불가 · 🐟 다시 누르면 취소)":"", G.fishMode?"fish":"");
   updateHUD();
 });
 document.addEventListener("keydown",function(e){
