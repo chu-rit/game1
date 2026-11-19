@@ -929,9 +929,9 @@ function eyePix(g,x,y,P,blink){
   if(blink){ pf(g,x,y+2,5,1,P.deep); return; }
   pf(g,x,y,5,5,P.o);
   pf(g,x+1,y+1,3,3,P.eye);
+  pf(g,x+2,y+1,1,3,P.eyeD);
   pf(g,x+1,y+1,1,1,"#ffffff");
-  pf(g,x+2,y+2,1,2,P.eyeD);
-  pf(g,x+1,y+3,3,1,P.dark);
+  pf(g,x+1,y+4,3,1,P.dark);
 }
 
 function whiskPix(g,x,y,dir,P){
@@ -954,11 +954,16 @@ function tailPix(g,pts,w0,w1,P){
   for(var j=0;j<n;j++){
     var t2=j/(n-1), w2=Math.round(w0+(w1-w0)*t2), hw=Math.floor(w2/2);
     fillRR(g,pts[j].x-hw,pts[j].y-hw,w2,w2,2,P.body);
-    pf(g,pts[j].x-hw,pts[j].y-hw,w2,1,P.lit);
-    pf(g,pts[j].x-hw,pts[j].y+hw-1,w2,1,P.dark);
+  }
+  /* 위/아래 가장자리만 1px 음영 */
+  for(var k=0;k<n;k++){
+    var t3=k/(n-1), w3=Math.round(w0+(w1-w0)*t3), hw3=Math.floor(w3/2);
+    if(k%2===0) pf(g,pts[k].x-hw3,pts[k].y-hw3,w3,1,P.lit);
+    if(k%3===0) pf(g,pts[k].x-hw3,pts[k].y+hw3-1,w3,1,P.dark);
   }
   var lp=pts[n-1];
-  pf(g,lp.x-1,lp.y-1,2,2,P.stripe);
+  pf(g,lp.x-2,lp.y-2,3,3,P.stripe);
+  pf(g,lp.x-2,lp.y-2,3,1,P.dark);
 }
 function denseCurve(pts,step){
   var out=[], n=pts.length;
@@ -988,22 +993,24 @@ function catSide(g,P,now,opt){
   legPix(g,2,-11,7,11,P,false);
   earPix(g,-4,-47,9,8,P);
   earPix(g,9,-47,9,8,P);
-  fillRR(g,-3,-41,21,18,6,P.o);
-  fillRR(g,-2,-40,19,16,5,P.body);
-  g.save(); pathRR(g,-2,-40,19,16,5); g.clip();
-  pf(g,-2,-40,19,2,P.lit);
-  dith(g,-2,-38,19,2,P.lit,0.45,0);
-  pf(g,-2,-26,19,2,P.dark);
-  pf(g,-2,-24,19,1,P.deep);
+  fillRR(g,-3,-41,20,17,7,P.o);
+  fillRR(g,-2,-40,18,15,6,P.body);
+  g.save(); pathRR(g,-2,-40,18,15,6); g.clip();
+  pf(g,-2,-40,18,2,P.lit);
+  dith(g,-2,-38,18,2,P.lit,0.45,0);
+  pf(g,-2,-27,18,2,P.dark);
+  pf(g,-2,-25,18,1,P.deep);
   pf(g,1,-39,1,4,P.stripe);
   pf(g,6,-39,1,4,P.stripe);
   pf(g,11,-39,1,3,P.stripe);
   g.restore();
+  /* 얼굴 */
   fillRR(g,7,-30,9,6,2,P.belly);
-  pf(g,12,-28,3,2,P.nose);
-  pf(g,13,-26,2,1,P.deep);
-  eyePix(g,5,-36,P,blink);
-  whiskPix(g,16,-28,1,P);
+  pf(g,14,-29,2,2,P.nose);
+  pf(g,14,-27,1,1,P.deep);
+  pf(g,12,-26,3,1,P.deep);
+  eyePix(g,4,-37,P,blink);
+  whiskPix(g,17,-28,1,P);
   pf(g,1,-24,4,1,P.tag);
   pf(g,3,-23,1,1,P.tag);
 }
