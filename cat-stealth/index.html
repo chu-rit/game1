@@ -261,8 +261,10 @@ function catStep(st,cat,events){
     if(cat.type==="C"){ var ni=nearestPatrolIdx(cat); tgt={x:cat.patrol[ni][0],y:cat.patrol[ni][1],ni:ni}; }
     else tgt={x:cat.home.x,y:cat.home.y};
     var stp=bfsNext(st,cat,tgt);
-    if(stp){ cat.dir=dirFromTo(cat,stp); cat.x=stp.x; cat.y=stp.y; }
-    else{
+    /* 돌아가는 길에도 작은 인간의 칸은 밟지 않아요(그 턴은 제자리에서 기다림) */
+    if(stp&&!(stp.x===st.player.x&&stp.y===st.player.y)){ cat.dir=dirFromTo(cat,stp); cat.x=stp.x; cat.y=stp.y; }
+    /* 길이 막혔으면 그 턴은 제자리에서 기다립니다(방향도 그대로) */
+    else if(!stp){
       cat.state="idle"; cat.chaseSteps=0;
       if(cat.type==="C"){ cat.pi=tgt.ni; cat.psign=(cat.pi===0)?1:-1; }
       else{ cat.dir=cat.home.dir; if(cat.dirs){ cat.dir=cat.dirs[0]; } }
@@ -271,8 +273,9 @@ function catStep(st,cat,events){
   }else if(cat.state==="lured"){
     if(cat.type==="C"&&st.fish){
       var f=bfsNext(st,cat,st.fish);
-      /* 유인된 고양이는 생선 쪽으로 걸어가되, 작은 인간의 칸을 밟고 지나가지는 않아요 */
-      if(f&&!(f.x===st.player.x&&f.y===st.player.y)){ cat.dir=dirFromTo(cat,f); cat.x=f.x; cat.y=f.y; }
+      /* 유인된 고양이는 생선 쪽으로 걸어가되, 생선 위나 작은 인간의 칸은 밟지 않아요
+         → 생선 바로 옆 칸에 멈춰 서서 킁킁거리므로 생선이 몸에 가려 사라져 보이지 않습니다 */
+      if(f&&!(f.x===st.player.x&&f.y===st.player.y)&&!(f.x===st.fish.x&&f.y===st.fish.y)){ cat.dir=dirFromTo(cat,f); cat.x=f.x; cat.y=f.y; }
       else faceToward(cat,st.fish);
     }
     cat.lure--;
@@ -292,25 +295,27 @@ function catStep(st,cat,events){
         pt={x:cat.patrol[nxi][0],y:cat.patrol[nxi][1]};
       }
       var pst=bfsNext(st,cat,pt);
-      if(pst){ cat.dir=dirFromTo(cat,pst); cat.x=pst.x; cat.y=pst.y; }
+      if(pst&&!(pst.x===st.player.x&&pst.y===st.player.y)){ cat.dir=dirFromTo(cat,pst); cat.x=pst.x; cat.y=pst.y; }
     }
   }
 }
 function simStep(st,action,events){
   if(action){
     if(action.t==="move"){ st.player.x=action.x; st.player.y=action.y; }
-    else if(action.t==="fish"){ st.fish={x:action.x,y:action.y}; st.fishLeft--; events.push({k:"fish",x:action.x,y:action.y}); }
+    else if(action.t==="fish"){ st.fish={x:action.x,y:action.y,ttl:FISH_LURE_T+1}; st.fishLeft--; events.push({k:"fish",x:action.x,y:action.y}); }
   }
   if(st.fish){
     for(var i=0;i<st.cats.length;i++){
       var c=st.cats[i];
       if(c.state==="idle"&&man(c,st.fish)<=FISH_LURE_R){
-        c.state="lured"; c.lure=FISH_LURE_T+1; faceToward(c,st.fish);
+        c.state="lured"; c.lure=Math.min(FISH_LURE_T+1,st.fish.ttl||FISH_LURE_T+1); faceToward(c,st.fish);
         events.push({k:"lure",id:c.id});
       }
     }
   }
   for(var j=0;j<st.cats.length;j++){ catStep(st,st.cats[j],events); }
+  /* 생선은 던진 턴부터 ttl턴 동안 바닥에 남아 냄새를 풍기고, 수명이 다하면 그 턴 끝에 사라집니다 */
+  if(st.fish){ st.fish.ttl--; if(st.fish.ttl<=0) st.fish=null; }
   for(var k2=0;k2<st.cats.length;k2++){
     var c2=st.cats[k2];
     if(c2.state==="idle"&&inBeam(st,c2,st.player)){
@@ -1196,6 +1201,8 @@ function drawWarnMarks(g,st,now){
 
 function drawFishEntity(g,st,now){
   if(!st.fish) return;
+  /* 마지막 한 턴은 깜빡이며 곧 사라질 것을 알려 줍니다 */
+  if(st.fish.ttl<=1 && Math.floor(now/160)%2===0) return;
   var bob=Math.sin(now/300)>0?1:0;
   var cx=st.fish.x*CELL+CELL/2, cy=st.fish.y*CELL+CELL/2+bob;
   shadowPix(g,cx,st.fish.y*CELL+CELL-8,8,3,0.30);
@@ -1396,7 +1403,7 @@ function beginTurn(action){
   if(action.t==="move") G.playerDir=action.dir;
   else if(action.t==="fish") G.playerDir=dirFromTo({x:st.player.x,y:st.player.y,dir:G.playerDir},{x:action.x,y:action.y});
   st.player.x=next.player.x; st.player.y=next.player.y;
-  st.fish=next.fish?{x:next.fish.x,y:next.fish.y}:null;
+  st.fish=next.fish?{x:next.fish.x,y:next.fish.y,ttl:next.fish.ttl}:null;
   st.fishLeft=next.fishLeft;
   for(var i=0;i<st.cats.length;i++){
     var c=st.cats[i], nc=next.cats[i];
@@ -1426,7 +1433,6 @@ function finishTurn(){
     if(p.ev[e].k==="caught") caught=true;
     if(p.ev[e].k==="goal") goal=true;
   }
-  G.st.fish=null;
   if(caught){
     G.hearts--;
     sCatch();
