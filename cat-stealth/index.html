@@ -635,7 +635,7 @@ function computePreview(){
     var f=frames[k], p=f.st.player;
     for(var i=0;i<f.st.cats.length;i++){
       var c=f.st.cats[i];
-      if((c.state==="idle"||c.state==="lured")&&inBeam(f.st,c,p)){ warnTiles.push({x:p.x,y:p.y}); if(!msg){ msg="⚠ "+k+"번째 수에서 시선에 걸려요!"; } }
+      if(c.state==="idle"&&inBeam(f.st,c,p)){ warnTiles.push({x:p.x,y:p.y}); if(!msg){ msg="⚠ "+k+"번째 수에서 시선에 걸려요!"; } }
       if(c.state==="chase"&&(c.x===p.x&&c.y===p.y)){ warnTiles.push({x:p.x,y:p.y}); msg="⚠ 실행하면 잡혀요!!"; bad=true; }
     }
     for(var e2=0;e2<f.events.length;e2++){
