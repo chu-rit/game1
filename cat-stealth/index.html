@@ -279,10 +279,15 @@ function catStep(st,cat,events){
   }else{ /* idle */
     if(cat.type==="B"&&cat.dirs){ cat.dir=(cat.dir===cat.dirs[0])?cat.dirs[1]:cat.dirs[0]; }
     else if(cat.type==="C"&&cat.patrol){
-      var nx=cat.pi+cat.psign;
-      if(nx<0||nx>=cat.patrol.length){ cat.psign*=-1; nx=cat.pi+cat.psign; }
-      var pt={x:cat.patrol[nx][0],y:cat.patrol[nx][1]};
-      cat.dir=dirFromTo(cat,pt); cat.x=pt.x; cat.y=pt.y; cat.pi=nx;
+      var pt={x:cat.patrol[cat.pi][0],y:cat.patrol[cat.pi][1]};
+      if(cat.x===pt.x&&cat.y===pt.y){
+        var nxi=cat.pi+cat.psign;
+        if(nxi<0||nxi>=cat.patrol.length){ cat.psign*=-1; nxi=cat.pi+cat.psign; }
+        cat.pi=nxi;
+        pt={x:cat.patrol[nxi][0],y:cat.patrol[nxi][1]};
+      }
+      var pst=bfsNext(st,cat,pt);
+      if(pst){ cat.dir=dirFromTo(cat,pst); cat.x=pst.x; cat.y=pst.y; }
     }
   }
 }
