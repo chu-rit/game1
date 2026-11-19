@@ -956,20 +956,26 @@ function drawCatEmote(g,cx,gy,spr,dir,now,opt){
     text3(g,"!",bx-1,by+2,"#fff2f3");
     g.restore();
   }else if(e==="?"){
-    var fl=Math.sin(now/420)*1;
-    g.save(); g.globalAlpha=0.94;
-    fillRR(g,bx-5,by-2+fl,11,12,3,"#2a0a10");
-    fillRR(g,bx-4,by-1+fl,9,10,2,"#ffd9ea");
+    var fl=Math.round(Math.sin(now/420));
+    g.save(); g.globalAlpha=0.96;
+    fillRR(g,bx-6,by-3+fl,13,14,4,"#2a0a10");
+    fillRR(g,bx-5,by-2+fl,11,12,3,"#ffe1ee");
+    fillRR(g,bx-5,by-2+fl,11,2,1,"#fff4f8");
     text3(g,"?",bx-1,by+1+fl,"#d2496f");
+    pf(g,bx-3,by+9+fl,2,1,"#ffe1ee");
     g.restore();
   }else if(e==="heart"){
-    var k=(now%900)/900;
-    var hy=by+6-Math.round(k*7);
-    g.save(); g.globalAlpha=1-k*0.7;
+    var k=(now%1000)/1000;
+    var hy=by+5-Math.round(k*9);
+    g.save(); g.globalAlpha=1-k*0.75;
     var hx=bx+Math.round(Math.sin(now/300)*2);
-    pf(g,hx-2,hy,2,1,"#ff7fae"); pf(g,hx+1,hy,2,1,"#ff7fae");
-    pf(g,hx-3,hy+1,7,1,"#ff7fae");
-    pf(g,hx-2,hy+2,5,1,"#ff9cc4"); pf(g,hx-1,hy+3,3,1,"#ff9cc4"); pf(g,hx,hy+4,1,1,"#ff9cc4");
+    fillRR(g,hx-5,hy-1,11,11,3,"rgba(42,10,16,0.55)");
+    pf(g,hx-3,hy+1,2,2,"#ff6ea6"); pf(g,hx+2,hy+1,2,2,"#ff6ea6");
+    pf(g,hx-4,hy+3,9,2,"#ff6ea6");
+    pf(g,hx-3,hy+5,7,1,"#ff8fbc");
+    pf(g,hx-2,hy+6,5,1,"#ff8fbc");
+    pf(g,hx-1,hy+7,3,1,"#ffb3d2");
+    pf(g,hx,hy+8,1,1,"#ffb3d2");
     g.restore();
   }
 }
