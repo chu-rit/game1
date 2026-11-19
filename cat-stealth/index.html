@@ -982,37 +982,41 @@ function denseCurve(pts,step){
 function catSide(g,P,now,opt){
   var blink=(now%4600)<120;
   var sway=Math.sin(now/700);
-  var ctrl=[{x:-15,y:-24},{x:-20,y:-27},{x:-23,y:-31},{x:-23,y:-36},{x:-20,y:-40}];
+  var ctrl=[{x:-16,y:-24},{x:-21,y:-27},{x:-24,y:-31},{x:-24,y:-36},{x:-21,y:-40}];
   ctrl[2].x=Math.round(ctrl[2].x+sway*1.2);
   ctrl[3].x=Math.round(ctrl[3].x+sway*1.6);
   ctrl[4].x=Math.round(ctrl[4].x+sway*1.2);
   ctrl[4].y=Math.round(ctrl[4].y-Math.abs(sway)*0.8);
   tailPix(g,denseCurve(ctrl,2),7,4,P);
-  legPix(g,-14,-11,6,11,P,true);
-  bodyPix(g,-18,-30,26,20,8,P,"side");
-  legPix(g,2,-11,7,11,P,false);
-  earPix(g,-4,-47,9,8,P);
-  earPix(g,9,-47,9,8,P);
-  fillRR(g,-3,-41,20,17,7,P.o);
-  fillRR(g,-2,-40,18,15,6,P.body);
-  g.save(); pathRR(g,-2,-40,18,15,6); g.clip();
-  pf(g,-2,-40,18,2,P.lit);
-  dith(g,-2,-38,18,2,P.lit,0.45,0);
-  pf(g,-2,-27,18,2,P.dark);
-  pf(g,-2,-25,18,1,P.deep);
-  pf(g,1,-39,1,4,P.stripe);
-  pf(g,6,-39,1,4,P.stripe);
-  pf(g,11,-39,1,3,P.stripe);
+  legPix(g,-15,-11,6,11,P,true);
+  bodyPix(g,-19,-30,27,20,8,P,"side");
+  legPix(g,1,-11,7,11,P,false);
+  earPix(g,-3,-46,8,8,P);
+  earPix(g,8,-46,8,8,P);
+  /* 머리: 둥근 두개골 + 주둥이 */
+  fillRR(g,-4,-42,20,18,7,P.o);
+  fillRR(g,8,-32,10,8,3,P.o);
+  fillRR(g,-3,-41,18,16,6,P.body);
+  fillRR(g,9,-31,8,6,3,P.body);
+  g.save(); pathRR(g,-3,-41,18,16,6); g.clip();
+  pf(g,-3,-41,18,2,P.lit);
+  dith(g,-3,-39,18,2,P.lit,0.45,0);
+  pf(g,-3,-27,18,2,P.dark);
+  pf(g,-3,-25,18,1,P.deep);
+  pf(g,0,-40,1,4,P.stripe);
+  pf(g,5,-40,1,4,P.stripe);
+  pf(g,10,-40,1,3,P.stripe);
   g.restore();
   /* 얼굴 */
-  fillRR(g,7,-30,9,6,2,P.belly);
-  pf(g,14,-29,2,2,P.nose);
-  pf(g,14,-27,1,1,P.deep);
-  pf(g,12,-26,3,1,P.deep);
+  pf(g,12,-29,6,1,P.lit);
+  pf(g,13,-28,4,3,P.belly);
+  pf(g,15,-29,2,2,P.nose);
+  pf(g,15,-27,2,1,P.deep);
+  pf(g,14,-26,2,1,P.belly);
   eyePix(g,4,-37,P,blink);
-  whiskPix(g,17,-28,1,P);
-  pf(g,1,-24,4,1,P.tag);
-  pf(g,3,-23,1,1,P.tag);
+  whiskPix(g,18,-28,1,P);
+  pf(g,0,-24,4,1,P.tag);
+  pf(g,2,-23,1,1,P.tag);
 }
 
 function headFront(g,P,now,opt){
