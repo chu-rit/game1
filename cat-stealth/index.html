@@ -862,7 +862,7 @@ function paintVignette(g,st){
       var dl=Math.sqrt(Math.pow((i-lx)/(CV*0.60),2)+Math.pow((j-ly)/(CV*0.52),2));
       var warm=1-dl;
       if(warm>0){
-        if(b < Math.min(15,warm*13)){ g.fillStyle="rgba(255,198,122,0.11)"; g.fillRect(i,j,1,1); }
+        if(b < Math.min(11,warm*10)){ g.fillStyle="rgba(255,198,122,0.09)"; g.fillRect(i,j,1,1); }
       }
       var dx=(i-vx)/(CV*0.5), dy=(j-vy)/(CV*0.5);
       var d=Math.sqrt(dx*dx+dy*dy);
