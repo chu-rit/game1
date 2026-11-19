@@ -716,7 +716,7 @@ function layout(){
   var stageRect = el.stage.getBoundingClientRect();
   var w = stageRect.width - 6;
   var h = stageRect.height - 6;
-  var size = Math.min(w, h, 460);
+  var size = Math.min(w, h, 520);
   T = Math.max(34, Math.floor(size / N));
   var boardSize = T * N;
   el.board.style.width = boardSize + 'px';
@@ -1237,7 +1237,7 @@ async function detonateSequence(){
       setTimeout(function(){
         for (var q = 0; q < cs.length; q++) flashCells.delete(key(cs[q].r, cs[q].c));
         renderAll();
-      }, 320);
+      }, 420);
     })(cells.slice());
 
     await sleep(75);
