@@ -761,11 +761,16 @@ function drawTable(g,st,x,y){
   pf(g,x0+4,y0+11,CELL-8,2,"#d5a066");
   dith2(g,x0+4,y0+14,CELL-8,5,"#a4713f",0.35,0);
   pf(g,x0+3,y0+20,CELL-6,1,"#6f4626");
+  /* 접시 + 촛불 */
   var cx=x0+CELL/2;
-  fillRR(g,cx-7,y0+12,15,7,3,"#6b4426");
-  fillRR(g,cx-6,y0+13,13,5,2,"#efe6d2");
-  pf(g,cx-4,y0+14,9,1,"#fffdf4");
-  pf(g,cx-2,y0+15,4,1,"#d9a24a");
+  fillRR(g,cx-6,y0+13,13,6,2,"#6b4426");
+  fillRR(g,cx-5,y0+14,11,4,2,"#efe6d2");
+  pf(g,cx-3,y0+15,7,1,"#fffdf4");
+  pf(g,cx-1,y0+16,3,1,"#d9a24a");
+  pf(g,cx+8,y0+12,2,4,"#f3e7cf");
+  pf(g,cx+8,y0+11,2,1,"#fff8e8");
+  pf(g,cx+8,y0+9,1,2,"#ffcb5e");
+  pf(g,cx+9,y0+8,1,1,"#fff0b8");
 }
 
 function drawBed(g,st,x,y){
@@ -790,6 +795,13 @@ function drawBed(g,st,x,y){
   pf(g,xA,y0+30,w,3,"#8a5a34");
   pf(g,xA,y0+30,w,1,"#b5875a");
   pf(g,xA,y0+33,w,1,"#4a2c14");
+  /* 헤드보드 */
+  if(!lf){
+    fillRR(g,xA-1,y0+7,4,24,2,"#3a2a20");
+    pf(g,xA,y0+8,2,22,"#8a5a34");
+    pf(g,xA,y0+8,2,2,"#b5875a");
+    pf(g,xA,y0+18,2,1,"#6b4426");
+  }
 }
 
 function paintFurniture(g,st){
@@ -1028,9 +1040,15 @@ function headBack(g,P,now){
   pf(g,-11,-26,22,2,P.dark);
   pf(g,-11,-24,22,1,P.deep);
   for(var i=0;i<3;i++) pf(g,-6+i*5,-39,2,6,P.stripe);
+  /* 뒷머리 음영 */
+  dith2(g,-9,-32,18,6,P.dark,0.5,1);
+  pf(g,-5,-36,2,8,P.stripe);
+  pf(g,3,-36,2,8,P.stripe);
   g.restore();
   pf(g,-8,-31,3,2,P.dark);
   pf(g,6,-31,3,2,P.dark);
+  /* 목 그늘 */
+  pf(g,-7,-25,14,1,P.deep);
 }
 
 function catFront(g,P,now,opt){
@@ -1050,18 +1068,25 @@ function catFront(g,P,now,opt){
 }
 
 function catBack(g,P,now,opt){
-  var sway=Math.sin(now/700);
-  var ctrl=[{x:-4,y:-22},{x:-7,y:-29},{x:-6,y:-35},{x:-3,y:-39}];
-  ctrl[2].x=Math.round(ctrl[2].x+sway*1.2);
-  ctrl[3].x=Math.round(ctrl[3].x+sway*1.6);
-  tailPix(g,denseCurve(ctrl,2),7,4,P);
+  var PB={o:P.o,body:P.body,lit:P.lit,dark:P.dark,deep:P.deep,stripe:P.stripe,
+          belly:P.belly,paw:P.paw,inner:P.dark,nose:P.nose,eye:P.eye,eyeD:P.eyeD,
+          whisk:P.whisk,tag:P.tag};
   bodyPix(g,-12,-27,24,18,7,P,"back");
   legPix(g,-11,-11,7,11,P,true);
   legPix(g,4,-11,7,11,P,false);
-  earPix(g,-10,-47,8,8,P);
-  earPix(g,2,-47,8,8,P);
+  /* 허벅지 */
+  fillRR(g,-12,-14,7,7,2,P.dark);
+  fillRR(g,5,-14,7,7,2,P.dark);
+  earPix(g,-10,-47,8,8,PB);
+  earPix(g,2,-47,8,8,PB);
   headBack(g,P,now);
-  pf(g,-4,-25,8,3,P.dark);
+  /* 꼬리: 등 뒤에서 위로 */
+  var sway=Math.sin(now/700);
+  var ctrl=[{x:0,y:-20},{x:-2,y:-27},{x:-1,y:-33},{x:2,y:-38},{x:5,y:-41}];
+  ctrl[3].x=Math.round(ctrl[3].x+sway*1.2);
+  ctrl[4].x=Math.round(ctrl[4].x+sway*1.8);
+  ctrl[4].y=Math.round(ctrl[4].y-Math.abs(sway)*0.8);
+  tailPix(g,denseCurve(ctrl,2),7,4,P);
 }
 
 function drawCatAt(g,cx,gy,P,dir,type,now,opt){
