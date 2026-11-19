@@ -1196,8 +1196,6 @@ function draw(){
 
   if(G.mode==="anim"&&G.pending&&now-G.pending.t0>=ANIM_MS){
     finishTurn();
-    blit();
-    return;
   }
 
   ctx.drawImage(board,0,0);
@@ -1252,7 +1250,6 @@ function draw(){
 
 function blit(){
   dctx.imageSmoothingEnabled=false;
-  dctx.clearRect(0,0,cvEl.width,cvEl.height);
   dctx.drawImage(low,0,0,cvEl.width,cvEl.height);
 }
 
