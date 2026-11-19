@@ -431,6 +431,7 @@ var FONT3={
  "P":["111","101","111","100","100"],
  "/":["001","001","010","100","100"],
  "!":["010","010","010","000","010"],
+ "?":["111","001","011","000","010"],
  " ":["000","000","000","000","000"]
 };
 function text3(g,str,x,y,col){
@@ -446,19 +447,22 @@ function text3(g,str,x,y,col){
 /* ================= 색 팔레트 ================= */
 var FLOOR={seam:"#6a4326", d1:"#8f6036", base:"#a4713f", l1:"#b8844f", hi:"#c59261", grain:"#8c5f36"};
 var COATS={
-  A:{ o:"#26222c", body:"#9aa2b4", lit:"#c3cbd9", dark:"#788092", deep:"#545b6e", stripe:"#818a9e",
-      belly:"#e9eef6", paw:"#e9eef6", inner:"#d791a0", nose:"#e08a99", eye:"#f2bb3c", eyeD:"#3a2a12",
-      whisk:"#eef3fb", tag:"#ffd166" },
-  B:{ o:"#2b1c13", body:"#e2a05c", lit:"#f8ca92", dark:"#bd7b3a", deep:"#8d5521", stripe:"#c47d33",
-      belly:"#fbe8cd", paw:"#fbe8cd", inner:"#e79a92", nose:"#dd8580", eye:"#82dc8e", eyeD:"#16361f",
-      whisk:"#fff4e2", tag:"#ffe08a" },
-  C:{ o:"#141218", body:"#3e3e50", lit:"#606078", dark:"#282834", deep:"#191922", stripe:"#4d4d62",
-      belly:"#565668", paw:"#4a4a5e", inner:"#a06b7c", nose:"#8f5a66", eye:"#5cf0ae", eyeD:"#0f2a22",
-      whisk:"#cddfd8", tag:"#f0b429" }
+  /* A · 고정 감시 — 통통한 러시안 블루(은회색 태비) */
+  A:{ id:"A", o:"#241f2a", body:"#9aa4b6", lit:"#ccd5e3", dark:"#767f93", deep:"#525a6c", stripe:"#7b8497",
+      belly:"#eef3fb", paw:"#eef3fb", inner:"#e095a4", nose:"#e88f9f", eye:"#f5bc3c", eyeD:"#3a2a12",
+      blush:"#cf94a0", whisk:"#eef3fb", tag:"#ffd166" },
+  /* B · 교대 감시 — 복슬복슬 마멀레이드(주황 태비) */
+  B:{ id:"B", o:"#2b1a11", body:"#e6a25c", lit:"#fdd09a", dark:"#bd7b3a", deep:"#8a5320", stripe:"#c87a30",
+      belly:"#fdecd2", paw:"#fdecd2", inner:"#eb9d95", nose:"#e08983", eye:"#84e08f", eyeD:"#16361f",
+      blush:"#ee8b84", whisk:"#fff6e6", tag:"#ffe08a" },
+  /* C · 순회 — 매끈한 젠틀캣(턱시도) */
+  C:{ id:"C", o:"#121017", body:"#3d3d50", lit:"#64647e", dark:"#262632", deep:"#17171f", stripe:"#4c4c62",
+      belly:"#eaeaF6", paw:"#eaeaF6", inner:"#a8748a", nose:"#d68f9d", eye:"#5ff0b2", eyeD:"#0f2a22",
+      blush:"#7d5a70", whisk:"#dfeae6", tag:"#f0b429" }
 };
-var GHOST={ o:"#1b3247", body:"#4d86b8", lit:"#7fb4e0", dark:"#35618c", deep:"#264662", stripe:"#44749e",
+var GHOST={ id:"G", o:"#1b3247", body:"#4d86b8", lit:"#7fb4e0", dark:"#35618c", deep:"#264662", stripe:"#44749e",
       belly:"#8fc0e6", paw:"#8fc0e6", inner:"#5f93c0", nose:"#5f93c0", eye:"#bfe4ff", eyeD:"#1b3247",
-      whisk:"#cfe8ff", tag:"#8fc0e6" };
+      blush:"#5f93c0", whisk:"#cfe8ff", tag:"#8fc0e6" };
 
 /* ================= 배경 베이크 ================= */
 function bakeBoard(st){
@@ -873,257 +877,114 @@ function paintVignette(g,st){
   }
 }
 
-/* ================= 스프라이트: 고양이 ================= */
-function bodyPix(g,x,y,w,h,r,P,view){
-  fillRR(g,x-1,y-1,w+2,h+2,r+1,P.o);
-  fillRR(g,x,y,w,h,r,P.body);
-  g.save(); pathRR(g,x,y,w,h,r); g.clip();
-  pf(g,x,y,w,2,P.lit);
-  dith(g,x,y+2,w,2,P.lit,0.5,0);
-  pf(g,x,y+h-4,w,2,P.dark);
-  pf(g,x,y+h-2,w,2,P.deep);
-  if(view==="side"){
-    for(var i=0;i<3;i++){
-      var sx=x+5+i*6;
-      pf(g,sx,y+2,2,5,P.stripe);
-      dith(g,sx,y+7,2,2,P.stripe,0.5,0);
-    }
-    fillRR(g,x+w-10,y+h-9,10,7,2,P.belly);
-    pf(g,x+w-8,y+h-8,6,1,P.lit);
-  }else{
-    fillRR(g,x+Math.floor(w/2)-6,y+h-9,13,7,2,P.belly);
-    for(var k=0;k<2;k++){
-      var bx=x+5+k*(w-13);
-      pf(g,bx,y+3,2,6,P.stripe);
-    }
-  }
-  g.restore();
-}
+/* ================= 스프라이트: 고양이 (손으로 찍은 도트 매트릭스) =================
+   한 글자 = 1도트.  . 투명 | o 외곽선 | L 밝은털 | B 몸통 | D 그늘 | E 진그늘
+   S 무늬 | W 흰털(가슴·양말) | P 귀안쪽 | N 코 | Y 눈 | K 눈테·동공
+   H 반짝임 | C 볼터치 | T 목걸이 | X 수염
+   R = 오른쪽(왼쪽은 좌우반전) / D = 아래(정면) / U = 위(뒷모습), 2 = 걷기 두 번째 프레임 */
+var SPR={
+  R:["..........................................","................oooo............oooo......","...............ooBBoo..........ooBBoo.....","..............ooBBBBoo........ooBBBBoo....","..............ooBPPBBoo......ooBBPPBoo....",".............ooBBPPPBBooooooooBBPPPBBoo...",".............ooBBPPPPBooooooooBBPPPPBoo...","..............ooBBBBLLLLLLLLLLLLBBBBoo....",".............ooLBBBBBBBBBBBBBBBBBBBBBoo...",".............ooLBBBKKKKBBBBKKKKBBBBBBoo...",".............ooLBBKHHYYKBBKHHYYKBBBBBoo...",".............ooBBBKHHYYKBBKHHYYKBBBBDoo...",".............ooBBBKYYYYKBBKYYYYKBBBBDoo...",".............ooBBBKYYYYKBBKYYYYKBBBBDoo...",".............ooBBBKYYYHKBBKYYYHKBBBBDoo...",".............ooBBBBKKKKBBBBKKKKBBBBDDoo...",".............ooBBBBBBBBBNNBBBBBBBBBDDoo...",".............ooCCBBBBBBBBBBBBBBBCCBDoo....","..............oooBBDDDDDDDDDDDDDDBBoo.....","...............ooooBBEEEEEEEEEEBBooo......","......oooooo..ooooooooBBBBBBBBooooo.......",".....ooooooooooooLLLLLooooooooooo.........","...oooLLLLLLooLLLLBLBLBLBLLLLoooo.........","..oooLLBLBLoLLLBLBSBBSBBSBLSLLLLoo........",".ooLLLBBBDoLBLBBBBSBBSBBSBBSBLBLLoo.......","ooLBLBBBEELBBBBBBBBBBBBBBBBBBBBBLLo.......","ooLBBBBEooLBBBBBBBBBBBBBBBBBBBBBBDo.......","ooLBBBDoooLBBBBBBBBBBBBBBBBBBBBBDDo.......","oLBBBDEoooLBBBBBBBBBBBBBBBBBBBBBBDo.......","oLBBDDoo.oEBBBBBBBBBBBBBBBBBBWWWWDo.......","oLBBBDoo.ooLBBBBBBBBBBBBBBBBWWWWWEo.......","oLBBDDoo.ooEEBDBBBBBBBBBBBBWWWWWEoo.......","oLBBBDLoo.oooEEDDDBBBBBBBWWWWWWEoo........","oLBBBBDoo..ooooEEEEDDBDBDBDEEEooo.........","oLBBBDDoo..oLLBooooEEEEEEEEoooBLo.........","oEBBBBDLoo.oLBBBBBDooooooooBBBDDo.........","ooLBBBBLLoooEBBBBBBEooooEBBBBBBEo.........","ooLBBBBBLLoooLBBBBDoo..ooLBBBBDoo.........","ooEDBBBBBLLLLBBBBBBLo..oLBBBBBBLo.........",".ooEDBBBBBLBLWWWWWWDo..oLWWWWWWDo.........","..ooEDBBBBBBEWWWWWWEo..oEWWWWWWEo.........","...ooEDBDBDBoWWWWWWoo..ooWWWWWWoo.........","....ooEEEEEEEooooooo....oooooooo..........",".....oooooooooooooo......oooooo...........","..........................................","..........................................",".........................................."],
+  R2:["..........................................","................oooo............oooo......","...............ooBBoo..........ooBBoo.....","..............ooBBBBoo........ooBBBBoo....","..............ooBPPBBoo......ooBBPPBoo....",".............ooBBPPPBBooooooooBBPPPBBoo...",".............ooBBPPPPBooooooooBBPPPPBoo...","..............ooBBBBLLLLLLLLLLLLBBBBoo....",".............ooLBBBBBBBBBBBBBBBBBBBBBoo...",".............ooLBBBKKKKBBBBKKKKBBBBBBoo...",".............ooLBBKHHYYKBBKHHYYKBBBBBoo...",".............ooBBBKHHYYKBBKHHYYKBBBBDoo...",".............ooBBBKYYYYKBBKYYYYKBBBBDoo...",".............ooBBBKYYYYKBBKYYYYKBBBBDoo...",".............ooBBBKYYYHKBBKYYYHKBBBBDoo...",".............ooBBBBKKKKBBBBKKKKBBBBDDoo...",".............ooBBBBBBBBBNNBBBBBBBBBDDoo...",".............ooCCBBBBBBBBBBBBBBBCCBDoo....","..............oooBBDDDDDDDDDDDDDDBBoo.....","...............ooooBBEEEEEEEEEEBBooo......","......oooooo..ooooooooBBBBBBBBooooo.......",".....ooooooooooooLLLLLooooooooooo.........","...oooLLLLLLooLLLLBLBLBLBLLLLoooo.........","..oooLLBLBLoLLLBLBSBBSBBSBLSLLLLoo........",".ooLLLBBBDoLBLBBBBSBBSBBSBBSBLBLLoo.......","ooLBLBBBEELBBBBBBBBBBBBBBBBBBBBBLLo.......","ooLBBBBEooLBBBBBBBBBBBBBBBBBBBBBBDo.......","ooLBBBDoooLBBBBBBBBBBBBBBBBBBBBBDDo.......","oLBBBDEoooLBBBBBBBBBBBBBBBBBBBBBBDo.......","oLBBDDoo.oEBBBBBBBBBBBBBBBBBBWWWWDo.......","oLBBBDoo.ooLBBBBBBBBBBBBBBBBWWWWWEo.......","oLBBDDoo.ooEEBDBBBBBBBBBBBBWWWWWEoo.......","oLBBBDLoo.oooEEDDDBBBBBBBWWWWWWEoo........","oLBBBBDoo.ooLooEEEEDDBDBDBDEEEoooo........","oLBBBDDoo.oLLBLooooEEEEEEEEoooLBLo........","oEBBBBDLoooLBBBBBDDooooooooBBBBDDo........","ooLBBBBLLooEBBBBBBEooooooEBBBBBBEo........","ooLBBBBBLLooLBBBBDoo....ooLBBBBDoo........","ooEDBBBBBLLLBBBBBBLo....oLBBBBBBLo........",".ooEDBBBBBLLWWWWWWDo....oLWWWWWWDo........","..ooEDBBBBBEWWWWWWEo....oEWWWWWWEo........","...ooEDBDBDoWWWWWWoo....ooWWWWWWoo........","....ooEEEEEEooooooo......oooooooo.........",".....ooooooooooooo........oooooo..........","..........................................","..........................................",".........................................."],
+  D:["......ooBBoo..........ooBBoo......",".....ooBBBBoo........ooBBBBoo.....",".....ooBPPBBoo......ooBBPPBoo.....","....ooBBPPPBBooooooooBBPPPBBoo....","....ooBBPPPPBooooooooBBPPPPBoo....",".....ooBBBBLLLLLLLLLLLLBBBBoo.....","....ooLBBBBBBBBBBBBBBBBBBBBBoo....","....ooLBBBKKKKBBBBKKKKBBBBBBoo....","....ooLBBKHHYYKBBKHHYYKBBBBBoo....","....ooBBBKHHYYKBBKHHYYKBBBBDoo....","....ooBBBKYYYYKBBKYYYYKBBBBDoo....","....ooBBBKYYYYKBBKYYYYKBBBBDoo....","....ooBBBKYYYHKBBKYYYHKBBBBDoo....","....ooBBBBKKKKBBBBKKKKBBBBDDoo....","....ooBBBBBBBBBNNBBBBBBBBBDDoo....","....ooCCBBBBBBBBBBBBBBBCCBDoo.....",".....oooBBDDDDDDDDDDDDDDBBoo......","......ooooBBEEEEEEEEEEBBooo.......","........oooooBBBBBBBBooooo........","........oooooooooooooooooo........",".......oooLLLLBLBLBLBLLLooo.......","......ooLLLBLBBBBBBBBBLBLLooo.....",".....ooLBLBBBBBBBBBBBBBBBLLooo....",".....oLBBBBBBBWWWWWWBBBBBBLLLoo...",".....oLBBBBBBWWWWWWWWBBBBBBDDoo...",".....oLBBBBBBWWWWWWWWBBBBBDDDLoo..",".....oLBBBBBBWWWWWWWWBBBBBBDBLLoo.",".....oLBBBBBBBWWWWWWBBBBBBDDBBLLo.",".....oLBBBBBBBBBBBBBBBBBBBBDBBBDo.",".....oEBBBBBBBBBBBBBBBBBBBDEBBDDo.",".....ooLBBBBBBBBBBBBBBBBBDDoBBBDo.",".....ooEDBBBBBBBBBBBBBBBDBEoBBDDo.","......ooEEBDBBBBBBBBBDBDEEoLBBBDo.",".......oooEEEBDBDBDBDEEEoooLBBDDo.","........oooooEEEEEEEEoooooLBBBBDo.",".......ooLLLLooooooooLLoooEBDBDEo.",".......oLLBLBLLooLLBLBLLoooEEEEoo.",".......oLBBBBBDooLBBBBBDo.oooooo..",".......oEBBBBDEooEBBBBDEo.........",".......ooLBBDDooooLBBDDoo.........",".......oLBBBBDLooLBBBBDLo.........",".......oLWWWWWDooLWWWWWDo.........",".......oEWWWWWEooEWWWWWEo.........",".......ooWWWWWooooWWWWWoo.........","........ooooooo..ooooooo..........",".........ooooo....ooooo...........",".................................."],
+  D2:["......ooBBoo..........ooBBoo......",".....ooBBBBoo........ooBBBBoo.....",".....ooBPPBBoo......ooBBPPBoo.....","....ooBBPPPBBooooooooBBPPPBBoo....","....ooBBPPPPBooooooooBBPPPPBoo....",".....ooBBBBLLLLLLLLLLLLBBBBoo.....","....ooLBBBBBBBBBBBBBBBBBBBBBoo....","....ooLBBBKKKKBBBBKKKKBBBBBBoo....","....ooLBBKHHYYKBBKHHYYKBBBBBoo....","....ooBBBKHHYYKBBKHHYYKBBBBDoo....","....ooBBBKYYYYKBBKYYYYKBBBBDoo....","....ooBBBKYYYYKBBKYYYYKBBBBDoo....","....ooBBBKYYYHKBBKYYYHKBBBBDoo....","....ooBBBBKKKKBBBBKKKKBBBBDDoo....","....ooBBBBBBBBBNNBBBBBBBBBDDoo....","....ooCCBBBBBBBBBBBBBBBCCBDoo.....",".....oooBBDDDDDDDDDDDDDDBBoo......","......ooooBBEEEEEEEEEEBBooo.......","........oooooBBBBBBBBooooo........","........oooooooooooooooooo........",".......oooLLLLBLBLBLBLLLooo.......","......ooLLLBLBBBBBBBBBLBLLooo.....",".....ooLBLBBBBBBBBBBBBBBBLLooo....",".....oLBBBBBBBWWWWWWBBBBBBLLLoo...",".....oLBBBBBBWWWWWWWWBBBBBBDDoo...",".....oLBBBBBBWWWWWWWWBBBBBDDDLoo..",".....oLBBBBBBWWWWWWWWBBBBBBDBLLoo.",".....oLBBBBBBBWWWWWWBBBBBBDDBBLLo.",".....oLBBBBBBBBBBBBBBBBBBBBDBBBDo.",".....oEBBBBBBBBBBBBBBBBBBBDEBBDDo.",".....ooLBBBBBBBBBBBBBBBBBDDoBBBDo.",".....ooEDBBBBBBBBBBBBBBBDBEoBBDDo.","......ooEEBDBBBBBBBBBDBDEEoLBBBDo.",".......oooEEEBDBDBDBDEEEoooLBBDDo.",".......ooooooEEEEEEEEoooooLBBBBDo.","......ooLLLLLooooooooLLLooEBDBDEo.","......oLLBLBLLooooLLBLBLLooEEEEoo.","......oLBBBBBDo..oLBBBBBDooooooo..","......oEBBBBDEo..oEBBBBDEo........","......ooLBBDDoo..ooLBBDDoo........","......oLBBBBDLo..oLBBBBDLo........","......oLWWWWWDo..oLWWWWWDo........","......oEWWWWWEo..oEWWWWWEo........","......ooWWWWWoo..ooWWWWWoo........",".......ooooooo....ooooooo.........","........ooooo......ooooo..........",".................................."],
+  U:[".......ooBBoo........ooBBoo.....","......ooBBBBoo......ooBBBBoo....","......ooBDDBBoo....ooBBDDBoo....",".....ooBBDDDBBooooooBBDDDBBoo...",".....ooBBDDDBBooooooBBDDDBBoo...","......ooBBBLLLLLLLLLLLLBBBoo....",".....ooLBBBBBSBSBSBSBBBBBBBoo...",".....ooLBBBBBSBSBSBSBBBBBBBoo...",".....ooLBBBBBSBSBSBSBBBBBBBoo...",".....ooBBBBBBBSBSBSBBBBBBBDoo...",".....ooBBBBBBBBBBBBBBBBBBBDoo...",".....ooBBBBBBBBBBBBBBBBBBBDoo...",".....ooBBBBBBBBBBBBBBBBBBBDoo...","......ooBBBBBBBBBBBBBBBBBBoo....",".......ooBBBBDDDDDDDDBBBBoo.....","........ooooBBBEEEEBBBoooo......",".........oooooooooooooooo.......","..........oooooooooooooo........","........oooooLLLLLLLLooooo......",".......oooLLLLBLBLBLBLLLooo.....","......ooLLLBLBBBBBBBBBLBLLoo....",".....ooLBLBBBBBBBBBBBBBBBLLoo...",".....oLBBBBBBSBBSBBSBBBBBBLLo...",".....oLBBBBBBSBBSBBSBBBBBBBDo...",".....oLBBBBBBSBBSBBSBBBBBBDDo...",".....oLBBBBBBBBBBBBBBBBBBBBDoo..",".....oLBBBBBBBBBBBBBBBBBBBDDLoo.",".....oLBBBBBBBBBBBBBBBBBBBBDLLo.",".....oEBBBBBBBBBBBBBBBBBBBDEBDo.",".....ooLBBBBBBBBBBBBBBBBBDDoDDo.",".....ooEDBBBBBBBBBBBBBBBDBEoBDo.","......ooEEBDBBBBBBBBBDBDEEoBDDo.",".......oooEEEBDBDBDBDEEEooBBBDo.",".......ooooooEEEEEEEEooooLBBDDo.","......ooLLLLLooooooooLLoLBBBBDo.","......oLLBLBLLoooLLBLBLLEBDBDEo.","......oLBBBBBDo.oLBBBBBDoEEEEoo.","......oEBBBBDEo.oEBBBBDEoooooo..","......ooLBBDDoo.ooLBBDDoo.......","......oLBBBBDLo.oLBBBBDLo.......","......oLWWWWWDo.oLWWWWWDo.......","......oEWWWWWEo.oEWWWWWEo.......","......ooWWWWWoo.ooWWWWWoo.......",".......ooooooo...ooooooo........","........ooooo.....ooooo.........","................................"],
+  U2:[".......ooBBoo........ooBBoo.....","......ooBBBBoo......ooBBBBoo....","......ooBDDBBoo....ooBBDDBoo....",".....ooBBDDDBBooooooBBDDDBBoo...",".....ooBBDDDBBooooooBBDDDBBoo...","......ooBBBLLLLLLLLLLLLBBBoo....",".....ooLBBBBBSBSBSBSBBBBBBBoo...",".....ooLBBBBBSBSBSBSBBBBBBBoo...",".....ooLBBBBBSBSBSBSBBBBBBBoo...",".....ooBBBBBBBSBSBSBBBBBBBDoo...",".....ooBBBBBBBBBBBBBBBBBBBDoo...",".....ooBBBBBBBBBBBBBBBBBBBDoo...",".....ooBBBBBBBBBBBBBBBBBBBDoo...","......ooBBBBBBBBBBBBBBBBBBoo....",".......ooBBBBDDDDDDDDBBBBoo.....","........ooooBBBEEEEBBBoooo......",".........oooooooooooooooo.......","..........oooooooooooooo........","........oooooLLLLLLLLooooo......",".......oooLLLLBLBLBLBLLLooo.....","......ooLLLBLBBBBBBBBBLBLLoo....",".....ooLBLBBBBBBBBBBBBBBBLLoo...",".....oLBBBBBBSBBSBBSBBBBBBLLo...",".....oLBBBBBBSBBSBBSBBBBBBBDo...",".....oLBBBBBBSBBSBBSBBBBBBDDo...",".....oLBBBBBBBBBBBBBBBBBBBBDoo..",".....oLBBBBBBBBBBBBBBBBBBBDDLoo.",".....oLBBBBBBBBBBBBBBBBBBBBDLLo.",".....oEBBBBBBBBBBBBBBBBBBBDEBDo.",".....ooLBBBBBBBBBBBBBBBBBDDoDDo.",".....ooEDBBBBBBBBBBBBBBBDBEoBDo.","......ooEEBDBBBBBBBBBDBDEEoBDDo.",".......oooEEEBDBDBDBDEEEooBBBDo.","......oooooooEEEEEEEEooooLBBDDo.",".....ooLLLLLoooooooooLLLoBBBBDo.",".....oLLBLBLLoooooLLBLBLLBDBDEo.",".....oLBBBBBDo...oLBBBBBDEEEEoo.",".....oEBBBBDEo...oEBBBBDEooooo..",".....ooLBBDDoo...ooLBBDDoo......",".....oLBBBBDLo...oLBBBBDLo......",".....oLWWWWWDo...oLWWWWWDo......",".....oEWWWWWEo...oEWWWWWEo......",".....ooWWWWWoo...ooWWWWWoo......","......ooooooo.....ooooooo.......",".......ooooo.......ooooo........","................................"],
+};
 
-function legPix(g,x,y,w,h,P,back){
-  fillRR(g,x-1,y,w+2,h+1,2,P.o);
-  fillRR(g,x,y,w,h,2,back?P.dark:P.body);
-  if(!back) pf(g,x+1,y+1,1,h-3,P.lit);
-  pf(g,x+w-1,y+1,1,h-3,back?P.deep:P.dark);
-  fillRR(g,x,y+h-3,w,3,1,P.paw);
-  pf(g,x,y+h-3,w,1,P.belly);
-  pf(g,x,y+h-1,1,1,P.deep);
-  pf(g,x+2,y+h-1,1,1,P.deep);
-  if(w>4) pf(g,x+4,y+h-1,1,1,P.deep);
+var PALMAP={o:"o",L:"lit",B:"body",D:"dark",E:"deep",S:"stripe",W:"belly",P:"inner",N:"nose",
+            Y:"eye",K:"eyeD",C:"blush",T:"tag"};
+function palCol(P,ch){
+  if(ch==="H") return "#ffffff";
+  if(ch==="X") return P.whisk||"#ffffff";
+  var k=PALMAP[ch];
+  return k?(P[k]||P.body):P.body;
 }
-
-function earPix(g,x,y,w,h,P){
-  for(var i=0;i<h;i++){
-    var ww=Math.max(2,Math.round(w*(i+1)/h));
-    var xx=x+Math.round((w-ww)/2);
-    pf(g,xx-1,y+i,ww+2,1,P.o);
-  }
-  for(var i2=0;i2<h;i2++){
-    var ww2=Math.max(1,Math.round((w-2)*(i2+1)/h));
-    var xx2=x+Math.round((w-ww2)/2);
-    pf(g,xx2,y+i2,ww2,1,P.body);
-    if(i2===0) pf(g,xx2,y+i2,ww2,1,P.lit);
-    if(i2>=h-2) pf(g,xx2,y+i2,ww2,1,P.dark);
-  }
-  pf(g,x+Math.round(w/2)-1,y+Math.floor(h*0.45),2,Math.floor(h*0.45),P.inner);
-}
-
-function eyePix(g,x,y,P,blink){
-  if(blink){ pf(g,x,y+2,5,1,P.deep); return; }
-  pf(g,x,y,5,5,P.o);
-  pf(g,x+1,y+1,3,3,P.eye);
-  pf(g,x+2,y+1,1,3,P.eyeD);
-  pf(g,x+1,y+1,1,1,"#ffffff");
-  pf(g,x+1,y+4,3,1,P.dark);
-}
-
-function whiskPix(g,x,y,dir,P){
-  var d=dir||1;
-  for(var i=0;i<3;i++){
-    var yy=y+i*2;
-    for(var k=0;k<5;k++){
-      if(k===2) continue;
-      pf(g,x+d*k,yy,1,1,P.whisk);
+var SPRCACHE={};
+function sprImg(P,key){
+  var ck=(P.id||"x")+"|"+key;
+  var c=SPRCACHE[ck];
+  if(c) return c;
+  var m=SPR[key], h=m.length, w=m[0].length;
+  c=document.createElement("canvas"); c.width=w; c.height=h;
+  var g=c.getContext("2d");
+  g.imageSmoothingEnabled=false;
+  for(var y=0;y<h;y++){
+    var row=m[y];
+    for(var x=0;x<w;x++){
+      var ch=row.charAt(x);
+      if(ch===".") continue;
+      g.fillStyle=palCol(P,ch);
+      g.fillRect(x,y,1,1);
     }
   }
+  SPRCACHE[ck]=c;
+  return c;
 }
 
-function tailPix(g,pts,w0,w1,P){
-  var n=pts.length;
-  for(var i=0;i<n;i++){
-    var t=i/(n-1), w=Math.round(w0+(w1-w0)*t);
-    fillRR(g,pts[i].x-Math.floor(w/2)-1,pts[i].y-Math.floor(w/2)-1,w+2,w+2,2,P.o);
-  }
-  for(var j=0;j<n;j++){
-    var t2=j/(n-1), w2=Math.round(w0+(w1-w0)*t2), hw=Math.floor(w2/2);
-    fillRR(g,pts[j].x-hw,pts[j].y-hw,w2,w2,2,P.body);
-  }
-  /* 위/아래 가장자리만 1px 음영 */
-  for(var k=0;k<n;k++){
-    var t3=k/(n-1), w3=Math.round(w0+(w1-w0)*t3), hw3=Math.floor(w3/2);
-    if(k%2===0) pf(g,pts[k].x-hw3,pts[k].y-hw3,w3,1,P.lit);
-    if(k%3===0) pf(g,pts[k].x-hw3,pts[k].y+hw3-1,w3,1,P.dark);
-  }
-  var lp=pts[n-1];
-  pf(g,lp.x-2,lp.y-2,3,3,P.stripe);
-  pf(g,lp.x-2,lp.y-2,3,1,P.dark);
-}
-function denseCurve(pts,step){
-  var out=[], n=pts.length;
-  for(var i=0;i<n-1;i++){
-    var a=pts[i], b=pts[i+1];
-    var d=Math.max(Math.abs(b.x-a.x),Math.abs(b.y-a.y));
-    var steps=Math.max(1,Math.round(d/step));
-    for(var s2=0;s2<steps;s2++){
-      out.push({x:Math.round(a.x+(b.x-a.x)*s2/steps), y:Math.round(a.y+(b.y-a.y)*s2/steps)});
-    }
-  }
-  out.push({x:Math.round(pts[n-1].x), y:Math.round(pts[n-1].y)});
-  return out;
-}
-
-function catSide(g,P,now,opt){
-  var blink=(now%4600)<120;
-  var sway=Math.sin(now/700);
-  var ctrl=[{x:-16,y:-24},{x:-21,y:-27},{x:-24,y:-31},{x:-24,y:-36},{x:-21,y:-40}];
-  ctrl[2].x=Math.round(ctrl[2].x+sway*1.2);
-  ctrl[3].x=Math.round(ctrl[3].x+sway*1.6);
-  ctrl[4].x=Math.round(ctrl[4].x+sway*1.2);
-  ctrl[4].y=Math.round(ctrl[4].y-Math.abs(sway)*0.8);
-  tailPix(g,denseCurve(ctrl,2),7,4,P);
-  legPix(g,-15,-11,6,11,P,true);
-  bodyPix(g,-19,-30,27,20,8,P,"side");
-  legPix(g,1,-11,7,11,P,false);
-  earPix(g,-3,-46,8,8,P);
-  earPix(g,8,-46,8,8,P);
-  /* 머리: 둥근 두개골 + 주둥이 */
-  fillRR(g,-4,-42,20,18,7,P.o);
-  fillRR(g,8,-32,10,8,3,P.o);
-  fillRR(g,-3,-41,18,16,6,P.body);
-  fillRR(g,9,-31,8,6,3,P.body);
-  g.save(); pathRR(g,-3,-41,18,16,6); g.clip();
-  pf(g,-3,-41,18,2,P.lit);
-  dith(g,-3,-39,18,2,P.lit,0.45,0);
-  pf(g,-3,-27,18,2,P.dark);
-  pf(g,-3,-25,18,1,P.deep);
-  pf(g,0,-40,1,4,P.stripe);
-  pf(g,5,-40,1,4,P.stripe);
-  pf(g,10,-40,1,3,P.stripe);
-  g.restore();
-  /* 얼굴 */
-  pf(g,12,-29,6,1,P.lit);
-  pf(g,13,-28,4,3,P.belly);
-  pf(g,15,-29,2,2,P.nose);
-  pf(g,15,-27,2,1,P.deep);
-  pf(g,14,-26,2,1,P.belly);
-  eyePix(g,4,-37,P,blink);
-  whiskPix(g,18,-28,1,P);
-  pf(g,0,-24,4,1,P.tag);
-  pf(g,2,-23,1,1,P.tag);
-}
-
-function headFront(g,P,now,opt){
-  var blink=(now%4600)<120;
-  fillRR(g,-12,-41,24,19,7,P.o);
-  fillRR(g,-11,-40,22,17,6,P.body);
-  g.save(); pathRR(g,-11,-40,22,17,6); g.clip();
-  pf(g,-11,-40,22,2,P.lit);
-  dith(g,-11,-38,22,2,P.lit,0.45,0);
-  pf(g,-11,-26,22,2,P.dark);
-  pf(g,-11,-24,22,1,P.deep);
-  pf(g,-6,-39,1,3,P.stripe);
-  pf(g,-1,-39,1,3,P.stripe);
-  pf(g,4,-39,1,3,P.stripe);
-  g.restore();
-  fillRR(g,-6,-30,13,7,2,P.belly);
-  pf(g,-1,-27,3,2,P.nose);
-  pf(g,-1,-25,3,1,P.deep);
-  eyePix(g,-8,-36,P,blink);
-  eyePix(g,3,-36,P,blink);
-  whiskPix(g,-14,-27,-1,P);
-  whiskPix(g,12,-27,1,P);
-}
-
-function headBack(g,P,now){
-  fillRR(g,-12,-41,24,19,7,P.o);
-  fillRR(g,-11,-40,22,17,6,P.body);
-  g.save(); pathRR(g,-11,-40,22,17,6); g.clip();
-  pf(g,-11,-40,22,2,P.lit);
-  dith(g,-11,-38,22,3,P.lit,0.5,1);
-  pf(g,-11,-26,22,2,P.dark);
-  pf(g,-11,-24,22,1,P.deep);
-  for(var i=0;i<3;i++) pf(g,-6+i*5,-39,2,6,P.stripe);
-  /* 뒷머리 음영 */
-  dith2(g,-9,-32,18,6,P.dark,0.5,1);
-  pf(g,-5,-36,2,8,P.stripe);
-  pf(g,3,-36,2,8,P.stripe);
-  g.restore();
-  pf(g,-8,-31,3,2,P.dark);
-  pf(g,6,-31,3,2,P.dark);
-  /* 목 그늘 */
-  pf(g,-7,-25,14,1,P.deep);
-}
-
-function catFront(g,P,now,opt){
-  var sway=Math.sin(now/700);
-  var ctrl=[{x:12,y:-8},{x:16,y:-13},{x:17,y:-18},{x:15,y:-23}];
-  ctrl[2].x=Math.round(ctrl[2].x+sway*1.2);
-  ctrl[3].x=Math.round(ctrl[3].x+sway*1.6);
-  tailPix(g,denseCurve(ctrl,2),7,4,P);
-  bodyPix(g,-12,-27,24,18,7,P,"front");
-  legPix(g,-11,-11,7,11,P,true);
-  legPix(g,4,-11,7,11,P,false);
-  earPix(g,-10,-47,8,8,P);
-  earPix(g,2,-47,8,8,P);
-  headFront(g,P,now,opt);
-  pf(g,-7,-24,2,1,P.tag);
-  pf(g,5,-24,2,1,P.tag);
-}
-
-function catBack(g,P,now,opt){
-  var PB={o:P.o,body:P.body,lit:P.lit,dark:P.dark,deep:P.deep,stripe:P.stripe,
-          belly:P.belly,paw:P.paw,inner:P.dark,nose:P.nose,eye:P.eye,eyeD:P.eyeD,
-          whisk:P.whisk,tag:P.tag};
-  bodyPix(g,-12,-27,24,18,7,P,"back");
-  legPix(g,-11,-11,7,11,P,true);
-  legPix(g,4,-11,7,11,P,false);
-  /* 허벅지 */
-  fillRR(g,-12,-14,7,7,2,P.dark);
-  fillRR(g,5,-14,7,7,2,P.dark);
-  earPix(g,-10,-47,8,8,PB);
-  earPix(g,2,-47,8,8,PB);
-  headBack(g,P,now);
-  /* 꼬리: 등 뒤에서 위로 */
-  var sway=Math.sin(now/700);
-  var ctrl=[{x:0,y:-20},{x:-2,y:-27},{x:-1,y:-33},{x:2,y:-38},{x:5,y:-41}];
-  ctrl[3].x=Math.round(ctrl[3].x+sway*1.2);
-  ctrl[4].x=Math.round(ctrl[4].x+sway*1.8);
-  ctrl[4].y=Math.round(ctrl[4].y-Math.abs(sway)*0.8);
-  tailPix(g,denseCurve(ctrl,2),7,4,P);
-}
-
+/* 고양이는 발밑(gy) 기준으로 그린다. dir: 0↑ 1→ 2↓ 3← */
 function drawCatAt(g,cx,gy,P,dir,type,now,opt){
   opt=opt||{};
-  if(!opt.noShadow) shadowPix(g,cx,gy-1,15,4,opt.ghost?0.18:0.30);
-  g.save();
-  g.translate(Math.round(cx),Math.round(gy));
-  if(dir===3) g.scale(-1,1);
+  var walking=!!opt.walk;
+  if(!opt.noShadow) shadowPix(g,cx,gy-2,13,4,opt.ghost?0.13:0.26);
+  var step=walking&&(Math.floor(now/130)%2);
+  var base=dir===0?"U":(dir===2?"D":"R");
+  var spr=sprImg(P,base+(step?"2":""));
   var bob=0;
-  if(opt.walk) bob=(Math.floor(now/110)%2)?1:0;
-  if(bob) g.translate(0,-1);
-  if(dir===0) catBack(g,P,now,opt);
-  else if(dir===2) catFront(g,P,now,opt);
-  else catSide(g,P,now,opt);
+  if(walking) bob=step?1:0;
+  else if(!opt.ghost && Math.sin(now/760+(opt.seed||0))>0.90) bob=1;   /* 숨쉬기 */
+  g.save();
+  g.translate(Math.round(cx),Math.round(gy-bob));
+  if(dir===3) g.scale(-1,1);
+  g.drawImage(spr,-Math.round(spr.width/2),-spr.height+1);
   g.restore();
+  drawCatEmote(g,cx,gy,spr,dir,now,opt);
+}
+
+/* 머리 위 감정 표시: ? / ♥ / ! */
+function drawCatEmote(g,cx,gy,spr,dir,now,opt){
+  if(opt.ghost||opt.noEmote) return;
+  var e=opt.emote;
+  if(!e) return;
+  var top=gy-spr.height+1;
+  var bx=Math.round(cx)+(dir===3?-2:2), by=top-9;
+  if(e==="!"){
+    var pu=0.65+0.35*Math.sin(now/150);
+    g.save(); g.globalAlpha=pu;
+    fillRR(g,bx-5,by-1,11,12,3,"#2a0a10");
+    fillRR(g,bx-4,by,9,10,2,"#f24b62");
+    fillRR(g,bx-4,by,9,2,2,"#ff8d9c");
+    text3(g,"!",bx-1,by+2,"#fff2f3");
+    g.restore();
+  }else if(e==="?"){
+    var fl=Math.sin(now/420)*1;
+    g.save(); g.globalAlpha=0.94;
+    fillRR(g,bx-5,by-2+fl,11,12,3,"#2a0a10");
+    fillRR(g,bx-4,by-1+fl,9,10,2,"#ffd9ea");
+    text3(g,"?",bx-1,by+1+fl,"#d2496f");
+    g.restore();
+  }else if(e==="heart"){
+    var k=(now%900)/900;
+    var hy=by+6-Math.round(k*7);
+    g.save(); g.globalAlpha=1-k*0.7;
+    var hx=bx+Math.round(Math.sin(now/300)*2);
+    pf(g,hx-2,hy,2,1,"#ff7fae"); pf(g,hx+1,hy,2,1,"#ff7fae");
+    pf(g,hx-3,hy+1,7,1,"#ff7fae");
+    pf(g,hx-2,hy+2,5,1,"#ff9cc4"); pf(g,hx-1,hy+3,3,1,"#ff9cc4"); pf(g,hx,hy+4,1,1,"#ff9cc4");
+    g.restore();
+  }
 }
 
 function drawCatEntity(g,cat,now,opt){
   opt=opt||{};
   var P=opt.palette||COATS[cat.type]||COATS.A;
   var cx=cat.rx*CELL+CELL/2;
-  var gy=cat.ry*CELL+CELL-3;
-  var walk=Math.abs((cat.rx||0)-cat.x)>0.02||Math.abs((cat.ry||0)-cat.y)>0.02;
-  drawCatAt(g,cx,gy,P,cat.dir,cat.type,now,{walk:walk,ghost:opt.ghost,noShadow:opt.noShadow});
+  var gy=cat.ry*CELL+CELL-4;
+  var walking=Math.abs((cat.rx||0)-cat.x)>0.02||Math.abs((cat.ry||0)-cat.y)>0.02;
+  var emote=null;
+  if(cat.state==="chase") emote="!";
+  else if(cat.state==="lured") emote=(Math.floor(now/700)%3===0)?"heart":"?";
+  drawCatAt(g,cx,gy,P,cat.dir,cat.type,now,{walk:walking,ghost:opt.ghost,noShadow:opt.noShadow,
+      seed:(cat.x*7+cat.y*13),emote:emote});
 }
 
 /* ================= 스프라이트: 인간 / 생선 ================= */
@@ -1234,7 +1095,7 @@ function drawPlanOverlay(g,st,now){
         if(cc.state==="chase") continue;
         g.save();
         g.globalAlpha=0.42*fade;
-        drawCatAt(g,cc.x*CELL+CELL/2,cc.y*CELL+CELL-3,GHOST,cc.dir,cc.type,now,{noShadow:true,ghost:true});
+        drawCatAt(g,cc.x*CELL+CELL/2,cc.y*CELL+CELL-4,GHOST,cc.dir,cc.type,now,{noShadow:true,ghost:true,noEmote:true});
         g.restore();
         /* 고스트 시선 */
         var bt=simBeamAt(st,{x:cc.x,y:cc.y,dir:cc.dir});
@@ -1424,16 +1285,6 @@ function draw(){
     if(Math.abs(cat.rx-cat.x)<0.01) cat.rx=cat.x;
     if(Math.abs(cat.ry-cat.y)<0.01) cat.ry=cat.y;
     drawCatEntity(ctx,cat,now);
-    /* 경계 표시 */
-    if(cat.state==="chase"){
-      var pu=0.62+0.38*Math.sin(now/180);
-      ctx.save(); ctx.globalAlpha=pu;
-      var ax2=Math.round(cat.rx*CELL+CELL/2), ay2=Math.round(cat.ry*CELL-18);
-      fillRR(ctx,ax2-4,ay2-1,9,11,2,"rgba(34,6,12,0.88)");
-      pf(ctx,ax2-3,ay2,7,9,"#ff5d6e");
-      text3(ctx,"!",ax2-1,ay2+2,"#2a0509");
-      ctx.restore();
-    }
   }
   if(!pDrawn) drawPlayerNow(st,now,plDir);
 
