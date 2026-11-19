@@ -23,6 +23,8 @@ body{
 }
 #app{
   position:relative;height:100vh;height:100dvh;display:flex;flex-direction:column;
+  width:100%;max-width:520px;margin:0 auto;
+  box-shadow:0 0 0 1px rgba(45,150,200,.08), 0 0 90px rgba(0,0,0,.9);
   padding-top:calc(env(safe-area-inset-top,0px) + 6px);
   padding-bottom:calc(env(safe-area-inset-bottom,0px) + 10px);
   padding-left:calc(env(safe-area-inset-left,0px) + 12px);
@@ -162,7 +164,7 @@ body{
 .ent{
   position:absolute;left:0;top:0;width:var(--tile);height:var(--tile);
   transition:left .17s cubic-bezier(.3,.9,.3,1), top .17s cubic-bezier(.3,.9,.3,1), opacity .2s;
-  display:flex;align-items:center;justify-content:center;padding:9%;z-index:4;
+  display:flex;align-items:center;justify-content:center;padding:calc(var(--tile) * 0.10);z-index:4;
   will-change:left,top;
 }
 .ent .shape{
