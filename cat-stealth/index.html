@@ -276,7 +276,8 @@ function catStep(st,cat,events){
       /* 유인된 고양이는 생선 쪽으로 걸어가되, 생선 위나 작은 인간의 칸은 밟지 않아요
          → 생선 바로 옆 칸에 멈춰 서서 킁킁거리므로 생선이 몸에 가려 사라져 보이지 않습니다 */
       if(f&&!(f.x===st.player.x&&f.y===st.player.y)&&!(f.x===st.fish.x&&f.y===st.fish.y)){ cat.dir=dirFromTo(cat,f); cat.x=f.x; cat.y=f.y; }
-      else faceToward(cat,st.fish);
+      /* 생선 바로 옆에 다다르면 걸음을 멈추고 생선 쭉을 바라봅니다 */
+      if(man(cat,st.fish)<=1) faceToward(cat,st.fish);
     }
     cat.lure--;
     if(cat.lure<=0){
