@@ -54,22 +54,15 @@ body{
 #warn.bad{color:var(--red);text-shadow:0 0 12px rgba(255,93,110,.6);animation:blink 1s infinite;}
 #warn.fish{color:var(--pink);}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.45}}
-#controls{position:relative;z-index:3;display:flex;flex-direction:column;gap:8px;padding:2px 4px 0;}
-#slots{display:flex;gap:8px;justify-content:center;}
-.slot{width:56px;height:40px;border-radius:11px;background:#1c1520;
-  box-shadow:inset 0 0 0 1.5px #382c32;
-  display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:var(--cream);position:relative;
-  transition:box-shadow .16s,background .16s;}
-.slot.filled{box-shadow:inset 0 0 0 2px #7a5f36,0 0 16px rgba(255,176,46,.22);background:#261c1c;}
-.slot .n{position:absolute;top:1px;left:5px;font-size:9px;color:var(--dim);font-weight:800;}
+#controls{position:relative;z-index:3;display:flex;flex-direction:column;gap:9px;padding:2px 4px 0;}
 button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weight:800;}
-#btnrow{display:flex;gap:8px;justify-content:center;}
-#btnrow button{flex:1;max-width:120px;padding:12px 4px;border-radius:12px;font-size:13px;
+#btnrow{display:flex;gap:9px;justify-content:center;}
+#btnrow button{flex:1;padding:14px 4px;border-radius:13px;font-size:14px;letter-spacing:.02em;
   background:linear-gradient(#2a2030,#211a26);box-shadow:inset 0 0 0 1.5px #45343d,0 2px 0 rgba(0,0,0,.35);}
 #btnrow button:active{transform:translateY(1px);}
 #btnrow button:disabled{opacity:.34;}
+#bUndo{flex:1.25;}
 #bFish.on{background:#3c2330;box-shadow:inset 0 0 0 2px var(--pink),0 0 18px rgba(255,143,179,.35);color:#ffd7e6;}
-#bGo{background:linear-gradient(#2c6a47,#22543a) !important;box-shadow:inset 0 0 0 1.5px #55c78c,0 0 20px rgba(79,211,154,.28),0 2px 0 rgba(0,0,0,.35) !important;color:#dcffee !important;font-size:14px !important;}
 #hint{text-align:center;font-size:10.5px;color:var(--dim);font-weight:700;letter-spacing:.02em;min-height:14px;}
 #overlay{position:absolute;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;
   background:radial-gradient(60% 45% at 50% 42%,rgba(20,14,24,.72),rgba(8,6,10,.9));backdrop-filter:blur(4px);}
@@ -102,18 +95,12 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
     <div id="warn"></div>
   </div>
   <div id="controls">
-    <div id="slots">
-      <div class="slot" data-i="0"><span class="n">1</span></div>
-      <div class="slot" data-i="1"><span class="n">2</span></div>
-      <div class="slot" data-i="2"><span class="n">3</span></div>
-    </div>
     <div id="btnrow">
       <button id="bUndo">↩ 취소</button>
-      <button id="bReset">⟳ 리셋</button>
+      <button id="bReset">↻ 리셋</button>
       <button id="bFish">🐟 <span id="fishN">2</span></button>
-      <button id="bGo">실행 ▶</button>
     </div>
-    <div id="hint">길 위의 칸을 한 칸씩 눌러 최대 3수를 계획하세요</div>
+    <div id="hint">인접한 칸을 누르면 바로 이동합니다 · 위험 칸은 빨간 ! 표시</div>
   </div>
   <div id="overlay" class="hidden"><div class="panel" id="panel"></div></div>
 </div>
@@ -127,7 +114,7 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
 var N=9, CELL=40, CV=N*CELL;
 var DIRS=[[0,-1],[1,0],[0,1],[-1,0]]; /* 0↑ 1→ 2↓ 3← */
 var SIGHT_LEN=4, FISH_THROW=4, FISH_LURE_R=3, FISH_LURE_T=2, CHASE_GIVEUP=6;
-var STEP_MS=240;
+var STEP_MS=200, ANIM_MS=210, FISH_MS=190, UNDO_MAX=80;
 
 /* ---------------------------- 스테이지 데이터 ---------------------------- */
 var STAGES=[
@@ -149,8 +136,9 @@ var STAGES=[
 ];
 
 /* ---------------------------- 상태 ---------------------------- */
-var G={ mode:"title", stageIdx:0, hearts:3, st:null, plan:[], fishMode:false,
-        exec:null, preview:null, t:0, goalPulse:0 };
+var G={ mode:"title", stageIdx:0, hearts:3, st:null, fishMode:false,
+        undoStack:[], moveTiles:[], dangerTiles:[], pending:null, playerDir:0,
+        panelTimer:null, warnT:0, t:0 };
 
 function makeCat(def,id){
   var c={id:id,type:def.type,x:def.x,y:def.y,dir:(def.dir!=null?def.dir:0),
@@ -176,9 +164,11 @@ function loadStage(idx){
          player:player, goal:goal, fish:null, fishLeft:s.fish, turn:1,
          cats:s.cats.map(makeCat) };
   G.st.player.rx=player.x; G.st.player.ry=player.y;
-  G.plan=[]; G.fishMode=false; G.preview=null;
+  G.fishMode=false; G.pending=null; G.undoStack=[]; G.playerDir=0;
+  G.moveTiles=[]; G.dangerTiles=[];
+  if(G.panelTimer){ clearTimeout(G.panelTimer); G.panelTimer=null; }
   bakeBoard(G.st);
-  updateHUD(); computePreview();
+  updateHUD(); computeDanger();
 }
 function cloneState(st){ return JSON.parse(JSON.stringify(st)); }
 
@@ -326,19 +316,6 @@ function simStep(st,action,events){
   if(st.player.x===st.goal.x&&st.player.y===st.goal.y){ events.push({k:"goal"}); }
   return st;
 }
-function simulatePlan(st0,plan){
-  var st=cloneState(st0), frames=[{st:cloneState(st),events:[]}];
-  for(var i=0;i<plan.length;i++){
-    var ev=[];
-    simStep(st,plan[i],ev);
-    frames.push({st:cloneState(st),events:ev});
-    var stop=false;
-    for(var e=0;e<ev.length;e++){ if(ev[e].k==="caught"||ev[e].k==="goal"){ stop=true; } }
-    if(stop) break;
-  }
-  return frames;
-}
-
 /* ================= 픽셀 렌더 기반 ================= */
 var cvEl=document.getElementById("cv"), dctx=cvEl.getContext("2d");
 var low=document.createElement("canvas"); low.width=CV; low.height=CV;
@@ -1090,110 +1067,96 @@ function stepBadge(g,x,y,n,amber){
   text3(g,String(n),x+3,y+2,amber?"#ffe1a8":"#d8f0ff");
 }
 
-function drawPlanOverlay(g,st,now){
+/* ================= 다음 수 의도 / 위험 표시 ================= */
+function catIntent(st,cat){
+  if(cat.state!=="idle") return null;
+  if(cat.type==="B"&&cat.dirs){
+    return {dir:(cat.dir===cat.dirs[0])?cat.dirs[1]:cat.dirs[0],next:null};
+  }
+  if(cat.type==="C"&&cat.patrol){
+    var pi=cat.pi, ps=cat.psign;
+    var pt={x:cat.patrol[pi][0],y:cat.patrol[pi][1]};
+    if(cat.x===pt.x&&cat.y===pt.y){
+      var nxi=pi+ps;
+      if(nxi<0||nxi>=cat.patrol.length){ ps*=-1; nxi=pi+ps; }
+      pi=nxi; pt={x:cat.patrol[nxi][0],y:cat.patrol[nxi][1]};
+    }
+    var stp=bfsNext(st,cat,pt);
+    if(stp) return {dir:dirFromTo(cat,stp),next:{x:stp.x,y:stp.y}};
+    return {dir:cat.dir,next:null};
+  }
+  return null;
+}
+function triArrow(g,tx,ty,dir,len,half,col){
+  for(var r=-half;r<=half;r++){
+    var w=Math.round((1-Math.abs(r)/(half+1))*(len-1));
+    for(var i=0;i<=w;i++){
+      if(dir===1) pf(g,tx-i,ty+r,1,1,col);
+      else if(dir===3) pf(g,tx+i,ty+r,1,1,col);
+      else if(dir===2) pf(g,tx+r,ty-i,1,1,col);
+      else pf(g,tx+r,ty+i,1,1,col);
+    }
+  }
+}
+function drawIntent(g,st,now){
+  var pu=0.34+0.20*(0.5+0.5*Math.sin(now/340));
+  for(var i=0;i<st.cats.length;i++){
+    var c=st.cats[i], it=catIntent(st,c);
+    if(!it) continue;
+    var cx=c.x*CELL+CELL/2, cy=c.y*CELL+CELL/2;
+    if(it.next){
+      var nx=it.next.x*CELL+CELL/2, ny=it.next.y*CELL+CELL/2;
+      for(var s=0.2;s<=1.001;s+=0.13){
+        pf(g,Math.round(cx+(nx-cx)*s)-1,Math.round(cy+(ny-cy)*s)-1,2,2,"rgba(120,226,190,"+(pu*0.55).toFixed(3)+")");
+      }
+      var mx=it.next.x*CELL+13, my=it.next.y*CELL+13;
+      pf(g,mx,my,8,1,"rgba(120,226,190,"+(pu*0.7).toFixed(3)+")");
+      pf(g,mx,my+7,8,1,"rgba(120,226,190,"+(pu*0.7).toFixed(3)+")");
+      pf(g,mx,my,1,8,"rgba(120,226,190,"+(pu*0.7).toFixed(3)+")");
+      pf(g,mx+7,my,1,8,"rgba(120,226,190,"+(pu*0.7).toFixed(3)+")");
+    }
+    var d=DIRS[it.dir];
+    var tx=Math.round(cx+d[0]*26), ty=Math.round(cy+d[1]*26);
+    triArrow(g,tx,ty,it.dir,7,5,"rgba(26,12,8,0.62)");
+    triArrow(g,tx,ty,it.dir,5,3,"rgba(255,230,158,"+(0.72+0.25*pu).toFixed(3)+")");
+  }
+}
+function drawTargets(g,st,now){
   var blink=0.5+0.5*Math.sin(now/200);
-  if(G.preview){
-    var pv=G.preview;
-    for(var k=1;k<pv.frames.length;k++){
-      var f=pv.frames[k], fade=1-(k-1)*0.16;
-      for(var ci=0;ci<f.st.cats.length;ci++){
-        var cc=f.st.cats[ci];
-        if(cc.state==="chase") continue;
-        g.save();
-        g.globalAlpha=0.42*fade;
-        drawCatAt(g,cc.x*CELL+CELL/2,cc.y*CELL+CELL-4,GHOST,cc.dir,cc.type,now,{noShadow:true,ghost:true,noEmote:true});
-        g.restore();
-        /* 고스트 시선 */
-        var bt=simBeamAt(st,{x:cc.x,y:cc.y,dir:cc.dir});
-        for(var gj=0;gj<bt.length;gj++){
-          dith(g,bt[gj].x*CELL+1,bt[gj].y*CELL+1,CELL-2,CELL-2,"rgba(130,200,255,"+(0.05+0.015*k)+")",0.35,0);
-        }
-        stepBadge(g,cc.x*CELL+3,cc.y*CELL+3,k);
-      }
-    }
-  }
-  /* 계획 경로 */
-  if(G.plan.length){
-    var p0=st.player;
-    var pts=[{x:p0.x,y:p0.y}];
-    for(var pi=0;pi<G.plan.length;pi++){ if(G.plan[pi].t==="move") pts.push({x:G.plan[pi].x,y:G.plan[pi].y}); }
-    for(var pi2=1;pi2<pts.length;pi2++){
-      var a=pts[pi2-1], b=pts[pi2];
-      var ax=a.x*CELL+CELL/2, ay=a.y*CELL+CELL/2+4, bx=b.x*CELL+CELL/2, by=b.y*CELL+CELL/2+4;
-      var steps=Math.max(Math.abs(bx-ax),Math.abs(by-ay));
-      for(var s=0;s<=steps;s+=4){
-        var t2=s/steps;
-        pf(g,Math.round(ax+(bx-ax)*t2),Math.round(ay+(by-ay)*t2),2,2,"rgba(255,226,160,0.55)");
-      }
-    }
-    var stepN=0;
-    for(var pi3=0;pi3<G.plan.length;pi3++){
-      if(G.plan[pi3].t!=="move") continue;
-      stepN++;
-      stepBadge(g,G.plan[pi3].x*CELL+3,G.plan[pi3].y*CELL+3,stepN,true);
-    }
-    for(var pfx=0;pfx<G.plan.length;pfx++){
-      if(G.plan[pfx].t==="fish"){
-        var fx=G.plan[pfx].x*CELL+CELL/2, fy=G.plan[pfx].y*CELL+CELL/2;
-        for(var an=0;an<12;an++){
-          var ang=an*Math.PI/6;
-          pf(g,Math.round(fx+Math.cos(ang)*13),Math.round(fy+Math.sin(ang)*13),1,1,"rgba(255,158,196,0.75)");
-        }
-        drawFish(g,fx,fy,now,1,true);
-      }
-    }
-  }
-  /* 이동 가능 칸 / 생선 칸 */
-  var targets=G.fishMode?validFishTiles():validMoves();
-  var col=G.fishMode?"255,158,196":"255,222,140";
+  var fish=!!G.fishMode;
+  var targets=fish?validFishTiles():(G.moveTiles||[]);
+  var col=fish?"255,158,196":"255,222,140";
   for(var ti=0;ti<targets.length;ti++){
     var tt=targets[ti], x0=tt.x*CELL, y0=tt.y*CELL;
-    if(!G.fishMode){
-      dith2(g,x0+4,y0+4,CELL-8,CELL-8,"rgba("+col+","+(0.10+0.06*blink)+")",0.45,0);
-      /* 점선 사각 테두리 */
-      for(var e=0;e<CELL-8;e+=6){
-        pf(g,x0+4+e,y0+4,4,1,"rgba("+col+","+(0.62+0.3*blink)+")");
-        pf(g,x0+4+e,y0+CELL-5,4,1,"rgba("+col+","+(0.62+0.3*blink)+")");
-        pf(g,x0+4,y0+4+e,1,4,"rgba("+col+","+(0.62+0.3*blink)+")");
-        pf(g,x0+CELL-5,y0+4+e,1,4,"rgba("+col+","+(0.62+0.3*blink)+")");
-      }
-      pf(g,x0+CELL/2-1,y0+CELL/2-1,3,3,"rgba("+col+","+(0.7+0.3*blink)+")");
-    }else{
-      dith2(g,x0+4,y0+4,CELL-8,CELL-8,"rgba("+col+","+(0.12+0.06*blink)+")",0.5,1);
-      for(var e2=0;e2<CELL-8;e2+=6){
-        pf(g,x0+4+e2,y0+4,4,1,"rgba("+col+","+(0.62+0.3*blink)+")");
-        pf(g,x0+4+e2,y0+CELL-5,4,1,"rgba("+col+","+(0.62+0.3*blink)+")");
-        pf(g,x0+4,y0+4+e2,1,4,"rgba("+col+","+(0.62+0.3*blink)+")");
-        pf(g,x0+CELL-5,y0+4+e2,1,4,"rgba("+col+","+(0.62+0.3*blink)+")");
-      }
+    dith2(g,x0+4,y0+4,CELL-8,CELL-8,"rgba("+col+","+(0.09+0.05*blink).toFixed(3)+")",0.45,fish?1:0);
+    for(var e=0;e<CELL-8;e+=6){
+      var a=(0.55+0.25*blink).toFixed(3);
+      pf(g,x0+4+e,y0+4,4,1,"rgba("+col+","+a+")");
+      pf(g,x0+4+e,y0+CELL-5,4,1,"rgba("+col+","+a+")");
+      pf(g,x0+4,y0+4+e,1,4,"rgba("+col+","+a+")");
+      pf(g,x0+CELL-5,y0+4+e,1,4,"rgba("+col+","+a+")");
+    }
+    if(fish){
       pf(g,x0+CELL/2-3,y0+CELL/2-1,5,3,"rgba("+col+",0.9)");
       pf(g,x0+CELL/2-5,y0+CELL/2-2,2,2,"rgba("+col+",0.75)");
+    }else{
+      pf(g,x0+CELL/2-1,y0+CELL/2-1,3,3,"rgba("+col+","+(0.6+0.3*blink).toFixed(3)+")");
     }
   }
 }
-
-function simBeamAt(st,ghost){
-  var out=[], d=DIRS[ghost.dir], x=ghost.x, y=ghost.y;
-  for(var i=0;i<SIGHT_LEN;i++){
-    x+=d[0]; y+=d[1];
-    if(isBlocked(st,x,y)) break;
-    out.push({x:x,y:y});
-  }
-  return out;
-}
-
 function drawWarnMarks(g,st,now){
-  if(!G.preview) return;
   var blink=0.5+0.5*Math.sin(now/190);
-  for(var wi=0;wi<G.preview.warnTiles.length;wi++){
-    var wt=G.preview.warnTiles[wi];
+  for(var wi=0;wi<G.dangerTiles.length;wi++){
+    var wt=G.dangerTiles[wi];
     var wx=wt.x*CELL, wy=wt.y*CELL;
-    dith(g,wx+1,wy+1,CELL-2,CELL-2,"rgba(255,58,78,"+(0.18+0.14*blink)+")",0.45,0);
+    var crit=!!wt.killed;
+    dith(g,wx+1,wy+1,CELL-2,CELL-2,"rgba(255,58,78,"+((crit?0.24:0.15)+0.12*blink).toFixed(3)+")",0.45,0);
+    var a2=(0.55+0.3*blink).toFixed(3);
     for(var e=0;e<CELL-4;e+=5){
-      pf(g,wx+3+e,wy+3,3,1,"rgba(255,120,130,"+(0.6+0.3*blink)+")");
-      pf(g,wx+3+e,wy+CELL-4,3,1,"rgba(255,120,130,"+(0.6+0.3*blink)+")");
-      pf(g,wx+3,wy+3+e,1,3,"rgba(255,120,130,"+(0.6+0.3*blink)+")");
-      pf(g,wx+CELL-4,wy+3+e,1,3,"rgba(255,120,130,"+(0.6+0.3*blink)+")");
+      pf(g,wx+3+e,wy+3,3,1,"rgba(255,120,130,"+a2+")");
+      pf(g,wx+3+e,wy+CELL-4,3,1,"rgba(255,120,130,"+a2+")");
+      pf(g,wx+3,wy+3+e,1,3,"rgba(255,120,130,"+a2+")");
+      pf(g,wx+CELL-4,wy+3+e,1,3,"rgba(255,120,130,"+a2+")");
     }
     /* 픽셀 삼각형 */
     var tx=wx+CELL/2, ty=wy+5;
@@ -1231,30 +1194,15 @@ function draw(){
   }
   var st=G.st;
 
-  if(G.mode==="exec"&&G.exec){
-    var el=now-G.exec.t0;
-    if(G.exec.fishArc){
-      var ft=(now-G.exec.fishArc.t0)/320;
-      if(ft>=1){ G.exec.fishArc=null; }
-    }
-    if(el>=STEP_MS){
-      if(G.exec.i<G.exec.frames.length-1){
-        G.exec.t0=now;
-        G.exec.i++;
-        applyFrame(G.exec.frames[G.exec.i]);
-      }else if(!G.exec.doneT){
-        G.exec.doneT=now;
-      }else if(now-G.exec.doneT>=460){
-        finishExec();
-        blit();
-        return;
-      }
-    }
+  if(G.mode==="anim"&&G.pending&&now-G.pending.t0>=ANIM_MS){
+    finishTurn();
+    blit();
+    return;
   }
 
   ctx.drawImage(board,0,0);
 
-  if(G.mode==="plan"||G.mode==="exec"){
+  if(G.mode!=="title"){
     for(var i=0;i<st.cats.length;i++){
       var c=st.cats[i];
       if(c.state==="idle"||c.state==="lured") drawBeam(ctx,st,c,now);
@@ -1262,16 +1210,18 @@ function draw(){
   }
   drawGoalPulse(ctx,st,now);
 
-  if(G.mode==="plan") drawPlanOverlay(ctx,st,now);
+  if(G.mode==="play") drawTargets(ctx,st,now);
 
-  drawFishEntity(ctx,st,now);
+  if(!(G.pending&&G.pending.arc)) drawFishEntity(ctx,st,now);
 
-  if(G.mode==="exec"&&G.exec&&G.exec.fishArc){
-    var fa=G.exec.fishArc, t2=Math.min(1,(now-fa.t0)/320);
-    var fx0=fa.from.x*CELL+CELL/2, fy0=fa.from.y*CELL+CELL/2;
-    var fx1=fa.to.x*CELL+CELL/2, fy1=fa.to.y*CELL+CELL/2;
-    var ax=fx0+(fx1-fx0)*t2, ay=fy0+(fy1-fy0)*t2-CELL*0.6*Math.sin(Math.PI*t2);
-    drawFish(ctx,ax,ay,now,1,true);
+  if(G.pending&&G.pending.arc){
+    var fa=G.pending.arc, t2=Math.min(1,(now-fa.t0)/FISH_MS);
+    if(t2<1){
+      var fx0=fa.from.x*CELL+CELL/2, fy0=fa.from.y*CELL+CELL/2;
+      var fx1=fa.to.x*CELL+CELL/2, fy1=fa.to.y*CELL+CELL/2;
+      var ax=fx0+(fx1-fx0)*t2, ay=fy0+(fy1-fy0)*t2-CELL*0.6*Math.sin(Math.PI*t2);
+      drawFish(ctx,ax,ay,now,1,true);
+    }
   }
 
   /* 엔티티 깊이 정렬 */
@@ -1279,12 +1229,10 @@ function draw(){
   for(var k=0;k<st.cats.length;k++){ ents.push({y:st.cats[k].ry,cat:st.cats[k]}); }
   ents.sort(function(a,b){ return a.y-b.y; });
 
-  var plDir=0;
-  for(var pp=G.plan.length-1;pp>=0;pp--){ if(G.plan[pp].t==="move"){ plDir=G.plan[pp].dir; break; } }
   var pDrawn=false;
   for(var e2=0;e2<ents.length;e2++){
     if(!pDrawn&&st.player.ry<ents[e2].y){
-      drawPlayerNow(st,now,plDir); pDrawn=true;
+      drawPlayerNow(st,now,G.playerDir); pDrawn=true;
     }
     var cat=ents[e2].cat;
     cat.rx+=(cat.x-cat.rx)*0.30; cat.ry+=(cat.y-cat.ry)*0.30;
@@ -1292,19 +1240,11 @@ function draw(){
     if(Math.abs(cat.ry-cat.y)<0.01) cat.ry=cat.y;
     drawCatEntity(ctx,cat,now);
   }
-  if(!pDrawn) drawPlayerNow(st,now,plDir);
+  if(!pDrawn) drawPlayerNow(st,now,G.playerDir);
 
-  if(G.mode==="plan") drawWarnMarks(ctx,st,now);
-
-  /* 실행 단계 표시 */
-  if(G.mode==="exec"&&G.exec){
-    var n=G.exec.frames.length-1, prog=Math.min(1,G.exec.i/(n||1));
-    fillRR(ctx,6,6,52,12,2,"rgba(10,6,12,0.72)");
-    pf(ctx,7,7,50,10,"rgba(24,16,26,0.62)");
-    text3(ctx,"STEP",9,9,"#ffd9a6");
-    text3(ctx,String(G.exec.i)+"/"+String(n),30,9,"#ffe9c8");
-    pf(ctx,7,17,50,1,"rgba(255,255,255,0.16)");
-    pf(ctx,7,17,Math.max(1,Math.round(50*prog)),1,"#ffca77");
+  if(G.mode==="play"){
+    drawIntent(ctx,st,now);
+    if(!G.fishMode) drawWarnMarks(ctx,st,now);
   }
 
   blit();
@@ -1346,7 +1286,8 @@ function sFish(){ beep(700,0.12,"sine",0.06,300); }
 function sSpot(){ beep(880,0.09,"square",0.06); beep(660,0.14,"square",0.05); }
 function sCatch(){ beep(200,0.4,"sawtooth",0.08,-120); }
 function sGoal(){ setTimeout(function(){beep(523,0.1,"square",0.05);},0); setTimeout(function(){beep(659,0.1,"square",0.05);},110); setTimeout(function(){beep(784,0.22,"square",0.06);},220); }
-function sGo(){ beep(340,0.08,"triangle",0.06,120); }
+function sUndo(){ beep(430,0.07,"triangle",0.05,-90); }
+function sReset(){ beep(320,0.09,"triangle",0.05,140); }
 
 /* ================= HUD ================= */
 function updateHUD(){
@@ -1357,37 +1298,26 @@ function updateHUD(){
   var hh=""; for(var i=0;i<3;i++){ hh+=(i<G.hearts)?"♥":"·"; }
   $("hHearts").textContent=hh;
   $("fishN").textContent=G.st.fishLeft;
-  var go=$("bGo");
-  go.disabled=(G.mode!=="plan"||G.plan.length===0);
-  $("bUndo").disabled=(G.mode!=="plan"||G.plan.length===0);
-  $("bReset").disabled=(G.mode!=="plan"||G.plan.length===0);
-  $("bFish").disabled=(G.mode!=="plan"||G.st.fishLeft<=0||G.plan.length>=3||hasFishPlanned());
-  $("bFish").classList.toggle("on",G.fishMode);
-  var slots=document.querySelectorAll(".slot");
-  for(var i2=0;i2<3;i2++){
-    var el=slots[i2], a=G.plan[i2];
-    el.classList.toggle("filled",!!a);
-    var icon=el.querySelector("span:not(.n)");
-    if(!icon){ icon=document.createElement("span"); el.appendChild(icon); }
-    if(a){ icon.textContent=(a.t==="fish")?"🐟":["↑","→","↓","←"][a.dir]; }
-    else{ icon.textContent=""; }
-  }
-}
-function hasFishPlanned(){ for(var i=0;i<G.plan.length;i++){ if(G.plan[i].t==="fish") return true; } return false; }
-function plannedPos(){
-  var p={x:G.st.player.x,y:G.st.player.y};
-  for(var i=0;i<G.plan.length;i++){ if(G.plan[i].t==="move"){ p={x:G.plan[i].x,y:G.plan[i].y}; } }
-  return p;
+  var busy=(G.mode==="anim"||!!G.pending);
+  var live=(G.mode==="play"||G.mode==="caught");
+  $("bUndo").disabled=busy||G.undoStack.length===0||!(live||G.mode==="over");
+  $("bReset").disabled=busy||!live;
+  $("bFish").disabled=busy||G.mode!=="play"||G.st.fishLeft<=0;
+  $("bFish").classList.toggle("on",!!G.fishMode);
 }
 function setWarn(msg,cls){
   var w=$("warn");
   if(!msg){ w.textContent=""; w.className=""; return; }
   w.textContent=msg; w.className=cls||"";
 }
+function clearWarnSoon(ms){
+  var t=G.warnT=(G.warnT||0)+1;
+  setTimeout(function(){ if(G.warnT===t&&G.mode==="play") setWarn(""); },ms||1600);
+}
 
-/* ================= 입력 ================= */
+/* ================= 입력 · 즉시 실행 ================= */
 function validMoves(){
-  var p=plannedPos(), out=[];
+  var p=G.st.player, out=[];
   for(var d=0;d<4;d++){
     var nx=p.x+DIRS[d][0], ny=p.y+DIRS[d][1];
     if(!walkable(G.st,nx,ny)) continue;
@@ -1399,7 +1329,7 @@ function validMoves(){
   return out;
 }
 function validFishTiles(){
-  var p=plannedPos(), out=[];
+  var p=G.st.player, out=[];
   for(var y=0;y<N;y++) for(var x=0;x<N;x++){
     if(!walkable(G.st,x,y)) continue;
     var dx=Math.abs(x-p.x), dy=Math.abs(y-p.y);
@@ -1411,138 +1341,173 @@ function validFishTiles(){
   }
   return out;
 }
-function addPlan(a){
-  if(G.mode!=="plan"||G.plan.length>=3) return;
-  G.plan.push(a);
-  G.fishMode=false;
-  sTap();
-  computePreview(); updateHUD();
+function computeDanger(){
+  G.moveTiles=validMoves();
+  G.dangerTiles=[];
+  if(!G.st) return;
+  for(var i=0;i<G.moveTiles.length;i++){
+    var m=G.moveTiles[i], t=cloneState(G.st), ev=[];
+    simStep(t,{t:"move",x:m.x,y:m.y},ev);
+    var spot=false, killed=false;
+    for(var e=0;e<ev.length;e++){
+      if(ev[e].k==="spot") spot=true;
+      if(ev[e].k==="caught") killed=true;
+    }
+    if(killed||spot) G.dangerTiles.push({x:m.x,y:m.y,killed:killed});
+  }
 }
-function undo(){ if(G.mode!=="plan"||!G.plan.length) return; G.plan.pop(); computePreview(); updateHUD(); }
-function resetPlan(){ if(G.mode!=="plan"||!G.plan.length) return; G.plan=[]; G.fishMode=false; computePreview(); updateHUD(); }
+function catById(id){
+  for(var i=0;i<G.st.cats.length;i++){ if(G.st.cats[i].id===id) return G.st.cats[i]; }
+  return null;
+}
+function beginTurn(action){
+  if(G.mode!=="play"||G.pending) return;
+  var snap={st:cloneState(G.st),hearts:G.hearts,dir:G.playerDir};
+  var next=cloneState(G.st), ev=[];
+  simStep(next,action,ev);
+
+  G.undoStack.push(snap);
+  if(G.undoStack.length>UNDO_MAX) G.undoStack.shift();
+
+  var st=G.st;
+  if(action.t==="move") G.playerDir=action.dir;
+  else if(action.t==="fish") G.playerDir=dirFromTo({x:st.player.x,y:st.player.y,dir:G.playerDir},{x:action.x,y:action.y});
+  st.player.x=next.player.x; st.player.y=next.player.y;
+  st.fish=next.fish?{x:next.fish.x,y:next.fish.y}:null;
+  st.fishLeft=next.fishLeft;
+  for(var i=0;i<st.cats.length;i++){
+    var c=st.cats[i], nc=next.cats[i];
+    c.x=nc.x; c.y=nc.y; c.dir=nc.dir; c.state=nc.state; c.lure=nc.lure;
+    c.chaseSteps=nc.chaseSteps; c.pi=nc.pi; c.psign=nc.psign;
+  }
+
+  var arc=null;
+  for(var e=0;e<ev.length;e++){
+    var v=ev[e];
+    if(v.k==="fish"){ arc={from:{x:snap.st.player.x,y:snap.st.player.y},to:{x:v.x,y:v.y},t0:performance.now()}; sFish(); }
+    else if(v.k==="spot"){ var cat=catById(v.id); if(cat) cat.alertT=performance.now(); sSpot(); }
+  }
+
+  G.pending={next:next,ev:ev,t0:performance.now(),arc:arc};
+  G.mode="anim"; G.fishMode=false;
+  if(action.t==="move") sTap();
+  setWarn("");
+  updateHUD();
+}
+function finishTurn(){
+  var p=G.pending;
+  if(!p) return;
+  G.pending=null;
+  var caught=false, goal=false;
+  for(var e=0;e<p.ev.length;e++){
+    if(p.ev[e].k==="caught") caught=true;
+    if(p.ev[e].k==="goal") goal=true;
+  }
+  G.st.fish=null;
+  if(caught){
+    G.hearts--;
+    sCatch();
+    var stEl=$("stage"); stEl.classList.remove("shake"); void stEl.offsetWidth; stEl.classList.add("shake");
+    if(G.hearts<=0){
+      G.mode="over"; setWarn(""); updateHUD();
+      G.panelTimer=setTimeout(function(){ G.panelTimer=null; if(G.mode==="over") showPanel(overPanel); },700);
+      return;
+    }
+    G.mode="caught";
+    setWarn("😹 들통! 하트 −1 · ↩ 취소로 되돌리기","bad");
+    updateHUD();
+    return;
+  }
+  G.st.turn++;
+  if(goal){
+    sGoal();
+    updateHUD();
+    if(G.stageIdx>=STAGES.length-1){
+      G.mode="win";
+      G.panelTimer=setTimeout(function(){ G.panelTimer=null; if(G.mode==="win") showPanel(winPanel); },700);
+    }else{
+      G.mode="clear";
+      G.panelTimer=setTimeout(function(){ G.panelTimer=null; if(G.mode==="clear") showPanel(clearPanel); },700);
+    }
+    return;
+  }
+  G.mode="play";
+  setWarn("");
+  computeDanger(); updateHUD();
+}
+function undo(){
+  if(G.pending) return;
+  if(!G.undoStack.length) return;
+  if(G.mode!=="play"&&G.mode!=="caught"&&G.mode!=="over") return;
+  var snap=G.undoStack.pop();
+  G.st=snap.st; G.hearts=snap.hearts; G.playerDir=snap.dir;
+  G.st.player.rx=G.st.player.x; G.st.player.ry=G.st.player.y;
+  for(var i=0;i<G.st.cats.length;i++){ var c=G.st.cats[i]; c.rx=c.x; c.ry=c.y; c.alertT=0; }
+  if(G.panelTimer){ clearTimeout(G.panelTimer); G.panelTimer=null; }
+  hidePanel();
+  G.mode="play"; G.fishMode=false;
+  sUndo();
+  setWarn("↩ 한 수 되돌렸어요");
+  clearWarnSoon(1400);
+  computeDanger(); updateHUD();
+}
+function resetStage(){
+  if(G.pending) return;
+  if(G.mode!=="play"&&G.mode!=="caught") return;
+  if(G.panelTimer){ clearTimeout(G.panelTimer); G.panelTimer=null; }
+  hidePanel();
+  var idx=G.stageIdx;
+  loadStage(idx);
+  G.mode="play";
+  sReset();
+  setWarn("이 방을 처음부터 다시 시작했어요");
+  clearWarnSoon(1600);
+  updateHUD();
+}
 
 cvEl.addEventListener("pointerdown",function(e){
-  if(G.mode!=="plan") return;
+  if(G.mode!=="play"||G.pending) return;
   var r=cvEl.getBoundingClientRect();
   var tx=Math.floor((e.clientX-r.left)/r.width*N);
   var ty=Math.floor((e.clientY-r.top)/r.height*N);
   if(tx<0||ty<0||tx>=N||ty>=N) return;
   if(G.fishMode){
-    var vt=validFishTiles();
-    for(var i=0;i<vt.length;i++){
-      if(vt[i].x===tx&&vt[i].y===ty){ addPlan({t:"fish",x:tx,y:ty}); setWarn("생선을 던진다… 🐟","fish"); return; }
+    var ft=validFishTiles();
+    for(var i=0;i<ft.length;i++){
+      if(ft[i].x===tx&&ft[i].y===ty){ beginTurn({t:"fish",x:tx,y:ty}); return; }
     }
-    setWarn("그곳에는 던질 수 없어요 (사거리 "+FISH_THROW+"칸 내 빈 바닥)");
+    setWarn("그곳에는 던질 수 없어요 (사거리 "+FISH_THROW+"칸 내 빈 바닥)","fish");
     return;
   }
-  var vm=validMoves();
+  var vm=G.moveTiles&&G.moveTiles.length?G.moveTiles:validMoves();
   for(var j=0;j<vm.length;j++){
-    if(vm[j].x===tx&&vm[j].y===ty){ addPlan({t:"move",x:tx,y:ty,dir:vm[j].dir}); setWarn(""); return; }
+    if(vm[j].x===tx&&vm[j].y===ty){ beginTurn({t:"move",x:tx,y:ty,dir:vm[j].dir}); return; }
   }
 });
-document.querySelectorAll(".slot").forEach(function(el){
-  el.addEventListener("click",function(){
-    var i=parseInt(el.getAttribute("data-i"),10);
-    if(G.mode!=="plan") return;
-    if(G.plan.length>i){ G.plan.length=i; computePreview(); updateHUD(); sTap(); }
-  });
-});
-$("bUndo").addEventListener("click",undo);
-$("bReset").addEventListener("click",resetPlan);
+$("bUndo").addEventListener("click",function(){ undo(); });
+$("bReset").addEventListener("click",function(){ resetStage(); });
 $("bFish").addEventListener("click",function(){
-  if(G.mode!=="plan"||G.st.fishLeft<=0||G.plan.length>=3||hasFishPlanned()) return;
-  G.fishMode=!G.fishMode; updateHUD();
-  setWarn(G.fishMode?"던질 칸을 눌러 생선을 놓으세요 🐟 (사거리 "+FISH_THROW+"칸)":"");
+  if(G.mode!=="play"||G.pending||G.st.fishLeft<=0) return;
+  G.fishMode=!G.fishMode;
+  setWarn(G.fishMode?"던질 칸을 누르세요 🐟 (사거리 "+FISH_THROW+"칸 · 🐟 다시 누르면 취소)":"", G.fishMode?"fish":"");
+  updateHUD();
 });
-$("bGo").addEventListener("click",startExec);
 document.addEventListener("keydown",function(e){
-  if(G.mode!=="plan") return;
+  if(e.key==="u"||e.key==="U"){ undo(); return; }
+  if(e.key==="f"||e.key==="F"){ $("bFish").click(); return; }
+  if(e.key==="Escape"){
+    if(G.fishMode){ G.fishMode=false; setWarn(""); updateHUD(); }
+    else{ resetStage(); }
+    return;
+  }
+  if(G.mode!=="play"||G.pending) return;
   var d=-1;
   if(e.key==="ArrowUp")d=0; else if(e.key==="ArrowRight")d=1; else if(e.key==="ArrowDown")d=2; else if(e.key==="ArrowLeft")d=3;
-  if(d>=0){ var vm=validMoves(); for(var i=0;i<vm.length;i++){ if(vm[i].dir===d){ addPlan({t:"move",x:vm[i].x,y:vm[i].y,dir:d}); return; } } }
-  if(e.key==="Enter"){ startExec(); }
-  else if(e.key==="u"||e.key==="U"){ undo(); }
-  else if(e.key==="Escape"){ resetPlan(); }
-  else if(e.key==="f"||e.key==="F"){ $("bFish").click(); }
+  if(d>=0){
+    var vm=validMoves();
+    for(var i=0;i<vm.length;i++){ if(vm[i].dir===d){ beginTurn({t:"move",x:vm[i].x,y:vm[i].y,dir:d}); return; } }
+  }
 });
-
-/* ================= 프리뷰 ================= */
-function computePreview(){
-  G.preview=null;
-  if(G.mode!=="plan"||G.plan.length===0){ updateHUD(); return; }
-  var frames=simulatePlan(G.st,G.plan);
-  var warnTiles=[], msg="", bad=false;
-  for(var k=1;k<frames.length;k++){
-    var f=frames[k], p=f.st.player;
-    for(var i=0;i<f.st.cats.length;i++){
-      var c=f.st.cats[i];
-      if(c.state==="idle"&&inBeam(f.st,c,p)){ warnTiles.push({x:p.x,y:p.y}); if(!msg){ msg="⚠ "+k+"번째 수에서 시선에 걸려요!"; } }
-      if(c.state==="chase"&&(c.x===p.x&&c.y===p.y)){ warnTiles.push({x:p.x,y:p.y}); msg="⚠ 실행하면 잡혀요!!"; bad=true; }
-    }
-    for(var e2=0;e2<f.events.length;e2++){
-      if(f.events[e2].k==="spot"){ warnTiles.push({x:p.x,y:p.y}); if(!msg&&!bad){ msg="⚠ "+k+"번째 수에서 시선에 걸려요!"; } }
-      if(f.events[e2].k==="caught"){ msg="⚠ 실행하면 잡혀요!!"; bad=true; }
-    }
-  }
-  G.preview={frames:frames,warnTiles:warnTiles};
-  setWarn(msg,bad?"bad":"");
-  updateHUD();
-}
-
-/* ================= 실행 ================= */
-function startExec(){
-  if(G.mode!=="plan"||G.plan.length===0) return;
-  G.fishMode=false;
-  var frames=simulatePlan(G.st,G.plan);
-  G.exec={frames:frames,i:0,t0:performance.now(),fishArc:null};
-  G.mode="exec";
-  setWarn(""); sGo(); updateHUD();
-}
-function applyFrame(f){
-  var st=G.st;
-  st.player.x=f.st.player.x; st.player.y=f.st.player.y;
-  st.fish=f.st.fish?{x:f.st.fish.x,y:f.st.fish.y}:null;
-  for(var i=0;i<st.cats.length;i++){
-    var c=st.cats[i], nc=f.st.cats[i];
-    c.x=nc.x; c.y=nc.y; c.dir=nc.dir; c.state=nc.state; c.lure=nc.lure; c.chaseSteps=nc.chaseSteps;
-    c.pi=nc.pi; c.psign=nc.psign;
-  }
-  st.fishLeft=f.st.fishLeft;
-  for(var e=0;e<f.events.length;e++){
-    var ev=f.events[e], cat=null;
-    for(var i2=0;i2<st.cats.length;i2++){ if(st.cats[i2].id===ev.id){ cat=st.cats[i2]; } }
-    if(ev.k==="fish"){ G.exec.fishArc={from:{x:st.player.x,y:st.player.y},to:{x:ev.x,y:ev.y},t0:performance.now()}; sFish(); }
-    else if(ev.k==="lure"){ if(cat){cat.alertT=0;} }
-    else if(ev.k==="spot"){ if(cat){ cat.alertT=performance.now(); } sSpot(); }
-    else if(ev.k==="caught"){ sCatch(); }
-  }
-}
-function finishExec(){
-  var last=G.exec.frames[G.exec.frames.length-1], caught=false, goal=false;
-  for(var e=0;e<last.events.length;e++){
-    if(last.events[e].k==="caught") caught=true;
-    if(last.events[e].k==="goal") goal=true;
-  }
-  G.exec=null;
-  if(caught){
-    G.hearts--;
-    if(G.hearts<=0){ G.mode="over"; showPanel(overPanel); }
-    else{ G.mode="caught"; setTimeout(function(){ showPanel(caughtPanel); },550); }
-    var stEl=$("stage"); stEl.classList.remove("shake"); void stEl.offsetWidth; stEl.classList.add("shake");
-    updateHUD();
-    return;
-  }
-  if(goal){
-    sGoal();
-    if(G.stageIdx>=STAGES.length-1){ G.mode="win"; setTimeout(function(){ showPanel(winPanel); },500); }
-    else{ G.mode="clear"; setTimeout(function(){ showPanel(clearPanel); },500); }
-    updateHUD();
-    return;
-  }
-  G.st.fish=null; G.st.turn++;
-  G.mode="plan"; G.plan=[];
-  computePreview(); updateHUD();
-}
 
 /* ================= 패널 ================= */
 function showPanel(fn){ var ov=$("overlay"), p=$("panel"); p.innerHTML=""; fn(p); ov.classList.remove("hidden"); }
@@ -1551,7 +1516,7 @@ function titlePanel(p){
   p.innerHTML='<canvas id="pCat" width="144" height="112"></canvas>'+
   '<div id="tSub">TACTICAL STEALTH PUZZLE</div><h2 id="tTitle">TINY &amp; PAWS</h2>'+
   '<div style="font-size:13px;font-weight:800;color:#cbbfae;margin-bottom:10px;">작은 인간과 거대 고양이</div>'+
-  '<div class="rows">· 한 턴에 최대 <b>3수</b>를 계획하고 <b>실행</b>하면 고양이도 함께 움직여요<br>· 고양이 <b>시선(빛살)</b>에 닿으면 그 고양이만 달려들어요<br>· <b>🐟 생선</b>을 던져 주변 고양이의 시선을 빼앗으세요<br>· <b>초록 탈출매트</b>에 도착하면 단계 클리어!</div>'+
+  '<div class="rows">· 인접한 칸을 누르면 <b>바로 한 턴</b>이 진행돼요 (이동·생선 모두)<br>· 빨간 <b>!</b> 칸은 그 수를 두면 고양이 <b>시선</b>에 들어와요<br>· <b>🐟 생선</b>으로 고양이 시선을 빼앗으세요<br>· 실수하면 <b>↩ 취소</b>로 몇 번이든 되돌릴 수 있어요<br>· <b>초록 탈출매트</b>에 도착하면 단계 클리어!</div>'+
   '<button id="pStart">시작하기 🐾</button>';
   var c=document.getElementById("pCat"), g=c.getContext("2d");
   g.imageSmoothingEnabled=false;
@@ -1561,23 +1526,22 @@ function titlePanel(p){
   drawHuman(og,{rx:(13-20)/40,ry:(53-37)/40},performance.now(),0,false);
   drawCatAt(og,45,51,COATS.B,1,"B",performance.now(),{noShadow:false});
   g.drawImage(off,0,0,72,56,0,0,144,112);
-  $("pStart").addEventListener("click",function(){ hidePanel(); G.mode="plan"; G.hearts=3; G.stageIdx=0; loadStage(0); setWarn(""); beep(600,0.1,"triangle",0.05,200); });
+  $("pStart").addEventListener("click",function(){ hidePanel(); G.mode="play"; G.hearts=3; G.stageIdx=0; loadStage(0); setWarn(""); beep(600,0.1,"triangle",0.05,200); });
 }
 function clearPanel(p){
   p.innerHTML='<div class="big">🎉</div><h2>탈출 성공!</h2><p>'+(G.stageIdx+1)+'번째 방을 무사히 빠져나왔어요.<br>다음 방에는 더 예민한 고양이가 있어요…</p><button id="pNext">다음 방으로 →</button>';
-  $("pNext").addEventListener("click",function(){ hidePanel(); G.stageIdx++; G.mode="plan"; loadStage(G.stageIdx); setWarn(""); });
-}
-function caughtPanel(p){
-  p.innerHTML='<div class="big">😹</div><h2>들통!</h2><p>고양이에게 잡혀 엎드려졌어요.<br>하트가 하나 줄어든 채 이 방을 다시 시도합니다.</p><button id="pRetry">다시 도전 🐾</button>';
-  $("pRetry").addEventListener("click",function(){ hidePanel(); G.mode="plan"; loadStage(G.stageIdx); setWarn(""); });
+  $("pNext").addEventListener("click",function(){ hidePanel(); G.stageIdx++; G.mode="play"; loadStage(G.stageIdx); setWarn(""); });
 }
 function overPanel(p){
-  p.innerHTML='<div class="big">😿</div><h2>하트를 모두 잃었어요</h2><p>고양이들에게 결국 발각된 작은 인간.<br>다시 1번째 방부터 시작합니다.</p><button id="pRestart">처음부터 🐾</button>';
-  $("pRestart").addEventListener("click",function(){ hidePanel(); G.hearts=3; G.stageIdx=0; G.mode="plan"; loadStage(0); setWarn(""); });
+  p.innerHTML='<div class="big">😿</div><h2>하트를 모두 잃었어요</h2><p>고양이들에게 결국 발각된 작은 인간.<br>마지막 수를 되돌리면 하트도 함께 돌아와요.</p>'+
+  '<button id="pUndo">↩ 마지막 수 되돌리기</button>'+
+  '<button id="pRestart" style="margin-top:8px;background:linear-gradient(#2a2030,#211a26);box-shadow:inset 0 0 0 1.5px #45343d,0 8px 20px rgba(0,0,0,.4);color:#cbbfae;">처음부터 🐾</button>';
+  $("pUndo").addEventListener("click",function(){ undo(); });
+  $("pRestart").addEventListener("click",function(){ hidePanel(); G.hearts=3; G.stageIdx=0; G.mode="play"; loadStage(0); setWarn(""); });
 }
 function winPanel(p){
   p.innerHTML='<div class="big">🏆</div><h2>완탈출!</h2><p>5개의 방을 모두 통과했어요.<br>당신은 최고의 잠입가… 고양이는 아직 모릅니다.</p><button id="pAgain">처음부터 다시 🐾</button>';
-  $("pAgain").addEventListener("click",function(){ hidePanel(); G.hearts=3; G.stageIdx=0; G.mode="plan"; loadStage(0); setWarn(""); });
+  $("pAgain").addEventListener("click",function(){ hidePanel(); G.hearts=3; G.stageIdx=0; G.mode="play"; loadStage(0); setWarn(""); });
 }
 
 /* ================= 리사이즈 ================= */
