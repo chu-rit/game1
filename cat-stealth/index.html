@@ -1202,13 +1202,13 @@ function drawWarnMarks(g,st,now){
 
 function drawFishEntity(g,st,now){
   if(!st.fish) return;
-  /* 마지막 한 턴은 깜빡이며 곧 사라질 것을 알려 줍니다 */
-  if(st.fish.ttl<=1 && Math.floor(now/160)%2===0) return;
+  /* 마지막 한 턴은 반투명으로 깜빡이며 곧 사라질 것을 알려 줍니다(완전히 사라지지는 않아요) */
+  var fade=(st.fish.ttl<=1&&Math.floor(now/160)%2===0)?0.45:1;
   var bob=Math.sin(now/300)>0?1:0;
   var cx=st.fish.x*CELL+CELL/2, cy=st.fish.y*CELL+CELL/2+bob;
   shadowPix(g,cx,st.fish.y*CELL+CELL-8,8,3,0.30);
   dith(g,cx-11,cy-9,22,18,"rgba(255,170,205,0.16)",0.4,1);
-  drawFish(g,cx,cy,now,1,true);
+  drawFish(g,cx,cy,now,fade,true);
 }
 
 /* ================= 메인 드로우 ================= */
