@@ -143,7 +143,6 @@ var KIND={
   catnip:{label:"캣닢",      lure:5, eat:2}
 };
 var FISH_ORDER=["small","big","catnip"];
-var FISH_ICON={small:"🐟",big:"🐠",catnip:"🌿"};
 
 /* ---------------------------- 스테이지 데이터 ---------------------------- */
 var STAGES=[
@@ -152,8 +151,11 @@ var STAGES=[
       고양이는 가운데 팔이 만나는 척추 목(1,4)에 앉아 길을 몸으로 막고 위쪽을 지켜봐요.
       같은 좌표를 두 번 순찰하는 '제자리 초소'라서 평소엔 꼼짝하지 않고,
       생선 냄새를 맡으면 그쪽으로 걸어가 길을 비켜 줘요.
-      큰 통생선은 아래 팔(5,7)에 떨어져 있어요 → 밟아서 주워 목의 고양이에게 던지면
-      그 고양이는 그 자리에 붙박여 영원히 먹느라 길이 영영 비어요. */
+      이 초소 고양이는 기척(귀)이 0 — 좁은 회랑에서 등을 지나가야 하는 자리라
+      소리는 못 듣고 정면 시야만 봐요. 그래서 몸으로 길을 막고 있으면 그냥은 못 지나가고,
+      통로를 열어 주려면 먹이로 불러내야 해요.
+      아래 팔(5,7)에 떨어진 큰 통생선을 밟아 줍고, 카운터가 끊긴 틈(2,6)으로 들어가
+      목의 고양이에게 던지면 그 자리에 붙박여 영원히 먹느라 길이 영영 비어요. */
    map:["#########","#~~~~~~~#","#~#######","#~#######","#~~~~~~~#","#~~~~~~~#","#~.XXXXX#","#~~~~~~~#","#########"],
    start:[7,7], goalPos:[7,1],
    cats:[{type:"C",x:1,y:4,dir:0,sense:0,patrol:[[1,4],[1,4]]}],
@@ -179,7 +181,7 @@ var STAGES=[
 /* ---------------------------- 상태 ---------------------------- */
 var G={ mode:"title", stageIdx:0, hearts:3, st:null, fishMode:false, fishKind:null,
         undoStack:[], moveTiles:[], dangerTiles:[], pending:null, playerDir:0,
-        panelTimer:null, warnT:0, t:0, fx:[], senseTiles:[] };
+        panelTimer:null, warnT:0, t:0, fx:[] };
 
 function makeCat(def,id){
   var c={id:id,type:def.type,x:def.x,y:def.y,dir:(def.dir!=null?def.dir:0),
