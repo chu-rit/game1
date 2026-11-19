@@ -1385,6 +1385,16 @@ function drawIntent(g,st,now){
     triArrow(g,tx,ty,it.dir,5,3,"rgba(255,230,158,"+(0.72+0.25*pu).toFixed(3)+")");
   }
 }
+/* 이동 방향 화살촉: dir 쪽으로 뾰족한 채워진 삼각형 */
+function arrowTip(g,cx,cy,dir,len,half,col){
+  var d=DIRS[dir]||[0,1];
+  for(var t=-len;t<=len;t++){
+    var w=Math.round(half*(1-(t+len)/(2*len)));
+    if(w<0) continue;
+    if(d[0]!==0) pf(g,cx+t,cy-w,1,w*2+1,col);
+    else pf(g,cx-w,cy+t,w*2+1,1,col);
+  }
+}
 function drawTargets(g,st,now){
   /* 모바일 화면에서도 한눈에 보이도록: 칸 전체 색 채움 + 2px 실선 테두리 + 중앙 화살촉 */
   var blink=0.5+0.5*Math.sin(now/220);
@@ -1414,8 +1424,8 @@ function drawTargets(g,st,now){
     }else{
       var md=(tt.dir!=null)?tt.dir:(G.playerDir||0);
       var cx=Math.round(x0+CELL/2), cy=Math.round(y0+CELL/2);
-      triArrow(g,cx,cy,md,9,7,"rgba(6,28,40,0.50)");
-      triArrow(g,cx,cy,md,7,5,"rgba(236,252,255,"+(0.82+0.18*blink).toFixed(3)+")");
+      arrowTip(g,cx,cy,md,10,7,"rgba(6,28,40,0.45)");
+      arrowTip(g,cx,cy,md,8,5,"rgba(240,253,255,"+(0.84+0.16*blink).toFixed(3)+")");
     }
   }
 }
@@ -1467,7 +1477,7 @@ function drawSense(g,st,cat,now){
   if(!cat.sense) return;
   var tl=senseTilesOf(st,cat);
   var pulse=0.5+0.5*Math.sin(now/520+cat.x*1.3);
-  var a=(0.16+0.16*pulse).toFixed(3);
+  var a=(0.30+0.22*pulse).toFixed(3);
   for(var i=0;i<tl.length;i++){
     var t=tl[i], x0=t.x*CELL, y0=t.y*CELL;
     for(var e=3;e<CELL-4;e+=8){
@@ -1476,7 +1486,7 @@ function drawSense(g,st,cat,now){
       pf(g,x0+2,y0+e,1,3,"rgba(198,160,255,"+a+")");
       pf(g,x0+CELL-3,y0+e,1,3,"rgba(198,160,255,"+a+")");
     }
-    dith(g,x0+2,y0+2,CELL-4,CELL-4,"rgba(170,130,255,0.05)",0.4,1);
+    dith(g,x0+2,y0+2,CELL-4,CELL-4,"rgba(170,130,255,0.13)",0.55,1);
   }
   /* 고양이 옆으로 퍼지는 소리 파동 */
   var cx=Math.round(cat.rx*CELL+CELL/2), hy=Math.round(cat.ry*CELL+CELL-26);
