@@ -1506,6 +1506,14 @@ cvEl.addEventListener("pointerdown",function(e){
   for(var j=0;j<vm.length;j++){
     if(vm[j].x===tx&&vm[j].y===ty){ beginTurn({t:"move",x:tx,y:ty,dir:vm[j].dir}); return; }
   }
+  /* 못 가는 칸을 콕 찍었을 때: 고양이라면 이유를 알려 준다 */
+  for(var ci=0;ci<G.st.cats.length;ci++){
+    if(G.st.cats[ci].x===tx&&G.st.cats[ci].y===ty){
+      setWarn("고양이가 길을 막고 있어요 · 🐟 생선으로 유인해 보세요","fish");
+      clearWarnSoon(1900);
+      return;
+    }
+  }
 });
 $("bUndo").addEventListener("click",function(){ undo(); });
 $("bReset").addEventListener("click",function(){ resetStage(); });
