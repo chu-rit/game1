@@ -117,7 +117,7 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
       <button class="fb" data-kind="big" aria-label="큰 통생선">🐠<span class="nm">통생선</span><span class="n">0</span></button>
       <button class="fb" data-kind="catnip" aria-label="캣닢">🌿<span class="nm">캣닢</span><span class="n">0</span></button>
     </div>
-    <div id="hint">바닥의 먹이를 밟으면 주워요 · 고양이 옆칸(기척)도 위험해요</div>
+    <div id="hint">바닥의 먹이를 밟으면 주워요 · 보라 점선(기척) 안에 서면 들켜요</div>
   </div>
   <div id="overlay" class="hidden"><div class="panel" id="panel"></div></div>
 </div>
@@ -131,6 +131,9 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
 var N=9, CELL=40, CV=N*CELL;
 var DIRS=[[0,-1],[1,0],[0,1],[-1,0]]; /* 0↑ 1→ 2↓ 3← */
 var SIGHT_LEN=4, FISH_RANGE=2, CHASE_LOST=3;
+/* 기척(귀) 범위는 '고양이 종류'에 붙은 고정값 — 레벨마다 바뀌지 않아요.
+   A 고정 감시 · B 교대 감시 · C 순회 */
+var CAT_SENSE={ A:1, B:1, C:2 };
 var STEP_MS=200, ANIM_MS=210, FISH_MS=190, UNDO_MAX=80;
 
 /* ---------------------------- 생선 3종 ----------------------------
@@ -146,35 +149,39 @@ var FISH_ORDER=["small","big","catnip"];
 
 /* ---------------------------- 스테이지 데이터 ---------------------------- */
 var STAGES=[
- { name:"E자 부엌", theme:{X:"counter","~":"rug"},
-   /* 1단계: E자 모양 회랑. 왼쪽 세로줄(척추) + 위·가운데·아래 팔. 바닥 러그가 곧 E자 길.
-      고양이는 가운데 팔이 만나는 척추 목(1,4)에 앉아 길을 몸으로 막고 위쪽을 지켜봐요.
+ { name:"6자 부엌", theme:{X:"counter","~":"rug"},
+   /* 1단계: 큰 '6'자 부엌. 맨 윗줄이 6자의 윗팔(가로획), 왼쪽 한 줄이 목(세로획),
+      그 아래가 6자의 배 — 통째로 닫힌 고리 회랑이에요. 가운데는 카운터 섬.
+      시작은 배의 왼쪽 아래(1,7), EXIT는 6자 윗팔의 오른쪽 끝(7,1).
+      고양이는 목과 배가 만나는 단 하나의 길목(1,4)에 앉아 몸으로 길을 막고 위쪽을 지켜봐요.
       같은 좌표를 두 번 순찰하는 '제자리 초소'라서 평소엔 꼼짝하지 않고,
       생선 냄새를 맡으면 그쪽으로 걸어가 길을 비켜 줘요.
-      이 초소 고양이는 기척(귀)이 0 — 좁은 회랑에서 등을 지나가야 하는 자리라
-      소리는 못 듣고 정면 시야만 봐요. 그래서 몸으로 길을 막고 있으면 그냥은 못 지나가고,
-      통로를 열어 주려면 먹이로 불러내야 해요.
-      아래 팔(5,7)에 떨어진 큰 통생선을 밟아 줍고, 카운터가 끊긴 틈(2,6)으로 들어가
-      목의 고양이에게 던지면 그 자리에 붙박여 영원히 먹느라 길이 영영 비어요. */
-   map:["#########","#~~~~~~~#","#~#######","#~#######","#~~~~~~~#","#~~~~~~~#","#~.XXXXX#","#~~~~~~~#","#########"],
-   start:[7,7], goalPos:[7,1],
-   cats:[{type:"C",x:1,y:4,dir:0,sense:0,patrol:[[1,4],[1,4]]}],
-   pickups:[{x:5,y:7,kind:"big"}] },
+      이 초소 고양이는 C(순회)라서 기척(귀)이 2칸 — 목 주변 두 칸까지 보라 점선이 깔려 있고,
+      그 안((1,5)·(1,6)·(2,4)·(3,4)·(1,3))에 발을 들이면 바로 듣고 쫓아와요.
+      몸으로 길을 막고 있으니 그냥은 못 지나가고, 통로를 열어 주려면 먹이로 불러내야 해요.
+      배 바닥(3,7)에 떨어진 큰 통생선을 밟아 주워 왼쪽 아래 구석(1,7)으로 던지면
+      고양이가 목을 비우고 그 자리에 붙박여 영원히 먹어요.
+      그 틈에 배 고리를 반대쪽으로 한 바퀴 돌아 목으로 올라가면 윗팔 끝의 EXIT.
+      (생선 없이는 목이 몸으로 막혀 EXIT 도달 불가 — solver A1) */
+   map:["#########","#~~~~~~~#","#~#######","#~#######","#~~~~~~~#","#~XXXXX~#","#~XXXXX~#","#~~~~~~~#","#########"],
+   start:[1,7], goalPos:[7,1],
+   cats:[{type:"C",x:1,y:4,dir:0,patrol:[[1,4],[1,4]]}],
+   pickups:[{x:3,y:7,kind:"big"}] },
  { name:"거실 소파", theme:{S:"sofa","~":"rug"},
    map:["#########","#~.....G#","#.......#","#SS.S.SS#","#.......#","#SS.S.SS#","#.......#","#P......#","#########"],
-   cats:[{type:"B",x:4,y:4,dir:1,sense:1,dirs:[1,3]}],
+   cats:[{type:"B",x:4,y:4,dir:1,dirs:[1,3]}],
    pickups:[{x:4,y:6,kind:"small"},{x:6,y:6,kind:"catnip"}] },
  { name:"복도 순찰", theme:{X:"counter","~":"rug"},
    map:["#########","#..~..G.#","#XX.XXXX#","#.......#","#.......#","#XXX.XXX#","#.......#","#P......#","#########"],
-   cats:[{type:"C",x:1,y:4,sense:2,patrol:[[1,4],[7,4]]}],
+   cats:[{type:"C",x:1,y:4,patrol:[[1,4],[7,4]]}],
    pickups:[{x:2,y:7,kind:"small"},{x:5,y:6,kind:"catnip"},{x:3,y:3,kind:"big"}] },
  { name:"식탁 미로", theme:{T:"table"},
    map:["#########","#....G..#","#.T.T.T.#","#.......#","#.T.T.T.#","#.......#","#.T.T.T.#","#P......#","#########"],
-   cats:[{type:"B",x:4,y:3,dir:1,sense:1,dirs:[1,3]},{type:"C",x:7,y:3,sense:2,patrol:[[7,1],[7,7]]}],
+   cats:[{type:"B",x:4,y:3,dir:1,dirs:[1,3]},{type:"C",x:7,y:3,patrol:[[7,1],[7,7]]}],
    pickups:[{x:3,y:7,kind:"catnip"},{x:3,y:6,kind:"small"},{x:5,y:2,kind:"big"}] },
  { name:"안방 탈출", theme:{B:"bed",X:"nightstand"},
    map:["#########","#G......#","#BBBB.X.#","#.......#","#.......#","#B.BB.BB#","#.......#","#P......#","#########"],
-   cats:[{type:"A",x:1,y:4,dir:1,sense:2},{type:"C",x:7,y:6,sense:1,patrol:[[1,6],[7,6]]}],
+   cats:[{type:"A",x:1,y:4,dir:1},{type:"C",x:7,y:6,patrol:[[1,6],[7,6]]}],
    pickups:[{x:2,y:6,kind:"catnip"},{x:6,y:7,kind:"big"},{x:3,y:7,kind:"small"}] }
 ];
 
@@ -186,7 +193,7 @@ var G={ mode:"title", stageIdx:0, hearts:3, st:null, fishMode:false, fishKind:nu
 function makeCat(def,id){
   var c={id:id,type:def.type,x:def.x,y:def.y,dir:(def.dir!=null?def.dir:0),
          home:{x:def.x,y:def.y,dir:(def.dir!=null?def.dir:0)},state:"idle",lure:0,
-         sense:(def.sense!=null?def.sense:1),
+         sense:(CAT_SENSE[def.type]!=null?CAT_SENSE[def.type]:1),
          chaseSteps:0,dirs:def.dirs||null,patrol:def.patrol||null,pi:0,psign:1,rx:def.x,ry:def.y,alertT:0};
   if(c.type==="C"){ c.pi=0; c.psign=1; if(def.patrol){ for(var k=0;k<def.patrol.length;k++){ if(def.patrol[k][0]===def.x&&def.patrol[k][1]===def.y){c.pi=k;} } } c.psign=(c.pi===0)?1:-1; }
   if(c.type==="B"&&c.dirs){ c.dir=c.dirs[0]; }
@@ -352,8 +359,14 @@ function nearestPatrolIdx(cat){
 }
 function catStep(st,cat,events){
   if(cat.state==="chase"){
-    var nxt=bfsNext(st,cat,st.player);
-    if(nxt){ cat.dir=dirFromTo(cat,nxt); cat.x=nxt.x; cat.y=nxt.y; }
+    /* 들킨 뒤에는 두 칸씩 달려들어요 — 한 번 들키면 좀처럼 빠져나가기 어려워요.
+       (그래서 '기척 범위 안에 서는 것' 자체가 큰 실수예요) */
+    for(var cs=0;cs<2;cs++){
+      var nxt=bfsNext(st,cat,st.player);
+      if(!nxt) break;
+      cat.dir=dirFromTo(cat,nxt); cat.x=nxt.x; cat.y=nxt.y;
+      if(cat.x===st.player.x&&cat.y===st.player.y) break;
+    }
     /* 시야나 기척에 잡히면 계속 추격: 보이면(들키면) 리셋, 안 보인 채 CHASE_LOST턴이면 포기 */
     if(inBeam(st,cat,st.player)||senseHit(st,cat,st.player)){ cat.chaseSteps=0; }
     else{ cat.chaseSteps++; if(cat.chaseSteps>=CHASE_LOST){ cat.state="return"; } }
@@ -1373,25 +1386,36 @@ function drawIntent(g,st,now){
   }
 }
 function drawTargets(g,st,now){
-  var blink=0.5+0.5*Math.sin(now/200);
+  /* 모바일 화면에서도 한눈에 보이도록: 칸 전체 색 채움 + 2px 실선 테두리 + 중앙 화살촉 */
+  var blink=0.5+0.5*Math.sin(now/220);
   var fish=!!G.fishMode;
   var targets=fish?validFishTiles():(G.moveTiles||[]);
-  var col=fish?(G.fishKind==="catnip"?"150,235,170":(G.fishKind==="big"?"255,176,110":"255,158,196")):"255,222,140";
+  var col=fish?(G.fishKind==="catnip"?"150,235,170":(G.fishKind==="big"?"255,176,110":"255,158,196")):"86,205,255";
+  var edge=fish?col:"196,246,255";
+  var a=(fish?0.30:0.40)+0.10*blink;
   for(var ti=0;ti<targets.length;ti++){
     var tt=targets[ti], x0=tt.x*CELL, y0=tt.y*CELL;
-    dith2(g,x0+4,y0+4,CELL-8,CELL-8,"rgba("+col+","+(0.09+0.05*blink).toFixed(3)+")",0.45,fish?1:0);
-    for(var e=0;e<CELL-8;e+=6){
-      var a=(0.55+0.25*blink).toFixed(3);
-      pf(g,x0+4+e,y0+4,4,1,"rgba("+col+","+a+")");
-      pf(g,x0+4+e,y0+CELL-5,4,1,"rgba("+col+","+a+")");
-      pf(g,x0+4,y0+4+e,1,4,"rgba("+col+","+a+")");
-      pf(g,x0+CELL-5,y0+4+e,1,4,"rgba("+col+","+a+")");
-    }
+    /* 1) 칸 전체를 또렷하게 물들인다 (체크무늬 대신 고른 색면) */
+    pf(g,x0,y0,CELL,CELL,"rgba("+col+","+a.toFixed(3)+")");
+    pf(g,x0+2,y0+2,CELL-4,CELL-4,"rgba("+col+","+(a*0.50).toFixed(3)+")");
+    /* 2) 바깥 1px 진한 선 — 크림색 러그에서도 윤곽이 서도록 */
+    pf(g,x0,y0,CELL,1,"rgba(10,32,44,0.60)");
+    pf(g,x0,y0+CELL-1,CELL,1,"rgba(10,32,44,0.60)");
+    pf(g,x0,y0,1,CELL,"rgba(10,32,44,0.60)");
+    pf(g,x0+CELL-1,y0,1,CELL,"rgba(10,32,44,0.60)");
+    /* 3) 안쪽 2px 실선 테두리 */
+    pf(g,x0+1,y0+1,CELL-2,2,"rgba("+edge+",0.96)");
+    pf(g,x0+1,y0+CELL-3,CELL-2,2,"rgba("+edge+",0.88)");
+    pf(g,x0+1,y0+1,2,CELL-2,"rgba("+edge+",0.96)");
+    pf(g,x0+CELL-3,y0+1,2,CELL-2,"rgba("+edge+",0.88)");
     if(fish){
-      pf(g,x0+CELL/2-3,y0+CELL/2-1,5,3,"rgba("+col+",0.9)");
-      pf(g,x0+CELL/2-5,y0+CELL/2-2,2,2,"rgba("+col+",0.75)");
+      pf(g,x0+CELL/2-3,y0+CELL/2-1,5,3,"rgba("+col+",0.95)");
+      pf(g,x0+CELL/2-5,y0+CELL/2-2,2,2,"rgba("+col+",0.80)");
     }else{
-      pf(g,x0+CELL/2-1,y0+CELL/2-1,3,3,"rgba("+col+","+(0.6+0.3*blink).toFixed(3)+")");
+      var md=(tt.dir!=null)?tt.dir:(G.playerDir||0);
+      var cx=Math.round(x0+CELL/2), cy=Math.round(y0+CELL/2);
+      triArrow(g,cx,cy,md,9,7,"rgba(6,28,40,0.50)");
+      triArrow(g,cx,cy,md,7,5,"rgba(236,252,255,"+(0.82+0.18*blink).toFixed(3)+")");
     }
   }
 }
@@ -1922,7 +1946,7 @@ function titlePanel(p){
   p.innerHTML='<canvas id="pCat" width="144" height="112"></canvas>'+
   '<div id="tSub">TACTICAL STEALTH PUZZLE</div><h2 id="tTitle">TINY &amp; PAWS</h2>'+
   '<div style="font-size:13px;font-weight:800;color:#cbbfae;margin-bottom:10px;">작은 인간과 거대 고양이</div>'+
-  '<div class="rows">· 인접한 칸을 누르면 <b>바로 한 턴</b>이 진행돼요 (이동·던지기 모두)<br>· 바닥에 떨어진 <b>먹이</b>는 그 칸을 밟으면 주워져요 — 처음엔 아무것도 없어요<br>· 고양이는 먹이를 <b>끝까지 걸어와 먹어요</b>. 먹는 동안은 눈·귀가 모두 닫혀요<br>· 🐟 <b>작은 생선</b> 사거리 3 · 한 입 먹고 돌아가요<br>· 🐠 <b>큰 통생선</b> 사거리 3 · 계속 먹느라 그 자리에 붙박여요<br>· 🌿 <b>캣닢</b> 사거리 5 · 멀리서도 끌려와 두 턴 정신없어요<br>· 보라 점선은 고양이 <b>기척</b> 범위 — 옆칸에 서면 들켜요<br>· 실수하면 <b>↩ 취소</b>로 몇 번이든 되돌릴 수 있어요</div>'+
+  '<div class="rows">· 인접한 칸을 누르면 <b>바로 한 턴</b>이 진행돼요 (이동·던지기 모두)<br>· 바닥에 떨어진 <b>먹이</b>는 그 칸을 밟으면 주워져요 — 처음엔 아무것도 없어요<br>· 고양이는 먹이를 <b>끝까지 걸어와 먹어요</b>. 먹는 동안은 눈·귀가 모두 닫혀요<br>· 🐟 <b>작은 생선</b> 사거리 3 · 한 입 먹고 돌아가요<br>· 🐠 <b>큰 통생선</b> 사거리 3 · 계속 먹느라 그 자리에 붙박여요<br>· 🌿 <b>캣닢</b> 사거리 5 · 멀리서도 끌려와 두 턴 정신없어요<br>· 보라 점선은 그 고양이의 <b>기척</b> 범위 — 종류마다 넓이가 달라요(1~2칸)<br>· 한 번 들키면 고양이가 <b>두 칸씩</b> 달려들어요<br>· 실수하면 <b>↩ 취소</b>로 몇 번이든 되돌릴 수 있어요</div>'+
   '<button id="pStart">시작하기 🐾</button>';
   var c=document.getElementById("pCat"), g=c.getContext("2d");
   g.imageSmoothingEnabled=false;
