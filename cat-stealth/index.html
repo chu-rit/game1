@@ -1738,6 +1738,7 @@ function beginTurn(action){
   }
 
   var arc=null;
+  setWarn("");   /* 이번 턴 안내 문구를 먼저 지우고, 사건(줍기·연쇄)이 있으면 그걸 띄워요 */
   for(var e=0;e<ev.length;e++){
     var v=ev[e];
     if(v.k==="fish"){ arc={from:{x:snap.st.player.x,y:snap.st.player.y},to:{x:v.x,y:v.y},kind:v.kind,t0:performance.now()}; sFish(); }
@@ -1762,7 +1763,6 @@ function beginTurn(action){
   G.pending={next:next,ev:ev,t0:performance.now(),arc:arc};
   G.mode="anim"; G.fishMode=false; G.fishKind=null;
   if(action.t==="move") sTap();
-  setWarn("");
   updateHUD();
 }
 function finishTurn(){
