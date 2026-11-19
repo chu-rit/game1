@@ -295,7 +295,7 @@ function simStep(st,action,events){
     for(var i=0;i<st.cats.length;i++){
       var c=st.cats[i];
       if(c.state==="idle"&&man(c,st.fish)<=FISH_LURE_R){
-        c.state="lured"; c.lure=FISH_LURE_T; faceToward(c,st.fish);
+        c.state="lured"; c.lure=FISH_LURE_T+1; faceToward(c,st.fish);
         events.push({k:"lure",id:c.id});
       }
     }
@@ -638,7 +638,10 @@ function computePreview(){
       if((c.state==="idle"||c.state==="lured")&&inBeam(f.st,c,p)){ warnTiles.push({x:p.x,y:p.y}); if(!msg){ msg="⚠ "+k+"번째 수에서 시선에 걸려요!"; } }
       if(c.state==="chase"&&(c.x===p.x&&c.y===p.y)){ warnTiles.push({x:p.x,y:p.y}); msg="⚠ 실행하면 잡혀요!!"; bad=true; }
     }
-    for(var e2=0;e2<f.events.length;e2++){ if(f.events[e2].k==="caught"){ msg="⚠ 실행하면 잡혀요!!"; bad=true; } }
+    for(var e2=0;e2<f.events.length;e2++){
+      if(f.events[e2].k==="spot"){ warnTiles.push({x:p.x,y:p.y}); if(!msg&&!bad){ msg="⚠ "+k+"번째 수에서 시선에 걸려요!"; } }
+      if(f.events[e2].k==="caught"){ msg="⚠ 실행하면 잡혀요!!"; bad=true; }
+    }
   }
   G.preview={frames:frames,warnTiles:warnTiles};
   setWarn(msg,bad?"bad":"");
