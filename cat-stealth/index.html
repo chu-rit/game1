@@ -274,6 +274,7 @@ function catStep(st,cat,events){
     if(cat.lure<=0){
       cat.state="idle"; cat.chaseSteps=0;
       if(cat.type==="C"){ var ii=nearestPatrolIdx(cat); cat.pi=ii; cat.psign=(cat.pi===0)?1:-1; }
+      else{ cat.dir=cat.home.dir; }
     }
   }else{ /* idle */
     if(cat.type==="B"&&cat.dirs){ cat.dir=(cat.dir===cat.dirs[0])?cat.dirs[1]:cat.dirs[0]; }
