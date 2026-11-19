@@ -86,7 +86,7 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
 #tTitle{font-size:27px;letter-spacing:.05em;margin:2px 0 2px;
   background:linear-gradient(#fff3dc,#ffc06a);-webkit-background-clip:text;background-clip:text;color:transparent;}
 #tSub{font-size:10.5px;color:var(--amber);font-weight:800;letter-spacing:.3em;margin-bottom:2px;}
-#pCat{display:block;margin:0 auto 2px;width:168px;height:auto;image-rendering:pixelated;image-rendering:crisp-edges;}
+#pCat{display:block;margin:0 auto 4px;width:144px;height:112px;image-rendering:pixelated;image-rendering:crisp-edges;}
 .cats{font-size:30px;letter-spacing:6px;margin:6px 0 2px;}
 </style>
 </head>
@@ -1691,7 +1691,7 @@ function finishExec(){
 function showPanel(fn){ var ov=$("overlay"), p=$("panel"); p.innerHTML=""; fn(p); ov.classList.remove("hidden"); }
 function hidePanel(){ $("overlay").classList.add("hidden"); }
 function titlePanel(p){
-  p.innerHTML='<canvas id="pCat" width="216" height="168"></canvas>'+
+  p.innerHTML='<canvas id="pCat" width="144" height="112"></canvas>'+
   '<div id="tSub">TACTICAL STEALTH PUZZLE</div><h2 id="tTitle">TINY &amp; PAWS</h2>'+
   '<div style="font-size:13px;font-weight:800;color:#cbbfae;margin-bottom:10px;">작은 인간과 거대 고양이</div>'+
   '<div class="rows">· 한 턴에 최대 <b>3수</b>를 계획하고 <b>실행</b>하면 고양이도 함께 움직여요<br>· 고양이 <b>시선(빛살)</b>에 닿으면 그 고양이만 달려들어요<br>· <b>🐟 생선</b>을 던져 주변 고양이의 시선을 빼앗으세요<br>· <b>초록 탈출매트</b>에 도착하면 단계 클리어!</div>'+
@@ -1703,7 +1703,7 @@ function titlePanel(p){
   var og=off.getContext("2d"); og.imageSmoothingEnabled=false;
   drawHuman(og,{rx:(13-20)/40,ry:(53-37)/40},performance.now(),0,false);
   drawCatAt(og,45,51,COATS.B,1,"B",performance.now(),{noShadow:false});
-  g.drawImage(off,0,0,72,56,0,0,216,168);
+  g.drawImage(off,0,0,72,56,0,0,144,112);
   $("pStart").addEventListener("click",function(){ hidePanel(); G.mode="plan"; G.hearts=3; G.stageIdx=0; loadStage(0); setWarn(""); beep(600,0.1,"triangle",0.05,200); });
 }
 function clearPanel(p){
