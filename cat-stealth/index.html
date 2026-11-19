@@ -1728,11 +1728,10 @@ function resize(){
   var fit=Math.min(availW,availH,470);
   fit=Math.max(fit,180);
   var dpr=Math.min(3,Math.max(1,window.devicePixelRatio||1));
-  /* 정수배 확대: 도트 1px = 정수 배율 */
-  var k=Math.max(1,Math.round(fit*dpr/CV));
-  var cssW=Math.floor(CV*k/dpr);
-  if(cssW>fit){ k=Math.max(1,k-1); cssW=Math.floor(CV*k/dpr); }
-  cvEl.width=CV*k; cvEl.height=CV*k;
+  /* 화면에는 1도트 = 1 CSS px로 보여주고, 백킹은 dpr만큼 키운다 */
+  var cssW=Math.min(Math.floor(fit),CV);
+  var back=Math.max(CV,Math.round(cssW*dpr));
+  cvEl.width=back; cvEl.height=back;
   cvEl.style.width=cssW+"px"; cvEl.style.height=cssW+"px";
   dctx.imageSmoothingEnabled=false;
 }
