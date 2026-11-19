@@ -1278,36 +1278,34 @@ function drawBeam(g,st,cat,now){
   var b=beamTiles(st,cat);
   if(!b.length) return;
   var lured=(cat.state==="lured"), chasing=(cat.state==="chase");
-  /* 시선 색: 평상시 호박빛 · 미끼 중 분홍 · 추격 중 적동색 */
-  var rgb=lured?"255,150,196":(chasing?"255,90,90":"255,196,64");
-  var tintA=lured?0.28:(chasing?0.34:0.32);
-  var edge=lured?"rgba(255,186,214,0.86)":(chasing?"rgba(255,120,110,0.92)":"rgba(255,222,120,0.88)");
-  var edgeIn=lured?"rgba(255,150,196,":(chasing?"rgba(255,90,90,":"rgba(255,196,64,");
-  var amp=0.86+0.14*Math.sin(now/340);
+  /* 시선 색: 평상시 진한 호박주황 · 미끼 중 분홍 · 추격 중 적동색.
+     크림색 러그 위에서도 한눈에 티가 나도록 '고른 색면 + 2px 실선 테두리 + 바깥 1px 진한 대비선'으로 그려요. */
+  var rgb=lured?"255,116,186":(chasing?"255,74,74":"245,128,24");
+  var tintA=lured?0.36:(chasing?0.40:0.40);
+  var edge=lured?"rgba(219,39,119,0.95)":(chasing?"rgba(220,38,38,0.95)":"rgba(234,88,12,0.95)");
+  var outer=lured?"rgba(92,10,55,0.46)":(chasing?"rgba(72,10,10,0.50)":"rgba(88,30,6,0.46)");
+  var glow=lured?"#ffd0e6":(chasing?"#ffd2d2":"#ffe0bd");
+  var amp=0.90+0.10*Math.sin(now/340);
   var scan=Math.floor(now/90)%CELL;
   for(var i=0;i<b.length;i++){
-    var t=b[i], fade=1-i*0.16; if(fade<0.55) fade=0.55;
+    var t=b[i], fade=1-i*0.10; if(fade<0.80) fade=0.80;
     var x0=t.x*CELL, y0=t.y*CELL;
-    /* 타일 전체 따뜻한 픽셀 틴트 : 바닥 무늬 위에서도 확실히 읽히도록 거의 고른 격자 채움 */
-    dith2(g,x0,y0,CELL,CELL,"rgba("+rgb+","+(tintA*fade*amp).toFixed(3)+")",0.96,0);
-    dith2(g,x0,y0,CELL,CELL,"rgba("+rgb+","+(0.14*fade).toFixed(3)+")",0.5,1);
-    /* 위에서 아래로 흐르는 스캔라인 (점멸감) */
-    dith(g,x0,y0+scan,CELL,2,"rgba("+rgb+","+(0.40*fade).toFixed(3)+")",0.9,0);
-    dith(g,x0,y0+((scan+CELL/2)%CELL),CELL,1,"rgba("+rgb+","+(0.26*fade).toFixed(3)+")",0.8,1);
-    /* 타일 2px 크리스프 테두리 (바깥 1px 밝게 + 안쪽 1px 글로우) */
-    pf(g,x0,y0,CELL,1,edge); pf(g,x0,y0+CELL-1,CELL,1,edge);
-    pf(g,x0,y0,1,CELL,edge); pf(g,x0+CELL-1,y0,1,CELL,edge);
-    pf(g,x0+1,y0+1,CELL-2,1,edgeIn+"0.46)"); pf(g,x0+1,y0+CELL-2,CELL-2,1,edgeIn+"0.46)");
-    pf(g,x0+1,y0+1,1,CELL-2,edgeIn+"0.46)"); pf(g,x0+CELL-2,y0+1,1,CELL-2,edgeIn+"0.46)");
-    /* 모서리 3px 악센트 */
-    pf(g,x0+1,y0+1,3,3,edge); pf(g,x0+CELL-4,y0+1,3,3,edge);
-    pf(g,x0+1,y0+CELL-4,3,3,edge); pf(g,x0+CELL-4,y0+CELL-4,3,3,edge);
+    /* 1) 칸 전체를 고른 색면으로 채색 (체크무늬 대신) */
+    pf(g,x0,y0,CELL,CELL,"rgba("+rgb+","+(tintA*fade*amp).toFixed(3)+")");
+    /* 2) 위에서 아래로 흐르는 스캔라인 (시선 방향이 읽히는 점멸감) */
+    pf(g,x0,y0+scan,CELL,2,"rgba("+rgb+","+(0.30*fade).toFixed(3)+")");
+    /* 3) 바깥 1px 진한 대비선 — 크림 바닥에서도 타일 윤곽이 서도록 */
+    pf(g,x0,y0,CELL,1,outer); pf(g,x0,y0+CELL-1,CELL,1,outer);
+    pf(g,x0,y0,1,CELL,outer); pf(g,x0+CELL-1,y0,1,CELL,outer);
+    /* 4) 안쪽 2px 크리스프 실선 테두리 */
+    pf(g,x0+1,y0+1,CELL-2,2,edge); pf(g,x0+1,y0+CELL-3,CELL-2,2,edge);
+    pf(g,x0+1,y0+1,2,CELL-2,edge); pf(g,x0+CELL-3,y0+1,2,CELL-2,edge);
   }
   /* 눈 앞 광점 */
   var d=DIRS[cat.dir];
   var ex=cat.x*CELL+CELL/2+d[0]*13, ey=cat.y*CELL+CELL/2+d[1]*13;
-  dith(g,ex-3,ey-3,7,7,edgeIn+"0.34)",0.55,0);
-  dith(g,ex-1,ey-1,3,3,edgeIn+"0.50)",0.75,1);
+  pf(g,ex-2,ey-2,5,5,edge);
+  pf(g,ex-1,ey-1,3,3,glow);
 }
 
 function drawGoalPulse(g,st,now){
@@ -1430,14 +1428,13 @@ function drawWarnMarks(g,st,now){
     var wt=G.dangerTiles[wi];
     var wx=wt.x*CELL, wy=wt.y*CELL;
     var crit=!!wt.killed;
-    dith(g,wx+1,wy+1,CELL-2,CELL-2,"rgba(255,58,78,"+((crit?0.24:0.15)+0.12*blink).toFixed(3)+")",0.45,0);
-    var a2=(0.55+0.3*blink).toFixed(3);
-    for(var e=0;e<CELL-4;e+=5){
-      pf(g,wx+3+e,wy+3,3,1,"rgba(255,120,130,"+a2+")");
-      pf(g,wx+3+e,wy+CELL-4,3,1,"rgba(255,120,130,"+a2+")");
-      pf(g,wx+3,wy+3+e,1,3,"rgba(255,120,130,"+a2+")");
-      pf(g,wx+CELL-4,wy+3+e,1,3,"rgba(255,120,130,"+a2+")");
-    }
+    /* 1) 칸 전체 붉은 색면 — 이동칸(하늘색)과 헷갈리지 않게 확실히 빨갛게 */
+    pf(g,wx,wy,CELL,CELL,"rgba(239,68,68,"+((crit?0.34:0.30)+0.06*blink).toFixed(3)+")");
+    /* 2) 바깥 1px 진홍 대비선 + 안쪽 2px 실선 테두리 */
+    pf(g,wx,wy,CELL,1,"rgba(90,10,18,0.55)"); pf(g,wx,wy+CELL-1,CELL,1,"rgba(90,10,18,0.55)");
+    pf(g,wx,wy,1,CELL,"rgba(90,10,18,0.55)"); pf(g,wx+CELL-1,wy,1,CELL,"rgba(90,10,18,0.55)");
+    pf(g,wx+1,wy+1,CELL-2,2,"rgba(220,38,38,0.95)"); pf(g,wx+1,wy+CELL-3,CELL-2,2,"rgba(220,38,38,0.95)");
+    pf(g,wx+1,wy+1,2,CELL-2,"rgba(220,38,38,0.95)"); pf(g,wx+CELL-3,wy+1,2,CELL-2,"rgba(220,38,38,0.95)");
     /* 픽셀 삼각형 */
     var tx=wx+CELL/2, ty=wy+5;
     for(var r=0;r<10;r++){
@@ -1465,32 +1462,48 @@ function senseTilesOf(st,cat){
   }
   return out;
 }
+/* 이 칸이 (어느 고양이든) 시선 안에 있는지 */
+function inAnyBeam(st,px,py){
+  for(var i=0;i<st.cats.length;i++){
+    var c=st.cats[i];
+    if(c.state!=="idle"&&c.state!=="lured"&&c.state!=="chase") continue;
+    var b=beamTiles(st,c);
+    for(var j=0;j<b.length;j++){ if(b[j].x===px&&b[j].y===py) return true; }
+  }
+  return false;
+}
 function drawSense(g,st,cat,now){
-  /* 눈(시야 콘)과 구분되는 보랏빛 점선 = 귀(기척)가 보는 반경.
+  /* 눈(시야 콘)과 구분되는 보랏빛 색면 = 귀(기척)가 보는 반경.
      생선에 정신이 팔린 lured/eat 중에는 귀도 닫혀서 안 그려집니다. */
   if(cat.state!=="idle"&&cat.state!=="return") return;
   if(!cat.sense) return;
   var tl=senseTilesOf(st,cat);
   var pulse=0.5+0.5*Math.sin(now/520+cat.x*1.3);
-  var a=(0.30+0.22*pulse).toFixed(3);
+  var fill="rgba(139,69,247,"+(0.28+0.06*pulse).toFixed(3)+")";
   for(var i=0;i<tl.length;i++){
     var t=tl[i], x0=t.x*CELL, y0=t.y*CELL;
-    for(var e=3;e<CELL-4;e+=8){
-      pf(g,x0+e,y0+2,3,1,"rgba(198,160,255,"+a+")");
-      pf(g,x0+e,y0+CELL-3,3,1,"rgba(198,160,255,"+a+")");
-      pf(g,x0+2,y0+e,1,3,"rgba(198,160,255,"+a+")");
-      pf(g,x0+CELL-3,y0+e,1,3,"rgba(198,160,255,"+a+")");
-    }
-    dith(g,x0+2,y0+2,CELL-4,CELL-4,"rgba(170,130,255,0.13)",0.55,1);
+    /* 시선(호박색)이 이미 깔린 칸은 보라색을 겹치지 않게 건넌다.
+       그 칸은 어차피 '보이는 칸'이라 들키는 결과가 더 세고, 두 색이 섞이면 둘 다 탁해져요. */
+    if(inAnyBeam(st,t.x,t.y)) continue;
+    /* 1) 칸 전체 보랏빛 색면 — 크림 타일 위에서도 한눈에 티가 나도록 */
+    pf(g,x0,y0,CELL,CELL,fill);
+    /* 2) 바깥 1px 진보라 대비선 + 안쪽 2px 실선 테두리 */
+    pf(g,x0,y0,CELL,1,"rgba(45,16,95,0.50)"); pf(g,x0,y0+CELL-1,CELL,1,"rgba(45,16,95,0.50)");
+    pf(g,x0,y0,1,CELL,"rgba(45,16,95,0.50)"); pf(g,x0+CELL-1,y0,1,CELL,"rgba(45,16,95,0.50)");
+    pf(g,x0+1,y0+1,CELL-2,2,"rgba(124,58,237,0.92)"); pf(g,x0+1,y0+CELL-3,CELL-2,2,"rgba(124,58,237,0.92)");
+    pf(g,x0+1,y0+1,2,CELL-2,"rgba(124,58,237,0.92)"); pf(g,x0+CELL-3,y0+1,2,CELL-2,"rgba(124,58,237,0.92)");
+    /* 3) 모서리 3px 진한 악센트 */
+    pf(g,x0+1,y0+1,3,3,"rgba(76,29,149,0.95)"); pf(g,x0+CELL-4,y0+1,3,3,"rgba(76,29,149,0.95)");
+    pf(g,x0+1,y0+CELL-4,3,3,"rgba(76,29,149,0.95)"); pf(g,x0+CELL-4,y0+CELL-4,3,3,"rgba(76,29,149,0.95)");
   }
   /* 고양이 옆으로 퍼지는 소리 파동 */
   var cx=Math.round(cat.rx*CELL+CELL/2), hy=Math.round(cat.ry*CELL+CELL-26);
   var ph=Math.floor(now/260)%3;
   for(var w=0;w<3;w++){
     if(w>ph) continue;
-    var rx=5+w*3, aa=(0.30+(2-w)*0.12).toFixed(3);
-    pf(g,cx-rx,hy-1,1,3,"rgba(198,160,255,"+aa+")");
-    pf(g,cx+rx,hy-1,1,3,"rgba(198,160,255,"+aa+")");
+    var rx=5+w*3, aa=(0.55+(2-w)*0.14).toFixed(3);
+    pf(g,cx-rx,hy-1,1,3,"rgba(124,58,237,"+aa+")");
+    pf(g,cx+rx,hy-1,1,3,"rgba(124,58,237,"+aa+")");
   }
 }
 
@@ -1502,15 +1515,18 @@ function drawPickupEntity(g,st,now){
     var x0=pk.x*CELL, y0=pk.y*CELL, cx=x0+CELL/2, cy=y0+CELL/2;
     var pulse=0.5+0.5*Math.sin(now/430+pk.x*1.7);
     shadowPix(g,cx,y0+CELL-7,9,3,0.24);
-    /* 금빛 점선 프레임 = '밟으면 주워요' */
-    var a=(0.22+0.26*pulse).toFixed(3);
-    for(var e=2;e<CELL-4;e+=7){
-      pf(g,x0+4+e,y0+4,4,1,"rgba(255,224,150,"+a+")");
-      pf(g,x0+4+e,y0+CELL-5,4,1,"rgba(255,224,150,"+a+")");
-      pf(g,x0+4,y0+4+e,1,4,"rgba(255,224,150,"+a+")");
-      pf(g,x0+CELL-5,y0+4+e,1,4,"rgba(255,224,150,"+a+")");
+    /* 금빛 프레임 = '밟으면 주워요' (크림 타일에서도 보이도록 2px 실선 + 안쪽 점선) */
+    pf(g,x0,y0,CELL,1,"rgba(70,35,0,0.42)"); pf(g,x0,y0+CELL-1,CELL,1,"rgba(70,35,0,0.42)");
+    pf(g,x0,y0,1,CELL,"rgba(70,35,0,0.42)"); pf(g,x0+CELL-1,y0,1,CELL,"rgba(70,35,0,0.42)");
+    pf(g,x0+1,y0+1,CELL-2,2,"rgba(217,119,6,0.85)"); pf(g,x0+1,y0+CELL-3,CELL-2,2,"rgba(217,119,6,0.85)");
+    pf(g,x0+1,y0+1,2,CELL-2,"rgba(217,119,6,0.85)"); pf(g,x0+CELL-3,y0+1,2,CELL-2,"rgba(217,119,6,0.85)");
+    var a=(0.55+0.25*pulse).toFixed(3);
+    for(var e=2;e<CELL-8;e+=7){
+      pf(g,x0+4+e,y0+4,4,1,"rgba(255,232,168,"+a+")");
+      pf(g,x0+4+e,y0+CELL-5,4,1,"rgba(255,232,168,"+a+")");
+      pf(g,x0+4,y0+4+e,1,4,"rgba(255,232,168,"+a+")");
+      pf(g,x0+CELL-5,y0+4+e,1,4,"rgba(255,232,168,"+a+")");
     }
-    dith(g,x0+3,y0+3,CELL-6,CELL-6,"rgba(255,214,130,"+(0.05+0.05*pulse).toFixed(3)+")",0.4,1);
     var bob=(Math.sin(now/520+pk.x*2.1)>0)?1:0;
     drawFishKind(g,cx,cy-2+bob,pk.kind,now,{});
     var sx=Math.round(cx+7), sy=Math.round(cy-9);
@@ -1565,11 +1581,12 @@ function draw(){
   ctx.drawImage(board,0,0);
 
   if(G.mode!=="title"){
-    for(var si=0;si<st.cats.length;si++) drawSense(ctx,st,st.cats[si],now);
     for(var i=0;i<st.cats.length;i++){
       var c=st.cats[i];
       if(c.state==="idle"||c.state==="lured"||c.state==="chase") drawBeam(ctx,st,c,now);
     }
+    /* 기척은 시선 위에 얹는다(시선이 깔린 칸은 기척을 건너뛰므로 두 색이 섞이지 않아요) */
+    for(var si=0;si<st.cats.length;si++) drawSense(ctx,st,st.cats[si],now);
   }
   drawGoalPulse(ctx,st,now);
 
