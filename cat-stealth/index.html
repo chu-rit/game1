@@ -381,8 +381,16 @@ function catStep(st,cat,events){
       ef.eatLeft=(ef.eatLeft==null?ek.eat:ef.eatLeft)-1;
       if(ef.eatLeft<=0){
         removeFish(st,ef);
-        cat.state="return"; cat.chaseSteps=0;
         events.push({k:"ate",id:cat.id,kind:ef.kind,x:cat.x,y:cat.y});
+        /* 연쇄 반응: 다 먹은 바로 그 자리에서 또 다른 먹이가 냄새나면
+           제자리로 돌아가지 않고 곧장 다음 먹이로 걸어가요 */
+        var nxf=nearestFish(st,cat);
+        if(nxf){
+          cat.state="lured"; cat.chaseSteps=0;
+          events.push({k:"chain",id:cat.id,kind:nxf.kind});
+        }else{
+          cat.state="return"; cat.chaseSteps=0;
+        }
       }else{
         events.push({k:"chew",id:cat.id,kind:ef.kind});
       }
