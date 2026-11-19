@@ -1425,10 +1425,13 @@ function draw(){
     drawCatEntity(ctx,cat,now);
     /* 경계 표시 */
     if(cat.state==="chase"){
-      var bl=(Math.sin(now/180)>0);
-      if(bl){
-        text3(ctx,"!",Math.round(cat.rx*CELL+CELL/2)-1,Math.round(cat.ry*CELL-10),"#ff5d6e");
-      }
+      var pu=0.62+0.38*Math.sin(now/180);
+      ctx.save(); ctx.globalAlpha=pu;
+      var ax2=Math.round(cat.rx*CELL+CELL/2), ay2=Math.round(cat.ry*CELL-18);
+      fillRR(ctx,ax2-4,ay2-1,9,11,2,"rgba(34,6,12,0.88)");
+      pf(ctx,ax2-3,ay2,7,9,"#ff5d6e");
+      text3(ctx,"!",ax2-1,ay2+2,"#2a0509");
+      ctx.restore();
     }
   }
   if(!pDrawn) drawPlayerNow(st,now,plDir);
