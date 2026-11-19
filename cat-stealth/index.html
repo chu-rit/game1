@@ -444,7 +444,7 @@ function text3(g,str,x,y,col){
 }
 
 /* ================= 색 팔레트 ================= */
-var FLOOR={seam:"#6a4326", d1:"#8a5c34", base:"#a1703f", l1:"#b8834f", hi:"#c79463", grain:"#8c5f36"};
+var FLOOR={seam:"#6a4326", d1:"#8f6036", base:"#a4713f", l1:"#b8844f", hi:"#c59261", grain:"#8c5f36"};
 var COATS={
   A:{ o:"#26222c", body:"#9aa2b4", lit:"#c3cbd9", dark:"#788092", deep:"#545b6e", stripe:"#818a9e",
       belly:"#e9eef6", paw:"#e9eef6", inner:"#d791a0", nose:"#e08a99", eye:"#f2bb3c", eyeD:"#3a2a12",
@@ -480,27 +480,25 @@ function bakeBoard(st){
 
 function paintFloor(g,st){
   pf(g,0,0,CV,CV,FLOOR.base);
-  var plankH=10;
+  var plankH=16;
   for(var py=0,row=0;py<CV;py+=plankH,row++){
-    var offset=(row%2)?24:0;
-    for(var px=-48+offset; px<CV+48; px+=48){
-      var x0=Math.max(0,px), x1=Math.min(CV,px+48);
+    var offset=(row%2)?32:0;
+    for(var px=-64+offset; px<CV+64; px+=64){
+      var x0=Math.max(0,px), x1=Math.min(CV,px+64);
       if(x1<=x0) continue;
-      var hv=hashf(Math.round(px/48),row,3);
-      var tone=hv<0.30?FLOOR.d1:(hv<0.72?FLOOR.base:FLOOR.l1);
-      pf(g,x0,py,x1-x0,plankH,tone);
-      pf(g,x0,py,x1-x0,1,FLOOR.hi);
+      var hv=hashf(Math.round(px/64),row,3);
+      var tone=hv<0.32?FLOOR.d1:(hv<0.70?FLOOR.base:FLOOR.l1);
+      pf(g,x0,py,x1-x0,plankH-1,tone);
       pf(g,x0,py+plankH-1,x1-x0,1,FLOOR.seam);
-      if(px>=0) pf(g,px,py,1,plankH,FLOOR.seam);
-      for(var gd=0;gd<3;gd++){
-        var gx=x0+2+Math.floor(hashf(px+gd,py,11)*(x1-x0-5));
-        var gy=py+2+Math.floor(hashf(px,py+gd,13)*(plankH-4));
-        pf(g,gx,gy,2+Math.floor(hashf(gx,gy,5)*4),1,FLOOR.grain);
+      if(px>=0) pf(g,px,py,1,plankH-1,FLOOR.seam);
+      pf(g,x0,py,x1-x0,1,FLOOR.hi);
+      for(var gd=0;gd<2;gd++){
+        var gx=x0+4+Math.floor(hashf(px+gd,py,11)*(x1-x0-10));
+        var gy=py+5+Math.floor(hashf(px,py+gd,13)*(plankH-9));
+        pf(g,gx,gy,3+Math.floor(hashf(gx,gy,5)*5),1,FLOOR.grain);
       }
     }
   }
-  dith(g,0,0,CV,CV,"#7d5230",0.05,0);
-  dith(g,0,0,CV,CV,"#c99a68",0.045,2);
 }
 
 function drawRugTile(g,st,x,y){
@@ -526,20 +524,20 @@ function paintRug(g,st){
 
 function drawWallTile(g,st,x,y){
   var x0=x*CELL, y0=y*CELL;
-  pf(g,x0,y0,CELL,CELL,"#281d24");
-  var bh=7, bw=15;
+  pf(g,x0,y0,CELL,CELL,"#241a20");
+  var bh=9, bw=18;
   for(var r=0,py=y0; py<y0+CELL; py+=bh,r++){
-    var off=(r%2)?7:0;
+    var off=(r%2)?9:0;
     for(var px=x0-off; px<x0+CELL; px+=bw){
       var bx=Math.max(x0,px), bx1=Math.min(x0+CELL,px+bw);
       if(bx1<=bx) continue;
       var hv=hashf(px,py,17);
-      var base=hv<0.32?"#493336":(hv<0.74?"#553b3d":"#5e4544");
+      var base=hv<0.32?"#543c40":(hv<0.74?"#5f4648":"#6a4f4e");
       pf(g,bx,py,bx1-bx,bh-1,base);
-      pf(g,bx,py,bx1-bx,1,"#6e5350");
-      pf(g,bx,py+bh-2,bx1-bx,1,"#3a282c");
-      if(hv>0.48) dith(g,bx+1,py+2,Math.max(1,bx1-bx-2),bh-3,"#634a4b",0.3,px);
-      if(hv<0.14) dith(g,bx+1,py+1,Math.max(1,bx1-bx-2),2,"#7b5e58",0.5,py);
+      pf(g,bx,py,bx1-bx,1,"#7d5f5c");
+      pf(g,bx,py+bh-2,bx1-bx,1,"#3c2a30");
+      if(hv<0.22) dith(g,bx+2,py+2,Math.max(1,bx1-bx-4),3,"#7a5c59",0.45,py);
+      if(hv>0.86) dith(g,bx+2,py+4,Math.max(1,bx1-bx-4),2,"#4a3339",0.5,px);
     }
   }
 }
@@ -595,185 +593,181 @@ function counterRun(st,x,y,ch){
 function drawCounter(g,st,x,y,prop){
   var x0=x*CELL, y0=y*CELL;
   var lf=counterRun(st,x-1,y,"X"), rt=counterRun(st,x+1,y,"X");
-  var xA=x0+(lf?-2:2), xB=x0+CELL+(rt?2:-2);
-  var topY=y0+4, faceY=y0+26, botY=y0+33;
-  var w=xB-xA;
-  dith(g,xA+1,botY+1,w-2,4,"rgba(28,12,8,0.36)",0.7,0);
-  /* 몸체 */
-  fillRR(g,xA-1,topY-1,w+2,botY-topY+2,2,"#2a1b17");
-  fillRR(g,xA,topY,w,faceY-topY,1,"#d3c4a6");
-  pf(g,xA+1,topY+1,w-2,2,"#efe4c9");
-  pf(g,xA+1,topY+3,w-2,1,"#c2b192");
-  dith(g,xA+1,faceY-3,w-2,2,"#b7a486",0.35,0);
+  var xA=x0+(lf?0:1), xB=x0+CELL-(rt?0:1);
+  var topY=y0+3, faceY=y0+21, botY=y0+33;
+  var w=xB-xA, cx=x0+CELL/2;
+  dith(g,xA+2,botY+1,w-2,4,"rgba(30,14,8,0.42)",0.8,0);
+  fillRR(g,xA-1,topY-1,w+2,botY-topY+2,2,"#22160f");
+  /* 상판 */
+  fillRR(g,xA,topY,w,faceY-topY,1,"#cbb68c");
+  pf(g,xA+1,topY+1,w-2,2,"#ecdfbe");
+  pf(g,xA+1,topY+3,w-2,1,"#dbcba4");
+  dith2(g,xA+1,topY+4,w-2,faceY-topY-6,"#b7a179",0.35,0);
   /* 앞면 */
-  fillRR(g,xA,faceY,w,botY-faceY,1,"#8a5a34");
-  pf(g,xA,faceY,w,1,"#5e3a1e");
-  pf(g,xA+1,faceY+1,w-2,1,"#a26e42");
-  pf(g,xA,faceY+1,1,botY-faceY-1,"#6b4426");
-  pf(g,xB-1,faceY+1,1,botY-faceY-1,"#5c3a20");
-  pf(g,xA+1,botY-1,w-2,1,"#553016");
-  /* 서랍 손잡이 */
-  var kn=Math.floor(w/2);
-  pf(g,xA+kn-2,faceY+3,3,1,"#e0c084");
-  pf(g,xA+kn-2,faceY+4,3,1,"#8a6a3a");
-  if(w>30){
-    pf(g,xA+kn-12,faceY+3,3,1,"#e0c084");
-    pf(g,xA+kn+9,faceY+3,3,1,"#e0c084");
+  pf(g,xA,faceY,w,botY-faceY,"#8a5a34");
+  pf(g,xA,faceY,w,1,"#c08f5c");
+  pf(g,xA,faceY+1,w,1,"#5e3a1e");
+  pf(g,xA+1,faceY+2,w-2,botY-faceY-4,"#8a5a34");
+  pf(g,xA,faceY+2,1,botY-faceY-2,"#6b4426");
+  pf(g,xB-1,faceY+2,1,botY-faceY-2,"#57341a");
+  pf(g,xA+1,botY-2,w-2,1,"#4a2c14");
+  /* 서랍 */
+  var n=(w>34)?2:1, dw=Math.floor(w/n);
+  for(var di=0;di<n;di++){
+    var dx=xA+di*dw;
+    if(di>0) pf(g,dx,faceY+2,1,botY-faceY-2,"#5e3a1e");
+    pf(g,dx+Math.floor(dw/2)-2,faceY+4,5,1,"#e8cf95");
+    pf(g,dx+Math.floor(dw/2)-2,faceY+5,5,1,"#8a6a3a");
   }
-  /* 상판 위 소품 */
-  var cx=x0+CELL/2;
+  /* 상판 소품 */
   if(prop==="sink"){
-    var bx=cx-9, by=topY+5;
-    fillRR(g,bx-1,by-1,18,11,2,"#6f7784");
-    fillRR(g,bx,by,16,9,2,"#a9b2be");
-    fillRR(g,bx+2,by+2,12,5,2,"#7c8794");
-    dith(g,bx+2,by+2,12,2,"#95a1ae",0.6,1);
-    pf(g,bx+2,by+1,5,1,"#dfe6ee");
+    var bx=cx-9, by=topY+6;
+    fillRR(g,bx-1,by-1,20,11,2,"#5b6470");
+    fillRR(g,bx,by,18,9,2,"#aab4c0");
+    fillRR(g,bx+2,by+2,14,5,1,"#79838f");
+    pf(g,bx+3,by+1,7,1,"#e2e8f0");
+    pf(g,bx+2,by+4,10,1,"#5f6874");
     /* 수전 */
-    pf(g,cx-1,by-7,2,7,"#c6ccd6");
-    pf(g,cx-1,by-8,4,2,"#d8dee8");
-    pf(g,cx+1,by-6,3,2,"#c6ccd6");
-    pf(g,cx+4,by-5,1,2,"#9aa2ae");
+    pf(g,cx-3,topY-2,3,9,"#b9c0ca");
+    pf(g,cx-3,topY-3,6,2,"#d4dae2");
+    pf(g,cx+2,topY-2,4,2,"#b9c0ca");
+    pf(g,cx+5,topY-1,1,4,"#8e97a3");
+    pf(g,cx-4,topY+1,1,3,"#8e97a3");
   }else if(prop==="stove"){
-    pf(g,xA+1,topY+1,w-2,faceY-topY-2,"#3b3742");
-    pf(g,xA+1,topY+1,w-2,1,"#57515f");
-    dith(g,xA+2,topY+3,w-4,faceY-topY-5,"#302c36",0.5,1);
-    var bs=[cx-8,cx+8];
+    fillRR(g,xA+1,topY+1,w-2,faceY-topY-2,1,"#3b3742");
+    pf(g,xA+1,topY+1,w-2,1,"#544e5e");
+    dith2(g,xA+2,topY+3,w-4,faceY-topY-5,"#302c36",0.4,1);
+    var bs=[cx-9,cx+9];
     for(var i=0;i<2;i++){
       var bxx=bs[i], byy=topY+7;
-      fillRR(g,bxx-5,byy-3,11,7,3,"#15131a");
-      fillRR(g,bxx-4,byy-2,9,5,2,"#4a4552");
-      fillRR(g,bxx-2,byy-1,5,3,1,"#23202a");
+      fillRR(g,bxx-6,byy-3,13,8,3,"#14121a");
+      fillRR(g,bxx-5,byy-2,11,6,2,"#4a4552");
+      fillRR(g,bxx-3,byy-1,7,4,1,"#23202a");
       pf(g,bxx-1,byy,3,1,"#e07a2a");
-      pf(g,bxx,byy-1,1,1,"#ffb347");
+      pf(g,bxx,byy-1,1,1,"#ffc05e");
     }
-    pf(g,xA+1,faceY+1,w-2,2,"#26232c");
-    pf(g,xA+3,faceY+4,w-6,2,"#2f2b37");
+    pf(g,xA+2,faceY+1,w-4,9,"#2c2833");
+    pf(g,xA+2,faceY+1,w-4,1,"#151320");
+    fillRR(g,xA+5,faceY+4,w-10,4,1,"#453e4e");
+    pf(g,xA+6,faceY+5,w-12,1,"#6a6274");
+    pf(g,xA+4,faceY+2,w-8,1,"#8e8798");
   }else{
-    /* 도마 */
-    fillRR(g,xA+1,topY+1,w-2,faceY-topY-2,"#c79a63");
-    dith(g,xA+2,topY+2,w-4,faceY-topY-4,"#b98a54",0.45,0);
-    var bxx2=cx-11, byy2=topY+7;
-    fillRR(g,bxx2-1,byy2-1,22,14,2,"#7a4f28");
-    fillRR(g,bxx2,byy2,20,12,1,"#dcb483");
-    pf(g,bxx2+1,byy2+1,18,1,"#efd0a5");
-    for(var d=0;d<3;d++) pf(g,bxx2+3+d*5,byy2+4,3,1,"#b98a54");
-    /* 토마토 */
-    pf(g,bxx2+3,byy2+7,4,3,"#c8402f");
-    pf(g,bxx2+4,byy2+6,2,1,"#5c8a3a");
-    pf(g,bxx2+4,byy2+8,1,1,"#e8684f");
-    /* 허브 */
-    pf(g,bxx2+12,byy2+6,3,3,"#4d7a3a");
-    pf(g,bxx2+13,byy2+5,2,1,"#6a9a4a");
+    var bx2=cx-11, by2=topY+5;
+    fillRR(g,bx2-1,by2-1,24,14,2,"#6b4426");
+    fillRR(g,bx2,by2,22,12,1,"#dcae74");
+    pf(g,bx2+1,by2+1,20,1,"#f2d29d");
+    dith2(g,bx2+2,by2+3,18,7,"#c99a63",0.4,0);
+    pf(g,bx2+3,by2+5,4,4,"#cf4436");
+    pf(g,bx2+4,by2+4,2,1,"#4d7a3a");
+    pf(g,bx2+4,by2+6,1,1,"#f08a6a");
+    pf(g,bx2+11,by2+6,5,3,"#f0c256");
+    pf(g,bx2+11,by2+5,5,1,"#ffdb84");
+    pf(g,bx2+13,by2+8,1,1,"#c99a3f");
+    pf(g,bx2+4,by2+2,9,1,"#b8bec8");
+    pf(g,bx2+12,by2+1,3,2,"#6b4426");
   }
 }
 
 function drawNightstand(g,st,x,y){
   var x0=x*CELL, y0=y*CELL;
-  var xA=x0+5, xB=x0+CELL-5, topY=y0+16, botY=y0+33;
-  dith(g,xA+1,botY+1,xB-xA-2,4,"rgba(28,12,8,0.36)",0.7,0);
-  fillRR(g,xA-1,topY-1,xB-xA+2,botY-topY+2,2,"#2a1b17");
-  fillRR(g,xA,topY,xB-xA,9,1,"#9b6a3f");
-  pf(g,xA+1,topY+1,xB-xA-2,2,"#bb8855");
-  fillRR(g,xA,topY+9,xB-xA,botY-topY-9,1,"#7b4e2c");
-  pf(g,xA,topY+9,xB-xA,1,"#4f3117");
-  pf(g,xA+1,topY+12,xB-xA-2,1,"#5c3a1e");
+  var xA=x0+6, xB=x0+CELL-6, topY=y0+14, botY=y0+33;
+  dith(g,xA+2,botY+1,xB-xA-2,4,"rgba(30,14,8,0.42)",0.8,0);
+  fillRR(g,xA-1,topY-1,xB-xA+2,botY-topY+2,2,"#22160f");
+  fillRR(g,xA,topY,xB-xA,4,1,"#cbb68c");
+  pf(g,xA+1,topY+1,xB-xA-2,1,"#ecdfbe");
+  pf(g,xA,topY+4,xB-xA,1,"#8a5a34");
+  fillRR(g,xA,topY+5,xB-xA,botY-topY-5,1,"#8a5a34");
+  pf(g,xA,topY+5,1,botY-topY-5,"#6b4426");
+  pf(g,xB-1,topY+5,1,botY-topY-5,"#57341a");
+  pf(g,xA+1,topY+9,xB-xA-2,1,"#5e3a1e");
   var kx=xA+Math.floor((xB-xA)/2);
-  pf(g,kx-1,topY+14,3,2,"#e0c084");
-  pf(g,kx-1,topY+16,3,1,"#8a6a3a");
-  /* 스탠드 */
+  pf(g,kx-3,topY+11,6,1,"#e8cf95");
+  pf(g,kx-3,topY+12,6,1,"#8a6a3a");
   var cx=x0+CELL/2;
-  pf(g,cx-4,topY-2,9,2,"#6b4a28");
-  pf(g,cx-3,topY-3,7,1,"#8a6338");
-  pf(g,cx-1,topY-8,2,5,"#c8b48a");
-  fillRR(g,cx-7,topY-15,15,8,2,"#6b4a28");
-  fillRR(g,cx-6,topY-14,13,6,1,"#f2d79c");
-  pf(g,cx-5,topY-13,11,2,"#ffeec4");
-  dith(g,cx-15,topY-20,30,22,"rgba(255,196,110,0.16)",0.45,1);
+  pf(g,cx-5,topY-3,11,2,"#6b4a28");
+  pf(g,cx-1,topY-9,2,6,"#cbb68c");
+  fillRR(g,cx-8,topY-17,17,9,2,"#5e3f22");
+  fillRR(g,cx-7,topY-16,15,7,1,"#f2d79c");
+  pf(g,cx-6,topY-15,13,2,"#ffeec4");
+  pf(g,cx-4,topY-13,9,1,"#e0b060");
+  dith2(g,cx-14,topY-22,28,22,"rgba(255,196,110,0.20)",0.5,1);
 }
 
 function drawSofa(g,st,x,y){
-  var x0=x*CELL, y0=y*CELL;
+  var x0=x*CELL,y0=y*CELL;
   var lf=counterRun(st,x-1,y,"S"), rt=counterRun(st,x+1,y,"S");
-  var xA=x0+(lf?-2:2), xB=x0+CELL+(rt?2:-2), w=xB-xA;
-  dith(g,xA+1,y0+CELL-5,w-2,5,"rgba(28,12,10,0.34)",0.7,0);
-  /* 등받이 */
-  fillRR(g,xA-1,y0+5,w+2,17,3,"#331f1e");
-  fillRR(g,xA,y0+6,w,15,2,"#a4574a");
-  pf(g,xA+1,y0+7,w-2,2,"#c47a68");
-  pf(g,xA+1,y0+9,w-2,1,"#b46a5a");
-  dith(g,xA+1,y0+17,w-2,3,"#8e453c",0.5,0);
-  if(!lf) pf(g,xA+1,y0+6,1,15,"#8e453c");
-  if(!rt) pf(g,xB-2,y0+6,1,15,"#8e453c");
-  /* 시트 */
-  fillRR(g,xA-1,y0+20,w+2,12,3,"#331f1e");
-  fillRR(g,xA,y0+21,w,10,2,"#b56454");
-  pf(g,xA+1,y0+21,w-2,2,"#cf8672");
-  dith(g,xA+1,y0+27,w-2,3,"#8e453c",0.5,0);
-  for(var sx=xA+11;sx<xB-6;sx+=16){
-    pf(g,sx,y0+22,1,8,"#8e453c");
-    pf(g,sx-1,y0+26,3,1,"#7c3b34");
+  var xA=x0+(lf?0:1), xB=x0+CELL-(rt?0:1), w=xB-xA;
+  dith(g,xA+2,y0+CELL-5,w-2,5,"rgba(30,12,10,0.40)",0.8,0);
+  fillRR(g,xA-1,y0+3,w+2,18,3,"#301c1c");
+  fillRR(g,xA,y0+4,w,16,2,"#a4574a");
+  pf(g,xA+1,y0+5,w-2,2,"#c9806d");
+  dith(g,xA+1,y0+7,w-2,2,"#b46a5a",0.45,0);
+  dith(g,xA+1,y0+16,w-2,3,"#8a4239",0.55,0);
+  for(var sx=xA+18;sx<xB-6;sx+=18) pf(g,sx,y0+5,1,15,"#8a4239");
+  fillRR(g,xA-1,y0+18,w+2,15,3,"#301c1c");
+  fillRR(g,xA,y0+19,w,13,2,"#b56454");
+  pf(g,xA+1,y0+19,w-2,2,"#d08774");
+  dith(g,xA+1,y0+27,w-2,4,"#8a4239",0.55,0);
+  for(var sx2=xA+16;sx2<xB-6;sx2+=16){
+    pf(g,sx2,y0+20,1,11,"#8a4239");
+    pf(g,sx2-1,y0+25,3,1,"#6f332c");
   }
-  /* 팔걸이 */
   if(!lf){
-    fillRR(g,xA-2,y0+9,8,23,2,"#331f1e");
-    fillRR(g,xA-1,y0+10,6,21,2,"#8e453c");
-    pf(g,xA,y0+11,4,2,"#a4574a");
+    fillRR(g,xA-2,y0+8,9,23,2,"#301c1c");
+    fillRR(g,xA-1,y0+9,7,21,2,"#8e453c");
+    pf(g,xA,y0+10,5,2,"#ad5c4c");
+    pf(g,xA,y0+28,5,1,"#6f332c");
   }
   if(!rt){
-    fillRR(g,xB-6,y0+9,8,23,2,"#331f1e");
-    fillRR(g,xB-5,y0+10,6,21,2,"#8e453c");
-    pf(g,xB-4,y0+11,4,2,"#a4574a");
+    fillRR(g,xB-7,y0+8,9,23,2,"#301c1c");
+    fillRR(g,xB-6,y0+9,7,21,2,"#8e453c");
+    pf(g,xB-5,y0+10,5,2,"#ad5c4c");
+    pf(g,xB-5,y0+28,5,1,"#6f332c");
   }
-  pf(g,xA,y0+31,w,2,"#6d332c");
+  pf(g,xA,y0+31,w,2,"#63302a");
 }
 
 function drawTable(g,st,x,y){
-  var x0=x*CELL, y0=y*CELL;
-  dith(g,x0+4,y0+CELL-6,CELL-8,5,"rgba(28,12,8,0.34)",0.65,0);
-  /* 다리 */
-  fillRR(g,x0+8,y0+24,4,11,1,"#3a2415");
-  fillRR(g,x0+CELL-12,y0+24,4,11,1,"#3a2415");
-  pf(g,x0+9,y0+25,2,9,"#6b4426");
-  pf(g,x0+CELL-11,y0+25,2,9,"#6b4426");
-  /* 상판 */
-  fillRR(g,x0+2,y0+11,CELL-4,15,4,"#3a2415");
-  fillRR(g,x0+3,y0+12,CELL-6,13,4,"#9a663a");
-  pf(g,x0+5,y0+13,CELL-10,2,"#c08a54");
-  dith(g,x0+5,y0+19,CELL-10,5,"#84552e",0.55,0);
-  pf(g,x0+6,y0+16,CELL-12,1,"#a9743f");
-  /* 나무결 */
-  pf(g,x0+8,y0+18,5,1,"#84552e");
-  pf(g,x0+17,y0+21,7,1,"#84552e");
-  /* 컵 */
-  var cx=x0+CELL-11;
-  fillRR(g,cx-2,y0+7,5,5,1,"#3a2415");
-  fillRR(g,cx-1,y0+8,3,3,1,"#e8e2d4");
-  pf(g,cx-1,y0+8,3,1,"#fff8ea");
+  var x0=x*CELL,y0=y*CELL;
+  dith(g,x0+4,y0+CELL-6,CELL-8,5,"rgba(28,12,8,0.38)",0.75,0);
+  pf(g,x0+9,y0+23,4,11,"#3a2415");
+  pf(g,x0+CELL-13,y0+23,4,11,"#3a2415");
+  pf(g,x0+10,y0+24,2,9,"#75502c");
+  pf(g,x0+CELL-12,y0+24,2,9,"#75502c");
+  fillRR(g,x0+1,y0+9,CELL-2,17,4,"#2a1a10");
+  fillRR(g,x0+2,y0+10,CELL-4,15,3,"#8f5f36");
+  fillRR(g,x0+2,y0+10,CELL-4,11,3,"#b6824a");
+  pf(g,x0+4,y0+11,CELL-8,2,"#d5a066");
+  dith2(g,x0+4,y0+14,CELL-8,5,"#a4713f",0.35,0);
+  pf(g,x0+3,y0+20,CELL-6,1,"#6f4626");
+  var cx=x0+CELL/2;
+  fillRR(g,cx-7,y0+12,15,7,3,"#6b4426");
+  fillRR(g,cx-6,y0+13,13,5,2,"#efe6d2");
+  pf(g,cx-4,y0+14,9,1,"#fffdf4");
+  pf(g,cx-2,y0+15,4,1,"#d9a24a");
 }
 
 function drawBed(g,st,x,y){
-  var x0=x*CELL, y0=y*CELL;
+  var x0=x*CELL,y0=y*CELL;
   var lf=counterRun(st,x-1,y,"B"), rt=counterRun(st,x+1,y,"B");
-  var xA=x0+(lf?-2:2), xB=x0+CELL+(rt?2:-2), w=xB-xA;
-  dith(g,xA+1,y0+CELL-4,w-2,4,"rgba(28,12,10,0.32)",0.7,0);
-  /* 매트리스 */
-  fillRR(g,xA-1,y0+8,w+2,26,3,"#3a2a20");
-  fillRR(g,xA,y0+9,w,24,2,"#efe6d2");
-  pf(g,xA+1,y0+10,w-2,2,"#fdf6e6");
-  /* 이불 */
-  fillRR(g,xA,y0+21,w,12,1,"#7d9db4");
-  pf(g,xA+1,y0+22,w-2,2,"#9dbbd0");
-  dith(g,xA+1,y0+29,w-2,3,"#5f7f96",0.55,0);
-  for(var sx=xA+9;sx<xB-4;sx+=14) pf(g,sx,y0+23,1,9,"#6f8ea5");
-  /* 베개 */
+  var xA=x0+(lf?0:1), xB=x0+CELL-(rt?0:1), w=xB-xA;
+  dith(g,xA+2,y0+CELL-4,w-2,4,"rgba(28,12,10,0.38)",0.8,0);
+  fillRR(g,xA-1,y0+4,w+2,30,3,"#3a2a20");
+  fillRR(g,xA,y0+5,w,26,2,"#efe6d2");
+  pf(g,xA+1,y0+6,w-2,2,"#fdf6e6");
+  fillRR(g,xA,y0+18,w,13,1,"#7d9db4");
+  pf(g,xA+1,y0+19,w-2,2,"#a3c0d4");
+  dith(g,xA+1,y0+26,w-2,4,"#5f7f96",0.5,0);
+  for(var sx=xA+8;sx<xB-4;sx+=13) pf(g,sx,y0+20,1,10,"#6f8ea5");
+  var pw=Math.min(14,w-6);
   if(!lf){
-    fillRR(g,xA+2,y0+11,11,7,2,"#d8cbb0");
-    fillRR(g,xA+3,y0+12,9,5,2,"#fffdf4");
+    fillRR(g,xA+2,y0+7,pw,8,2,"#d8cbb0");
+    fillRR(g,xA+3,y0+8,pw-2,6,2,"#fffdf4");
+    pf(g,xA+4,y0+9,pw-4,1,"#ffffff");
   }
-  /* 나무 프레임 */
-  pf(g,xA,y0+32,w,2,"#8a5a34");
-  pf(g,xA,y0+33,w,1,"#5c3a20");
+  pf(g,xA,y0+30,w,3,"#8a5a34");
+  pf(g,xA,y0+30,w,1,"#b5875a");
+  pf(g,xA,y0+33,w,1,"#4a2c14");
 }
 
 function paintFurniture(g,st){
@@ -849,67 +843,73 @@ function bodyPix(g,x,y,w,h,r,P,view){
   g.save(); pathRR(g,x,y,w,h,r); g.clip();
   pf(g,x,y,w,2,P.lit);
   dith(g,x,y+2,w,2,P.lit,0.5,0);
-  pf(g,x,y+h-3,w,2,P.dark);
-  pf(g,x,y+h-1,w,1,P.deep);
+  pf(g,x,y+h-4,w,2,P.dark);
+  pf(g,x,y+h-2,w,2,P.deep);
   if(view==="side"){
     for(var i=0;i<3;i++){
-      var sx=x+4+i*(Math.floor((w-8)/3));
-      pf(g,sx,y+3,2,h-9,P.stripe);
-      dith(g,sx,y+h-6,2,2,P.stripe,0.55,0);
-      pf(g,sx-1,y+3,1,3,P.stripe);
+      var sx=x+5+i*6;
+      pf(g,sx,y+2,2,5,P.stripe);
+      dith(g,sx,y+7,2,2,P.stripe,0.5,0);
     }
-    /* 가슴/배 털 */
-    fillRR(g,x+w-9,y+h-8,9,7,2,P.belly);
-    pf(g,x+w-7,y+h-7,5,1,P.lit);
+    fillRR(g,x+w-10,y+h-9,10,7,2,P.belly);
+    pf(g,x+w-8,y+h-8,6,1,P.lit);
   }else{
-    /* 앞/뒤에서 본 배 */
-    fillRR(g,x+Math.floor(w/2)-5,y+h-8,11,6,2,P.belly);
+    fillRR(g,x+Math.floor(w/2)-6,y+h-9,13,7,2,P.belly);
     for(var k=0;k<2;k++){
-      var bx=x+6+k*(w-14);
-      pf(g,bx,y+4,2,h-10,P.stripe);
+      var bx=x+5+k*(w-13);
+      pf(g,bx,y+3,2,6,P.stripe);
     }
   }
   g.restore();
 }
 
 function legPix(g,x,y,w,h,P,back){
-  fillRR(g,x-1,y,w+2,h,2,P.o);
-  fillRR(g,x,y,w,h-1,2,back?P.dark:P.body);
-  pf(g,x,y,1,h-3,P.lit);
-  pf(g,x+w-1,y,1,h-3,back?P.deep:P.dark);
-  fillRR(g,x-1,y+h-3,w+2,3,1,P.o);
-  fillRR(g,x,y+h-3,w,2,1,P.paw);
+  fillRR(g,x-1,y,w+2,h+1,2,P.o);
+  fillRR(g,x,y,w,h,2,back?P.dark:P.body);
+  if(!back) pf(g,x+1,y+1,1,h-3,P.lit);
+  pf(g,x+w-1,y+1,1,h-3,back?P.deep:P.dark);
+  fillRR(g,x,y+h-3,w,3,1,P.paw);
   pf(g,x,y+h-3,w,1,P.belly);
+  pf(g,x,y+h-1,1,1,P.deep);
+  pf(g,x+2,y+h-1,1,1,P.deep);
+  if(w>4) pf(g,x+4,y+h-1,1,1,P.deep);
 }
 
 function earPix(g,x,y,w,h,P){
   for(var i=0;i<h;i++){
-    var ww=Math.max(1,Math.round(w*(i+1)/h));
-    var xx=x+Math.floor((w-ww)/2);
+    var ww=Math.max(2,Math.round(w*(i+1)/h));
+    var xx=x+Math.round((w-ww)/2);
     pf(g,xx-1,y+i,ww+2,1,P.o);
   }
-  for(var i2=1;i2<h;i2++){
+  for(var i2=0;i2<h;i2++){
     var ww2=Math.max(1,Math.round((w-2)*(i2+1)/h));
-    var xx2=x+Math.floor((w-ww2)/2);
-    pf(g,xx2,y+i2,ww2,1,i2>=h-3?P.dark:P.body);
+    var xx2=x+Math.round((w-ww2)/2);
+    pf(g,xx2,y+i2,ww2,1,P.body);
+    if(i2===0) pf(g,xx2,y+i2,ww2,1,P.lit);
+    if(i2>=h-2) pf(g,xx2,y+i2,ww2,1,P.dark);
   }
-  pf(g,x+Math.floor(w/2)-1,y+Math.max(2,h-3),2,Math.max(1,h-3),P.inner);
+  pf(g,x+Math.round(w/2)-1,y+Math.floor(h*0.45),2,Math.floor(h*0.45),P.inner);
 }
 
-function eyePix(g,x,y,big,P,blink){
-  if(blink){ pf(g,x,y+1,4,1,P.deep); return; }
-  pf(g,x,y,4,4,P.o);
-  pf(g,x+1,y+1,2,2,P.eye);
+function eyePix(g,x,y,P,blink){
+  if(blink){ pf(g,x,y+2,5,1,P.deep); return; }
+  pf(g,x,y,5,5,P.o);
+  pf(g,x+1,y+1,3,3,P.eye);
   pf(g,x+1,y+1,1,1,"#ffffff");
-  pf(g,x+2,y+1,1,2,P.eyeD);
-  if(big) pf(g,x+1,y+3,2,1,P.dark);
+  pf(g,x+2,y+2,1,2,P.eyeD);
+  pf(g,x+1,y+3,3,1,P.dark);
 }
 
 function whiskPix(g,x,y,dir,P){
   var d=dir||1;
-  pf(g,x,y+1,3*d,1,P.whisk);
-  pf(g,x,y+3,4*d,1,P.whisk);
-  pf(g,x,y+5,3*d,1,P.whisk);
+  for(var i=0;i<3;i++){
+    var yy=y+i*2;
+    var len=3+(i%2);
+    var xx=d>0?x:x-len;
+    pf(g,xx,yy,1,1,P.whisk);
+    pf(g,xx+d*2,yy-1,1,1,P.whisk);
+    pf(g,xx+d*(len-1),yy+1,1,1,P.whisk);
+  }
 }
 
 function tailPix(g,pts,w0,w1,P){
@@ -921,113 +921,125 @@ function tailPix(g,pts,w0,w1,P){
   for(var j=0;j<n;j++){
     var t2=j/(n-1), w2=Math.round(w0+(w1-w0)*t2), hw=Math.floor(w2/2);
     fillRR(g,pts[j].x-hw,pts[j].y-hw,w2,w2,2,P.body);
-    pf(g,pts[j].x-hw,pts[j].y-hw,w2-1,1,P.lit);
+    pf(g,pts[j].x-hw,pts[j].y-hw,w2,1,P.lit);
     pf(g,pts[j].x-hw,pts[j].y+hw-1,w2,1,P.dark);
   }
-  /* 꼬리 끝 */
   var lp=pts[n-1];
-  pf(g,lp.x-1,lp.y-1,3,3,P.stripe);
+  pf(g,lp.x-1,lp.y-1,2,2,P.stripe);
+}
+function denseCurve(pts,step){
+  var out=[], n=pts.length;
+  for(var i=0;i<n-1;i++){
+    var a=pts[i], b=pts[i+1];
+    var d=Math.max(Math.abs(b.x-a.x),Math.abs(b.y-a.y));
+    var steps=Math.max(1,Math.round(d/step));
+    for(var s2=0;s2<steps;s2++){
+      out.push({x:Math.round(a.x+(b.x-a.x)*s2/steps), y:Math.round(a.y+(b.y-a.y)*s2/steps)});
+    }
+  }
+  out.push({x:Math.round(pts[n-1].x), y:Math.round(pts[n-1].y)});
+  return out;
 }
 
 function catSide(g,P,now,opt){
   var blink=(now%4600)<120;
-  var sway=Math.sin(now/680)*1.5;
-  var tp=[{x:-17,y:-22},{x:-20,y:-27},{x:-22,y:-32},{x:-23,y:-37},{x:-21,y:-41}];
-  tp[2].x+=Math.round(sway*0.4); tp[2].y-=Math.round(Math.abs(sway)*0.3);
-  tp[3].x+=Math.round(sway*0.9); tp[4].x+=Math.round(sway*1.4); tp[4].y-=Math.round(Math.abs(sway)*0.5);
-  tailPix(g,tp,6,3,P);
+  var sway=Math.sin(now/700);
+  var ctrl=[{x:-15,y:-24},{x:-20,y:-27},{x:-23,y:-31},{x:-23,y:-36},{x:-20,y:-40}];
+  ctrl[2].x=Math.round(ctrl[2].x+sway*1.2);
+  ctrl[3].x=Math.round(ctrl[3].x+sway*1.6);
+  ctrl[4].x=Math.round(ctrl[4].x+sway*1.2);
+  ctrl[4].y=Math.round(ctrl[4].y-Math.abs(sway)*0.8);
+  tailPix(g,denseCurve(ctrl,2),7,4,P);
   legPix(g,-14,-11,6,11,P,true);
-  bodyPix(g,-18,-30,25,22,8,P,"side");
-  earPix(g,-1,-47,6,8,P);
-  earPix(g,10,-47,6,8,P);
-  /* 머리 */
-  fillRR(g,-3,-42,19,18,6,P.o);
-  fillRR(g,-2,-41,17,16,5,P.body);
-  g.save(); pathRR(g,-2,-41,17,16,5); g.clip();
-  pf(g,-2,-41,17,2,P.lit);
-  dith(g,-2,-39,17,2,P.lit,0.45,0);
-  pf(g,-2,-28,17,2,P.dark);
-  pf(g,-2,-26,17,1,P.deep);
-  pf(g,0,-40,1,4,P.stripe);
-  pf(g,4,-40,1,4,P.stripe);
-  pf(g,8,-40,1,3,P.stripe);
+  bodyPix(g,-18,-30,26,20,8,P,"side");
+  legPix(g,2,-11,7,11,P,false);
+  earPix(g,-4,-47,9,8,P);
+  earPix(g,9,-47,9,8,P);
+  fillRR(g,-3,-41,21,18,6,P.o);
+  fillRR(g,-2,-40,19,16,5,P.body);
+  g.save(); pathRR(g,-2,-40,19,16,5); g.clip();
+  pf(g,-2,-40,19,2,P.lit);
+  dith(g,-2,-38,19,2,P.lit,0.45,0);
+  pf(g,-2,-26,19,2,P.dark);
+  pf(g,-2,-24,19,1,P.deep);
+  pf(g,1,-39,1,4,P.stripe);
+  pf(g,6,-39,1,4,P.stripe);
+  pf(g,11,-39,1,3,P.stripe);
   g.restore();
-  /* 얼굴 */
-  fillRR(g,5,-33,9,7,2,P.belly);
-  pf(g,11,-30,2,1,P.nose);
-  pf(g,12,-29,1,1,P.deep);
-  eyePix(g,6,-36,false,P,blink);
-  whiskPix(g,15,-31,1,P);
-  /* 앞다리 */
-  legPix(g,2,-11,6,11,P,false);
-  /* 목걸이 */
-  pf(g,1,-27,2,1,P.tag);
+  fillRR(g,7,-30,9,6,2,P.belly);
+  pf(g,12,-28,3,2,P.nose);
+  pf(g,13,-26,2,1,P.deep);
+  eyePix(g,5,-36,P,blink);
+  whiskPix(g,16,-28,1,P);
+  pf(g,1,-24,4,1,P.tag);
+  pf(g,3,-23,1,1,P.tag);
 }
 
 function headFront(g,P,now,opt){
   var blink=(now%4600)<120;
-  fillRR(g,-11,-42,22,20,7,P.o);
-  fillRR(g,-10,-41,20,18,6,P.body);
-  g.save(); pathRR(g,-10,-41,20,18,6); g.clip();
-  pf(g,-10,-41,20,2,P.lit);
-  dith(g,-10,-39,20,2,P.lit,0.45,0);
-  pf(g,-10,-27,20,2,P.dark);
-  pf(g,-10,-25,20,1,P.deep);
-  pf(g,-6,-40,1,3,P.stripe);
-  pf(g,-1,-40,1,3,P.stripe);
-  pf(g,4,-40,1,3,P.stripe);
+  fillRR(g,-12,-41,24,19,7,P.o);
+  fillRR(g,-11,-40,22,17,6,P.body);
+  g.save(); pathRR(g,-11,-40,22,17,6); g.clip();
+  pf(g,-11,-40,22,2,P.lit);
+  dith(g,-11,-38,22,2,P.lit,0.45,0);
+  pf(g,-11,-26,22,2,P.dark);
+  pf(g,-11,-24,22,1,P.deep);
+  pf(g,-6,-39,1,3,P.stripe);
+  pf(g,-1,-39,1,3,P.stripe);
+  pf(g,4,-39,1,3,P.stripe);
   g.restore();
-  /* 얼굴 중앙 */
-  fillRR(g,-6,-31,13,8,2,P.belly);
-  pf(g,-1,-29,2,1,P.nose);
-  pf(g,-1,-28,2,1,P.deep);
-  pf(g,-2,-27,1,1,P.belly);
-  eyePix(g,-7,-36,true,P,blink);
-  eyePix(g,3,-36,true,P,blink);
-  whiskPix(g,-13,-30,-1,P);
-  whiskPix(g,10,-30,1,P);
+  fillRR(g,-6,-30,13,7,2,P.belly);
+  pf(g,-1,-27,3,2,P.nose);
+  pf(g,-1,-25,3,1,P.deep);
+  eyePix(g,-8,-36,P,blink);
+  eyePix(g,3,-36,P,blink);
+  whiskPix(g,-14,-27,-1,P);
+  whiskPix(g,12,-27,1,P);
 }
 
 function headBack(g,P,now){
-  fillRR(g,-11,-42,22,20,7,P.o);
-  fillRR(g,-10,-41,20,18,6,P.body);
-  g.save(); pathRR(g,-10,-41,20,18,6); g.clip();
-  pf(g,-10,-41,20,2,P.lit);
-  dith(g,-10,-39,20,3,P.lit,0.5,1);
-  pf(g,-10,-27,20,2,P.dark);
-  pf(g,-10,-25,20,1,P.deep);
-  for(var i=0;i<3;i++){
-    pf(g,-6+i*5,-40,2,6,P.stripe);
-  }
+  fillRR(g,-12,-41,24,19,7,P.o);
+  fillRR(g,-11,-40,22,17,6,P.body);
+  g.save(); pathRR(g,-11,-40,22,17,6); g.clip();
+  pf(g,-11,-40,22,2,P.lit);
+  dith(g,-11,-38,22,3,P.lit,0.5,1);
+  pf(g,-11,-26,22,2,P.dark);
+  pf(g,-11,-24,22,1,P.deep);
+  for(var i=0;i<3;i++) pf(g,-6+i*5,-39,2,6,P.stripe);
   g.restore();
-  pf(g,-8,-34,3,2,P.dark);
-  pf(g,5,-34,3,2,P.dark);
+  pf(g,-8,-31,3,2,P.dark);
+  pf(g,6,-31,3,2,P.dark);
 }
 
 function catFront(g,P,now,opt){
-  var tp=[{x:11,y:-9},{x:15,y:-14},{x:16,y:-20},{x:14,y:-25}];
-  tailPix(g,tp,6,3,P);
-  bodyPix(g,-12,-27,24,20,7,P,"front");
-  legPix(g,-10,-11,7,11,P,true);
-  legPix(g,3,-11,7,11,P,false);
-  earPix(g,-9,-48,7,8,P);
-  earPix(g,2,-48,7,8,P);
+  var sway=Math.sin(now/700);
+  var ctrl=[{x:12,y:-8},{x:16,y:-13},{x:17,y:-18},{x:15,y:-23}];
+  ctrl[2].x=Math.round(ctrl[2].x+sway*1.2);
+  ctrl[3].x=Math.round(ctrl[3].x+sway*1.6);
+  tailPix(g,denseCurve(ctrl,2),7,4,P);
+  bodyPix(g,-12,-27,24,18,7,P,"front");
+  legPix(g,-11,-11,7,11,P,true);
+  legPix(g,4,-11,7,11,P,false);
+  earPix(g,-10,-47,8,8,P);
+  earPix(g,2,-47,8,8,P);
   headFront(g,P,now,opt);
-  pf(g,-7,-26,2,1,P.tag);
-  pf(g,5,-26,2,1,P.tag);
+  pf(g,-7,-24,2,1,P.tag);
+  pf(g,5,-24,2,1,P.tag);
 }
 
 function catBack(g,P,now,opt){
-  var tp=[{x:-2,y:-26},{x:-6,y:-32},{x:-6,y:-38},{x:-3,y:-42}];
-  tailPix(g,tp,6,3,P);
-  bodyPix(g,-12,-27,24,20,7,P,"back");
-  legPix(g,-10,-11,7,11,P,true);
-  legPix(g,3,-11,7,11,P,false);
-  earPix(g,-9,-48,7,8,P);
-  earPix(g,2,-48,7,8,P);
+  var sway=Math.sin(now/700);
+  var ctrl=[{x:-4,y:-22},{x:-7,y:-29},{x:-6,y:-35},{x:-3,y:-39}];
+  ctrl[2].x=Math.round(ctrl[2].x+sway*1.2);
+  ctrl[3].x=Math.round(ctrl[3].x+sway*1.6);
+  tailPix(g,denseCurve(ctrl,2),7,4,P);
+  bodyPix(g,-12,-27,24,18,7,P,"back");
+  legPix(g,-11,-11,7,11,P,true);
+  legPix(g,4,-11,7,11,P,false);
+  earPix(g,-10,-47,8,8,P);
+  earPix(g,2,-47,8,8,P);
   headBack(g,P,now);
-  /* 꼬리 뿌리 */
-  pf(g,-3,-28,4,3,P.dark);
+  pf(g,-4,-25,8,3,P.dark);
 }
 
 function drawCatAt(g,cx,gy,P,dir,type,now,opt){
@@ -1064,25 +1076,26 @@ function drawHuman(g,pl,now,dir,moving){
   var o="#181420";
   /* 발 */
   pf(g,-4,-1,3,2,o); pf(g,1,-1,3,2,o);
-  pf(g,-4,-1,2,1,"#3a3a48"); pf(g,1,-1,2,1,"#3a3a48");
+  pf(g,-4,-1,2,1,"#43424f"); pf(g,1,-1,2,1,"#43424f");
   /* 다리 */
-  pf(g,-3,-5,2,4,o); pf(g,1,-5,2,4,o);
+  pf(g,-3,-6,2,5,o); pf(g,1,-6,2,5,o);
   pf(g,-3,-5,2,4,"#2f4763"); pf(g,1,-5,2,4,"#2f4763");
   /* 몸통 */
-  fillRR(g,-4,-14,8,9,2,o);
-  fillRR(g,-3,-13,6,7,2,"#4f7fb8");
-  pf(g,-3,-13,4,1,"#79a6d8");
+  fillRR(g,-4,-15,8,10,2,o);
+  fillRR(g,-3,-14,6,8,2,"#4f7fb8");
+  pf(g,-3,-14,4,1,"#7ba8da");
   pf(g,-3,-7,6,1,"#3a5f8c");
   /* 팔 */
-  pf(g,-5,-12,1,5,"#4f7fb8"); pf(g,4,-12,1,5,"#4f7fb8");
-  pf(g,-5,-8,1,2,"#f0c9a2"); pf(g,4,-8,1,2,"#f0c9a2");
+  pf(g,-5,-13,1,5,"#4f7fb8"); pf(g,4,-13,1,5,"#4f7fb8");
+  pf(g,-5,-9,1,2,"#f0c9a2"); pf(g,4,-9,1,2,"#f0c9a2");
   /* 배낭 */
-  pf(g,-6,-12,2,6,"#8a5a34"); pf(g,-6,-12,2,1,"#a87545");
+  pf(g,-6,-13,2,6,"#8a5a34"); pf(g,-6,-13,2,1,"#a87545");
   /* 머리 */
-  fillRR(g,-3,-20,7,7,2,o);
-  fillRR(g,-2,-19,5,5,1,"#f0c9a2");
-  pf(g,-2,-19,5,1,"#7a5236"); pf(g,-2,-18,1,3,"#7a5236");
-  pf(g,1,-17,1,1,o);
+  fillRR(g,-3,-21,7,7,2,o);
+  fillRR(g,-2,-20,5,5,1,"#f0c9a2");
+  pf(g,-2,-20,5,1,"#7a5236"); pf(g,-2,-19,1,3,"#7a5236");
+  pf(g,1,-18,1,1,o);
+  pf(g,-2,-16,4,1,"#d8ab84");
   g.restore();
 }
 
