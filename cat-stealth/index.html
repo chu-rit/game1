@@ -359,14 +359,8 @@ function nearestPatrolIdx(cat){
 }
 function catStep(st,cat,events){
   if(cat.state==="chase"){
-    /* 들킨 뒤에는 두 칸씩 달려들어요 — 한 번 들키면 좀처럼 빠져나가기 어려워요.
-       (그래서 '기척 범위 안에 서는 것' 자체가 큰 실수예요) */
-    for(var cs=0;cs<2;cs++){
-      var nxt=bfsNext(st,cat,st.player);
-      if(!nxt) break;
-      cat.dir=dirFromTo(cat,nxt); cat.x=nxt.x; cat.y=nxt.y;
-      if(cat.x===st.player.x&&cat.y===st.player.y) break;
-    }
+    var nxt=bfsNext(st,cat,st.player);
+    if(nxt){ cat.dir=dirFromTo(cat,nxt); cat.x=nxt.x; cat.y=nxt.y; }
     /* 시야나 기척에 잡히면 계속 추격: 보이면(들키면) 리셋, 안 보인 채 CHASE_LOST턴이면 포기 */
     if(inBeam(st,cat,st.player)||senseHit(st,cat,st.player)){ cat.chaseSteps=0; }
     else{ cat.chaseSteps++; if(cat.chaseSteps>=CHASE_LOST){ cat.state="return"; } }
@@ -1956,7 +1950,7 @@ function titlePanel(p){
   p.innerHTML='<canvas id="pCat" width="144" height="112"></canvas>'+
   '<div id="tSub">TACTICAL STEALTH PUZZLE</div><h2 id="tTitle">TINY &amp; PAWS</h2>'+
   '<div style="font-size:13px;font-weight:800;color:#cbbfae;margin-bottom:10px;">작은 인간과 거대 고양이</div>'+
-  '<div class="rows">· 인접한 칸을 누르면 <b>바로 한 턴</b>이 진행돼요 (이동·던지기 모두)<br>· 바닥에 떨어진 <b>먹이</b>는 그 칸을 밟으면 주워져요 — 처음엔 아무것도 없어요<br>· 고양이는 먹이를 <b>끝까지 걸어와 먹어요</b>. 먹는 동안은 눈·귀가 모두 닫혀요<br>· 🐟 <b>작은 생선</b> 사거리 3 · 한 입 먹고 돌아가요<br>· 🐠 <b>큰 통생선</b> 사거리 3 · 계속 먹느라 그 자리에 붙박여요<br>· 🌿 <b>캣닢</b> 사거리 5 · 멀리서도 끌려와 두 턴 정신없어요<br>· 보라 점선은 그 고양이의 <b>기척</b> 범위 — 종류마다 넓이가 달라요(1~2칸)<br>· 한 번 들키면 고양이가 <b>두 칸씩</b> 달려들어요<br>· 실수하면 <b>↩ 취소</b>로 몇 번이든 되돌릴 수 있어요</div>'+
+  '<div class="rows">· 인접한 칸을 누르면 <b>바로 한 턴</b>이 진행돼요 (이동·던지기 모두)<br>· 바닥에 떨어진 <b>먹이</b>는 그 칸을 밟으면 주워져요 — 처음엔 아무것도 없어요<br>· 고양이는 먹이를 <b>끝까지 걸어와 먹어요</b>. 먹는 동안은 눈·귀가 모두 닫혀요<br>· 🐟 <b>작은 생선</b> 사거리 3 · 한 입 먹고 돌아가요<br>· 🐠 <b>큰 통생선</b> 사거리 3 · 계속 먹느라 그 자리에 붙박여요<br>· 🌿 <b>캣닢</b> 사거리 5 · 멀리서도 끌려와 두 턴 정신없어요<br>· 보라 점선은 그 고양이의 <b>기척</b> 범위 — 종류마다 넓이가 달라요(1~2칸)<br>· 실수하면 <b>↩ 취소</b>로 몇 번이든 되돌릴 수 있어요</div>'+
   '<button id="pStart">시작하기 🐾</button>';
   var c=document.getElementById("pCat"), g=c.getContext("2d");
   g.imageSmoothingEnabled=false;
