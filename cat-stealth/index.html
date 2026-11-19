@@ -479,7 +479,7 @@ function paintRug(g,st){
     g.strokeStyle="rgba(158,140,110,0.50)"; g.lineWidth=1.6; g.setLineDash([4,3]); g.stroke();
     g.setLineDash([]);
     /* 술(프린지) */
-    g.strokeStyle="rgba(222,211,186,0.9)"; g.lineWidth=1.8; g.lineCap="round";
+    g.strokeStyle="rgba(222,211,186,0.55)"; g.lineWidth=1.7; g.lineCap="round";
     for(var f=0; f<9; f++){
       var fx=mx+8+f*(mw-16)/8;
       g.beginPath(); g.moveTo(fx,my+1); g.lineTo(fx+0.6,my-3.2); g.stroke();
@@ -655,6 +655,12 @@ function paintLighting(g,st){
     g.fillStyle=lg; g.fillRect(lx-CELL*1.3,ly-CELL*1.3,CELL*2.6,CELL*2.6);
   }
   g.restore();
+  /* 가장자리 쿨 톤 (따뜻한 중앙광과의 대비) */
+  var cool=g.createRadialGradient(CV*0.5-40,CV*0.52-30,CV*0.30,CV*0.5,CV*0.52,CV*0.80);
+  cool.addColorStop(0,"rgba(24,30,48,0)");
+  cool.addColorStop(0.65,"rgba(22,28,46,0.10)");
+  cool.addColorStop(1,"rgba(18,24,44,0.30)");
+  g.fillStyle=cool; g.fillRect(0,0,CV,CV);
   /* 비네트 */
   var vg=g.createRadialGradient(CV*0.5,CV*0.46,CV*0.30,CV*0.5,CV*0.5,CV*0.80);
   vg.addColorStop(0,"rgba(0,0,0,0)");
