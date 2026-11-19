@@ -1291,11 +1291,15 @@ function drawPlanOverlay(g,st,now){
       }
       pf(g,x0+CELL/2-1,y0+CELL/2-1,3,3,"rgba("+col+","+(0.7+0.3*blink)+")");
     }else{
-      dith(g,x0+3,y0+3,CELL-6,CELL-6,"rgba("+col+","+(0.10+0.05*blink)+")",0.4,1);
-      for(var an2=0;an2<14;an2++){
-        var ang2=an2*Math.PI/7;
-        pf(g,Math.round(x0+CELL/2+Math.cos(ang2)*14),Math.round(y0+CELL/2+Math.sin(ang2)*14),1,1,"rgba("+col+","+(0.5+0.3*blink)+")");
+      dith2(g,x0+4,y0+4,CELL-8,CELL-8,"rgba("+col+","+(0.12+0.06*blink)+")",0.5,1);
+      for(var e2=0;e2<CELL-8;e2+=6){
+        pf(g,x0+4+e2,y0+4,4,1,"rgba("+col+","+(0.62+0.3*blink)+")");
+        pf(g,x0+4+e2,y0+CELL-5,4,1,"rgba("+col+","+(0.62+0.3*blink)+")");
+        pf(g,x0+4,y0+4+e2,1,4,"rgba("+col+","+(0.62+0.3*blink)+")");
+        pf(g,x0+CELL-5,y0+4+e2,1,4,"rgba("+col+","+(0.62+0.3*blink)+")");
       }
+      pf(g,x0+CELL/2-3,y0+CELL/2-1,5,3,"rgba("+col+",0.9)");
+      pf(g,x0+CELL/2-5,y0+CELL/2-2,2,2,"rgba("+col+",0.75)");
     }
   }
 }
