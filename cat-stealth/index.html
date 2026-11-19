@@ -1381,6 +1381,7 @@ function validFishTiles(){
   var free=function(x,y){
     if(!walkable(G.st,x,y)) return false;
     for(var i=0;i<G.st.cats.length;i++){ if(G.st.cats[i].x===x&&G.st.cats[i].y===y) return false; }
+    for(var fi=0;fi<G.st.fishes.length;fi++){ if(G.st.fishes[fi].x===x&&G.st.fishes[fi].y===y) return false; }
     return true;
   };
   for(var d=0;d<4;d++){
