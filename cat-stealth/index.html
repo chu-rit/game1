@@ -854,20 +854,22 @@ function paintGrid(g,st){
 }
 
 function paintVignette(g,st){
-  var cx=CV/2, cy=CV/2;
-  g.fillStyle="rgba(18,9,16,0.20)";
+  var lx=CV*0.5, ly=CV*0.28;
+  var vx=CV*0.5, vy=CV*0.5;
   for(var j=0;j<CV;j++){
     for(var i=0;i<CV;i++){
-      var dx=(i-cx)/(CV*0.5), dy=(j-cy)/(CV*0.5);
+      var b=BAYER[((j&3)<<2)+(i&3)]+0.5;
+      var dl=Math.sqrt(Math.pow((i-lx)/(CV*0.60),2)+Math.pow((j-ly)/(CV*0.52),2));
+      var warm=1-dl;
+      if(warm>0){
+        if(b < Math.min(15,warm*13)){ g.fillStyle="rgba(255,198,122,0.11)"; g.fillRect(i,j,1,1); }
+      }
+      var dx=(i-vx)/(CV*0.5), dy=(j-vy)/(CV*0.5);
       var d=Math.sqrt(dx*dx+dy*dy);
-      var t=(d-0.62)/0.7;
-      if(t<=0) continue;
-      if(BAYER[((j&3)<<2)+(i&3)]+0.5 < Math.min(15,t*15)) g.fillRect(i,j,1,1);
+      var t=(d-0.70)/0.62;
+      if(t>0 && b < Math.min(15,t*15)){ g.fillStyle="rgba(20,9,16,0.22)"; g.fillRect(i,j,1,1); }
     }
   }
-  /* 따뜻한 빛 웅덩이 */
-  dith(g,cx-70,20,140,120,"rgba(255,196,120,0.10)",0.30,1);
-  dith(g,cx-46,30,92,84,"rgba(255,208,140,0.12)",0.34,3);
 }
 
 /* ================= 스프라이트: 고양이 ================= */
