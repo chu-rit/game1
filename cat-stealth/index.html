@@ -62,7 +62,20 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
 #btnrow button:active{transform:translateY(1px);}
 #btnrow button:disabled{opacity:.34;}
 #bUndo{flex:1.25;}
-#bFish.on{background:#3c2330;box-shadow:inset 0 0 0 2px var(--pink),0 0 18px rgba(255,143,179,.35);color:#ffd7e6;}
+#fishbar{display:flex;gap:8px;}
+#fishbar button{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:10px 2px;
+  border-radius:13px;font-size:14px;line-height:1;
+  background:linear-gradient(#241c2b,#1c1622);box-shadow:inset 0 0 0 1.5px #3a2c36,0 2px 0 rgba(0,0,0,.35);
+  transition:transform .12s ease-out;}
+#fishbar button .nm{font-size:10.5px;font-weight:800;letter-spacing:-.02em;color:#c7b9ab;}
+#fishbar button .n{font-size:12.5px;font-weight:800;font-variant-numeric:tabular-nums;color:#b9ab9c;}
+#fishbar button:active{transform:translateY(1px);}
+#fishbar button:disabled{opacity:.30;filter:grayscale(.85);}
+#fishbar button.on{background:#3c2330;box-shadow:inset 0 0 0 2px var(--pink),0 0 18px rgba(255,143,179,.35);color:#ffd7e6;}
+#fishbar button.on .n{color:#ffd7e6;}
+#fishbar button.on .nm{color:#ffd7e6;}
+#fishbar button.gain{animation:gain .5s ease-out;}
+@keyframes gain{0%{transform:scale(1)}38%{transform:scale(1.16)}100%{transform:scale(1)}}
 #hint{text-align:center;font-size:10.5px;color:var(--dim);font-weight:700;letter-spacing:.02em;min-height:14px;}
 #overlay{position:absolute;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;
   background:radial-gradient(60% 45% at 50% 42%,rgba(20,14,24,.72),rgba(8,6,10,.9));backdrop-filter:blur(4px);}
@@ -98,9 +111,13 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
     <div id="btnrow">
       <button id="bUndo">↩ 취소</button>
       <button id="bReset">↻ 리셋</button>
-      <button id="bFish">🐟 <span id="fishN">2</span></button>
     </div>
-    <div id="hint">인접한 칸을 누르면 바로 이동합니다 · 위험 칸은 빨간 ! 표시</div>
+    <div id="fishbar">
+      <button class="fb" data-kind="small" aria-label="작은 생선">🐟<span class="nm">작은생선</span><span class="n">0</span></button>
+      <button class="fb" data-kind="big" aria-label="큰 통생선">🐠<span class="nm">통생선</span><span class="n">0</span></button>
+      <button class="fb" data-kind="catnip" aria-label="캣닢">🌿<span class="nm">캣닢</span><span class="n">0</span></button>
+    </div>
+    <div id="hint">바닥의 생선을 밟으면 주워요 · 고양이 옆칸(기척)도 위험해요</div>
   </div>
   <div id="overlay" class="hidden"><div class="panel" id="panel"></div></div>
 </div>
@@ -113,41 +130,61 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
 
 var N=9, CELL=40, CV=N*CELL;
 var DIRS=[[0,-1],[1,0],[0,1],[-1,0]]; /* 0↑ 1→ 2↓ 3← */
-var SIGHT_LEN=4, FISH_RANGE=2, FISH_LURE_R=3, CHASE_LOST=3;
+var SIGHT_LEN=4, FISH_RANGE=2, CHASE_LOST=3;
 var STEP_MS=200, ANIM_MS=210, FISH_MS=190, UNDO_MAX=80;
+
+/* ---------------------------- 생선 3종 ----------------------------
+   lure : 유인 사거리(맨해튼 칸). 이 안에 떨어진 생선이 있으면 고양이가 걸어와요.
+   eat  : 다 먹는 데 걸리는 턴 수. 1 = 한 입, 2 = 두 턴, -1 = 영원히(큰 통생선).
+   생선은 아무도 먹지 않으면 바닥에서 절대 사라지지 않아요. 고양이가 다 먹었을 때만 없어져요. */
+var KIND={
+  small :{label:"작은 생선", lure:3, eat:1},
+  big   :{label:"큰 통생선", lure:3, eat:-1},
+  catnip:{label:"캣닢",      lure:5, eat:2}
+};
+var FISH_ORDER=["small","big","catnip"];
+var FISH_ICON={small:"🐟",big:"🐠",catnip:"🌿"};
 
 /* ---------------------------- 스테이지 데이터 ---------------------------- */
 var STAGES=[
- { name:"E자 부엌", fish:2, theme:{X:"counter","~":"rug"},
+ { name:"E자 부엌", theme:{X:"counter","~":"rug"},
    /* 1단계: E자 모양 회랑. 왼쪽 세로줄(척추) + 위·가운데·아래 팔. 바닥 러그가 곧 E자 길.
       고양이는 가운데 팔이 만나는 척추 목(1,4)에 앉아 길을 몸으로 막고 위쪽을 지켜봐요.
       같은 좌표를 두 번 순찰하는 '제자리 초소'라서 평소엔 꼼짝하지 않고,
-      생선 냄새를 맡으면 그쪽으로 걸어가 길을 비켜 줘요. */
-   map:["#########","#~~~~~~~#","#~#######","#~#######","#~~~~~~~#","#~~~~~~~#","#~XXXXXX#","#~~~~~~~#","#########"],
+      생선 냄새를 맡으면 그쪽으로 걸어가 길을 비켜 줘요.
+      큰 통생선은 아래 팔(5,7)에 떨어져 있어요 → 밟아서 주워 목의 고양이에게 던지면
+      그 고양이는 그 자리에 붙박여 영원히 먹느라 길이 영영 비어요. */
+   map:["#########","#~~~~~~~#","#~#######","#~#######","#~~~~~~~#","#~~~~~~~#","#~.XXXXX#","#~~~~~~~#","#########"],
    start:[7,7], goalPos:[7,1],
-   cats:[{type:"C",x:1,y:4,dir:0,patrol:[[1,4],[1,4]]}] },
- { name:"거실 소파", fish:2, theme:{S:"sofa","~":"rug"},
+   cats:[{type:"C",x:1,y:4,dir:0,sense:0,patrol:[[1,4],[1,4]]}],
+   pickups:[{x:5,y:7,kind:"big"}] },
+ { name:"거실 소파", theme:{S:"sofa","~":"rug"},
    map:["#########","#~.....G#","#.......#","#SS.S.SS#","#.......#","#SS.S.SS#","#.......#","#P......#","#########"],
-   cats:[{type:"B",x:4,y:4,dir:1,dirs:[1,3]}] },
- { name:"복도 순찰", fish:3, theme:{X:"counter","~":"rug"},
+   cats:[{type:"B",x:4,y:4,dir:1,sense:1,dirs:[1,3]}],
+   pickups:[{x:4,y:6,kind:"small"},{x:3,y:2,kind:"catnip"}] },
+ { name:"복도 순찰", theme:{X:"counter","~":"rug"},
    map:["#########","#..~..G.#","#XX.XXXX#","#.......#","#.......#","#XXX.XXX#","#.......#","#P......#","#########"],
-   cats:[{type:"C",x:1,y:4,patrol:[[1,4],[7,4]]}] },
- { name:"식탁 미로", fish:3, theme:{T:"table"},
+   cats:[{type:"C",x:1,y:4,sense:2,patrol:[[1,4],[7,4]]}],
+   pickups:[{x:2,y:7,kind:"small"},{x:5,y:6,kind:"catnip"},{x:3,y:3,kind:"big"}] },
+ { name:"식탁 미로", theme:{T:"table"},
    map:["#########","#....G..#","#.T.T.T.#","#.......#","#.T.T.T.#","#.......#","#.T.T.T.#","#P......#","#########"],
-   cats:[{type:"B",x:4,y:3,dir:1,dirs:[1,3]},{type:"C",x:7,y:3,patrol:[[7,1],[7,7]]}] },
- { name:"안방 탈출", fish:3, theme:{B:"bed",X:"nightstand"},
+   cats:[{type:"B",x:4,y:3,dir:1,sense:1,dirs:[1,3]},{type:"C",x:7,y:3,sense:2,patrol:[[7,1],[7,7]]}],
+   pickups:[{x:3,y:7,kind:"catnip"},{x:3,y:6,kind:"small"},{x:5,y:2,kind:"big"}] },
+ { name:"안방 탈출", theme:{B:"bed",X:"nightstand"},
    map:["#########","#G......#","#BBBB.X.#","#.......#","#.......#","#B.BB.BB#","#.......#","#P......#","#########"],
-   cats:[{type:"A",x:1,y:4,dir:1},{type:"C",x:7,y:6,patrol:[[1,6],[7,6]]}] }
+   cats:[{type:"A",x:1,y:4,dir:1,sense:2},{type:"C",x:7,y:6,sense:1,patrol:[[1,6],[7,6]]}],
+   pickups:[{x:2,y:6,kind:"catnip"},{x:6,y:7,kind:"big"},{x:3,y:7,kind:"small"}] }
 ];
 
 /* ---------------------------- 상태 ---------------------------- */
-var G={ mode:"title", stageIdx:0, hearts:3, st:null, fishMode:false,
+var G={ mode:"title", stageIdx:0, hearts:3, st:null, fishMode:false, fishKind:null,
         undoStack:[], moveTiles:[], dangerTiles:[], pending:null, playerDir:0,
-        panelTimer:null, warnT:0, t:0 };
+        panelTimer:null, warnT:0, t:0, fx:[], senseTiles:[] };
 
 function makeCat(def,id){
   var c={id:id,type:def.type,x:def.x,y:def.y,dir:(def.dir!=null?def.dir:0),
          home:{x:def.x,y:def.y,dir:(def.dir!=null?def.dir:0)},state:"idle",lure:0,
+         sense:(def.sense!=null?def.sense:1),
          chaseSteps:0,dirs:def.dirs||null,patrol:def.patrol||null,pi:0,psign:1,rx:def.x,ry:def.y,alertT:0};
   if(c.type==="C"){ c.pi=0; c.psign=1; if(def.patrol){ for(var k=0;k<def.patrol.length;k++){ if(def.patrol[k][0]===def.x&&def.patrol[k][1]===def.y){c.pi=k;} } } c.psign=(c.pi===0)?1:-1; }
   if(c.type==="B"&&c.dirs){ c.dir=c.dirs[0]; }
@@ -167,12 +204,14 @@ function loadStage(idx){
   }
   if(s.start) player={x:s.start[0],y:s.start[1]};
   if(s.goalPos) goal={x:s.goalPos[0],y:s.goalPos[1]};
+  var inv={small:0,big:0,catnip:0};
+  var pickups=(s.pickups||[]).map(function(p){ return {x:p.x,y:p.y,kind:p.kind}; });
   G.st={ idx:idx, grid:grid, theme:s.theme, name:s.name,
-         player:player, goal:goal, fishes:[], fishLeft:s.fish, turn:1,
+         player:player, goal:goal, inv:inv, pickups:pickups, fishes:[], turn:1,
          cats:s.cats.map(makeCat) };
   G.st.player.rx=player.x; G.st.player.ry=player.y;
-  G.fishMode=false; G.pending=null; G.undoStack=[]; G.playerDir=0;
-  G.moveTiles=[]; G.dangerTiles=[];
+  G.fishMode=false; G.fishKind=null; G.pending=null; G.undoStack=[]; G.playerDir=0;
+  G.moveTiles=[]; G.dangerTiles=[]; G.fx=[];
   if(G.panelTimer){ clearTimeout(G.panelTimer); G.panelTimer=null; }
   bakeBoard(G.st);
   updateHUD(); computeDanger();
@@ -241,15 +280,65 @@ function bfsNext(st,from,target,ignoreCats){
   return node;
 }
 function faceToward(cat,t){ cat.dir=dirFromTo(cat,t); }
-/* 바닥에 놓인 생선들 중 가장 가까운 것(없으면 null) */
+/* 바닥의 그 칸에 놓인 생선 */
+function fishAt(st,x,y){
+  if(!st.fishes) return null;
+  for(var i=0;i<st.fishes.length;i++){ if(st.fishes[i].x===x&&st.fishes[i].y===y) return st.fishes[i]; }
+  return null;
+}
+function lureRange(f){ var k=KIND[f.kind]; return k?k.lure:3; }
+/* 먹이를 알아채는 거리 = 그 먹이의 유인 사거리, 또는 그 고양이의 기척 반경 중 큰 쪽.
+   (귀가 밝은 고양이는 냄새도 멀리서 맡아요 → 연쇄 반응이 끊기지 않아요) */
+function noticeRange(f,cat){
+  var lr=lureRange(f), sr=(cat.sense||0);
+  return lr>sr?lr:sr;
+}
+/* 지금 서 있는 자리에서 알아챌 수 있는 가장 가까운 먹이(없으면 null) */
 function nearestFish(st,cat){
   if(!st.fishes||!st.fishes.length) return null;
   var best=null,bd=1e9;
   for(var i=0;i<st.fishes.length;i++){
-    var d=man(cat,st.fishes[i]);
-    if(d<bd){ bd=d; best=st.fishes[i]; }
+    var f=st.fishes[i], d=man(cat,f);
+    if(d<=noticeRange(f,cat)&&d<bd){ bd=d; best=f; }
   }
   return best;
+}
+/* 아직 줍지 않은 바닥의 생선 */
+function pickupAt(st,x,y){
+  if(!st.pickups) return null;
+  for(var i=0;i<st.pickups.length;i++){ if(st.pickups[i].x===x&&st.pickups[i].y===y) return st.pickups[i]; }
+  return null;
+}
+function removeFish(st,f){
+  for(var i=0;i<st.fishes.length;i++){
+    if(st.fishes[i].x===f.x&&st.fishes[i].y===f.y){ st.fishes.splice(i,1); return; }
+  }
+}
+/* 기척(발소리) 감지: 맨해튼 거리 <= sense 이고 두 칸 사이를 벽/가구가 막지 않을 때 */
+function lineClear(st,a,b){
+  var x=a.x,y=a.y,dx=Math.abs(b.x-a.x),dy=Math.abs(b.y-a.y);
+  var sx=a.x<b.x?1:-1, sy=a.y<b.y?1:-1, err=dx-dy, guard=0;
+  while(guard++<14){
+    if(x===b.x&&y===b.y) return true;
+    var e2=err*2;
+    if(e2>-dy){ err-=dy; x+=sx; }
+    if(e2<dx){ err+=dx; y+=sy; }
+    if(x===b.x&&y===b.y) return true;
+    if(isBlocked(st,x,y)) return false;
+  }
+  return false;
+}
+function senseHit(st,cat,pos){
+  if(!cat.sense) return false;
+  if(man(cat,pos)>cat.sense) return false;
+  return lineClear(st,cat,pos);
+}
+function startEat(st,cat,f,events){
+  var k=KIND[f.kind]||KIND.small;
+  f.eatLeft=(k.eat<0)?-1:k.eat;
+  f.eater=cat.id;
+  cat.state="eat"; cat.chaseSteps=0;
+  events.push({k:"bite",id:cat.id,kind:f.kind});
 }
 function nearestPatrolIdx(cat){
   var best=0,bd=1e9;
@@ -263,8 +352,8 @@ function catStep(st,cat,events){
   if(cat.state==="chase"){
     var nxt=bfsNext(st,cat,st.player);
     if(nxt){ cat.dir=dirFromTo(cat,nxt); cat.x=nxt.x; cat.y=nxt.y; }
-    /* 시야에 있으면 계속 추격: 보이면 리셋, 안 보인 채 CHASE_LOST턴이면 포기 */
-    if(inBeam(st,cat,st.player)){ cat.chaseSteps=0; }
+    /* 시야나 기척에 잡히면 계속 추격: 보이면(들키면) 리셋, 안 보인 채 CHASE_LOST턴이면 포기 */
+    if(inBeam(st,cat,st.player)||senseHit(st,cat,st.player)){ cat.chaseSteps=0; }
     else{ cat.chaseSteps++; if(cat.chaseSteps>=CHASE_LOST){ cat.state="return"; } }
   }else if(cat.state==="return"){
     var tgt, arrive=null;
@@ -280,23 +369,38 @@ function catStep(st,cat,events){
       else{ cat.dir=cat.home.dir; if(cat.dirs){ cat.dir=cat.dirs[0]; } }
       events.push({k:"calm",id:cat.id});
     }
-  }else if(cat.state==="lured"){
-    /* 생선은 바닥에 영구히 남으므로 유인에도 수명이 없습니다.
-       사거리 안에 생선이 있는 동안은 계속 가장 가까운 생선 쪽을 향해요. */
-    var nf=nearestFish(st,cat);
-    if(nf&&cat.type==="C"){
-      var f=bfsNext(st,cat,nf);
-      /* 유인된 고양이는 생선 쪽으로 걸어가되, 생선 위나 작은 인간의 칸은 밟지 않아요
-         → 생선 바로 옆 칸에 멈춰 서서 킁킁거리므로 생선이 몸에 가려 사라져 보이지 않습니다 */
-      if(f&&!(f.x===st.player.x&&f.y===st.player.y)&&!(f.x===nf.x&&f.y===nf.y)){ cat.dir=dirFromTo(cat,f); cat.x=f.x; cat.y=f.y; }
-      /* 생선 바로 옆에 다다르면 걸음을 멈추고 생선 쪽을 바라봅니다 */
-      if(man(cat,nf)<=1) faceToward(cat,nf);
-    }else if(nf){
-      faceToward(cat,nf);
+  }else if(cat.state==="eat"){
+    /* 생선 위에 올라가 오물오물. 다 먹을 때까지 그 자리에 붙박여 있고,
+       이 동안은 눈(시야)도 귀(기척)도 닫혀 있어요. */
+    var ef=fishAt(st,cat.x,cat.y);
+    var ek=ef?KIND[ef.kind]:null;
+    if(!ef||!ek){ cat.state="return"; events.push({k:"calm",id:cat.id}); }
+    else if(ek.eat<0){
+      events.push({k:"chew",id:cat.id,kind:ef.kind});   /* 큰 통생선: 판이 끝날 때까지 계속 먹어요 */
     }else{
-      cat.state="idle"; cat.chaseSteps=0;
-      if(cat.type==="C"){ var ii=nearestPatrolIdx(cat); cat.pi=ii; cat.psign=(cat.pi===0)?1:-1; }
-      else{ cat.dir=cat.home.dir; }
+      ef.eatLeft=(ef.eatLeft==null?ek.eat:ef.eatLeft)-1;
+      if(ef.eatLeft<=0){
+        removeFish(st,ef);
+        cat.state="return"; cat.chaseSteps=0;
+        events.push({k:"ate",id:cat.id,kind:ef.kind,x:cat.x,y:cat.y});
+      }else{
+        events.push({k:"chew",id:cat.id,kind:ef.kind});
+      }
+    }
+  }else if(cat.state==="lured"){
+    /* 생선 냄새를 따라 생선 '위'까지 걸어가요. 다 와서 올라서면 그 자리에서 먹기 시작. */
+    var nf=nearestFish(st,cat);
+    if(!nf){
+      cat.state="return"; cat.chaseSteps=0;
+      events.push({k:"calm",id:cat.id});
+    }else if(cat.x===nf.x&&cat.y===nf.y){
+      startEat(st,cat,nf,events);
+    }else{
+      var f=bfsNext(st,cat,nf);
+      /* 작은 인간의 칸은 밟지 않아요(그 턴은 그 자리에서 기다림) */
+      if(f&&!(f.x===st.player.x&&f.y===st.player.y)){ cat.dir=dirFromTo(cat,f); cat.x=f.x; cat.y=f.y; }
+      if(cat.x===nf.x&&cat.y===nf.y){ startEat(st,cat,nf,events); }
+      else if(man(cat,nf)<=1){ faceToward(cat,nf); }
     }
   }else{ /* idle */
     if(cat.type==="B"&&cat.dirs){ cat.dir=(cat.dir===cat.dirs[0])?cat.dirs[1]:cat.dirs[0]; }
@@ -315,31 +419,53 @@ function catStep(st,cat,events){
 }
 function simStep(st,action,events){
   if(action){
-    if(action.t==="move"){ st.player.x=action.x; st.player.y=action.y; }
-    else if(action.t==="fish"){ st.fishes.push({x:action.x,y:action.y}); st.fishLeft--; events.push({k:"fish",x:action.x,y:action.y}); }
+    if(action.t==="move"){
+      st.player.x=action.x; st.player.y=action.y;
+      /* 밟은 칸에 생선이 떨어져 있으면 자동으로 주워요 */
+      var pk=pickupAt(st,action.x,action.y);
+      if(pk){
+        st.inv[pk.kind]=(st.inv[pk.kind]||0)+1;
+        for(var pi=0;pi<st.pickups.length;pi++){ if(st.pickups[pi]===pk){ st.pickups.splice(pi,1); break; } }
+        events.push({k:"pickup",kind:pk.kind,x:action.x,y:action.y});
+      }
+    }
+    else if(action.t==="fish"){
+      var kind=action.kind||"small";
+      if((st.inv[kind]||0)>0){
+        st.inv[kind]--;
+        st.fishes.push({x:action.x,y:action.y,kind:kind});
+        events.push({k:"fish",x:action.x,y:action.y,kind:kind});
+      }
+    }
   }
-  /* 생선은 한 번 바닥에 놓이면 그 판이 끝날 때까지 사라지지 않습니다.
-     사거리 안에 생선이 있는 한 고양이는 계속 유인 상태를 유지하고, 없어졌을 때만 풀립니다. */
+  /* 유인: 사거리 안에 생선이 있으면 idle·돌아가는 중인 고양이가 그쪽으로 끌려가요.
+     생선은 아무도 먹지 않으면 판이 끝날 때까지 바닥에 그대로 있습니다. */
   for(var i=0;i<st.cats.length;i++){
     var c=st.cats[i];
-    if(c.state!=="idle"&&c.state!=="lured") continue;
+    if(c.state!=="idle"&&c.state!=="lured"&&c.state!=="return") continue;
     var lf=nearestFish(st,c);
-    if(lf&&man(c,lf)<=FISH_LURE_R){
-      if(c.state!=="lured"){ c.state="lured"; events.push({k:"lure",id:c.id}); }
+    if(lf){
+      if(c.state!=="lured"){
+        /* 먹이를 다 먹고 돌아가던 길에 또 먹이가 코앞에 있으면 → 연쇄 반응으로 바로 다음 먹이로! */
+        events.push({k:(c.state==="return")?"chain":"lure",id:c.id,kind:lf.kind});
+        c.state="lured"; c.chaseSteps=0;
+      }
       faceToward(c,lf);
     }else if(c.state==="lured"){
-      c.state="idle"; c.chaseSteps=0;
-      if(c.type==="C"){ var li=nearestPatrolIdx(c); c.pi=li; c.psign=(li===0)?1:-1; }
-      else{ c.dir=c.home.dir; }
+      c.state="return"; c.chaseSteps=0;
       events.push({k:"calm",id:c.id});
     }
   }
   for(var j=0;j<st.cats.length;j++){ catStep(st,st.cats[j],events); }
+  /* 감지: 평소(idle)·복귀 중인 고양이는 눈(시야)과 귀(기척)를 모두 열어 둡니다.
+     생선에 정신이 팔린 lured/eat 상태에서는 기척도 시야도 없어요. */
   for(var k2=0;k2<st.cats.length;k2++){
     var c2=st.cats[k2];
-    if(c2.state==="idle"&&inBeam(st,c2,st.player)){
+    if(c2.state!=="idle"&&c2.state!=="return") continue;
+    var seen=inBeam(st,c2,st.player), heard=senseHit(st,c2,st.player);
+    if(seen||heard){
       c2.state="chase"; c2.chaseSteps=0; c2.alertT=0;
-      events.push({k:"spot",id:c2.id});
+      events.push({k:"spot",id:c2.id,bySense:!seen&&heard});
     }
   }
   for(var k3=0;k3<st.cats.length;k3++){
@@ -355,6 +481,7 @@ var low=document.createElement("canvas"); low.width=CV; low.height=CV;
 var ctx=low.getContext("2d");
 var board=document.createElement("canvas"); board.width=CV; board.height=CV;
 var $=function(id){ return document.getElementById(id); };
+var FBTN={};   /* 생선 종류별 HUD 버튼 ({small:{el,num},...}) */
 
 function hashf(x,y,s){
   var h=((x|0)*374761393+(y|0)*668265263+((s||0)|0)*1274126177)>>>0;
@@ -999,8 +1126,9 @@ function drawCatEntity(g,cat,now,opt){
   var emote=null;
   if(cat.state==="chase") emote="!";
   else if(cat.state==="lured") emote=(Math.floor(now/700)%3===0)?"heart":"?";
+  else if(cat.state==="eat") emote="heart";
   drawCatAt(g,cx,gy,P,cat.dir,cat.type,now,{walk:walking,ghost:opt.ghost,noShadow:opt.noShadow,
-      seed:(cat.x*7+cat.y*13),emote:emote});
+      seed:(cat.x*7+cat.y*13),emote:emote,munch:(cat.state==="eat")});
 }
 
 /* ================= 스프라이트: 인간 / 생선 ================= */
@@ -1036,29 +1164,96 @@ function drawHuman(g,pl,now,dir,moving){
   g.restore();
 }
 
-function drawFish(g,cx,cy,now,alpha,glow){
-  g.save();
-  if(alpha!=null) g.globalAlpha=alpha;
-  var x=Math.round(cx), y=Math.round(cy);
-  if(glow){
-    dith(g,x-9,y-7,18,14,"rgba(255,150,196,0.20)",0.4,1);
-  }
+/* ---------- 먹이 스프라이트 3종 ---------- */
+/* 🐟 작은 생선 : 가늘고 긴 은빛 생선 */
+function fishSmallArt(g,x,y){
   /* 꼬리 */
-  fillRR(g,x-9,y-2,5,4,1,"#243645");
-  fillRR(g,x-8,y-1,4,3,1,"#8fb8cf");
-  pf(g,x-8,y-1,2,1,"#b6d5e6");
+  pf(g,x-9,y-3,3,2,"#243645"); pf(g,x-9,y+1,3,2,"#243645");
+  fillRR(g,x-8,y-2,4,4,1,"#8fb8cf");
   /* 몸통 */
-  fillRR(g,x-6,y-4,11,8,3,"#243645");
-  fillRR(g,x-5,y-3,9,6,2,"#a9c9dc");
-  pf(g,x-4,y-3,6,1,"#d6ebf6");
-  pf(g,x-5,y+1,8,1,"#7fa8c1");
+  fillRR(g,x-7,y-3,12,6,3,"#243645");
+  fillRR(g,x-6,y-2,10,4,2,"#a9c9dc");
+  pf(g,x-6,y-2,8,1,"#e3f2fb");
+  pf(g,x-6,y-1,9,1,"#7fa8c1");
+  pf(g,x-5,y+1,7,1,"#d6ebf6");
   /* 등지느러미 */
-  pf(g,x-1,y-6,3,2,"#243645");
-  pf(g,x,y-5,1,1,"#7fa8c1");
+  pf(g,x-2,y-5,3,2,"#243645");
   /* 눈 */
-  pf(g,x+2,y-2,2,2,"#16222c");
-  pf(g,x+2,y-2,1,1,"#ffffff");
+  pf(g,x+3,y-1,2,2,"#16222c");
+  pf(g,x+3,y-1,1,1,"#ffffff");
+}
+/* 🐠 큰 통생선 : 통통하고 살집 좋은 주홍빛 생선 */
+function fishBigArt(g,x,y){
+  /* 꼬리 */
+  fillRR(g,x-17,y-5,7,11,2,"#3a2418");
+  fillRR(g,x-16,y-4,6,9,2,"#ff9d6b");
+  pf(g,x-15,y-3,3,2,"#ffd0a8");
+  pf(g,x-15,y+2,3,2,"#ffd0a8");
+  /* 몸통 */
+  fillRR(g,x-11,y-8,21,17,7,"#3a2418");
+  fillRR(g,x-10,y-7,19,15,6,"#ffb27a");
+  pf(g,x-9,y-7,12,2,"#ffe0bc");
+  pf(g,x-10,y+5,18,2,"#e8825a");
+  /* 비늘 */
+  for(var i=0;i<3;i++){
+    pf(g,x-7+i*5,y-4,4,1,"#ffcf9e");
+    pf(g,x-7+i*5,y-2,5,1,"#f09a68");
+    pf(g,x-6+i*5,y+1,4,1,"#e8825a");
+  }
+  /* 지느러미 */
+  pf(g,x-4,y-11,6,4,"#3a2418"); pf(g,x-3,y-10,4,3,"#ff9d6b");
+  pf(g,x-3,y+9,6,3,"#3a2418");  pf(g,x-2,y+9,4,2,"#ff9d6b");
+  /* 아가미 */
+  pf(g,x+2,y-5,1,9,"#e8825a");
+  /* 눈 */
+  fillRR(g,x+4,y-5,4,4,2,"#28140e");
+  fillRR(g,x+5,y-4,3,3,2,"#ffffff");
+  pf(g,x+6,y-3,2,2,"#1a0f0a");
+  /* 입 */
+  pf(g,x+8,y+2,2,1,"#c75a3c");
+  pf(g,x+9,y-1,1,2,"#e8825a");
+}
+/* 🌿 캣닢 : 생선이 아니라 잎 다발 + 보랏빛 꽃 */
+function catnipArt(g,x,y){
+  /* 줄기 */
+  pf(g,x,y-9,1,12,"#4d8a58");
+  pf(g,x-1,y+2,3,1,"#4d8a58");
+  /* 잎 다발 */
+  fillRR(g,x-8,y-8,7,5,2,"#79cc86");
+  fillRR(g,x+2,y-6,7,5,2,"#68bd78");
+  fillRR(g,x-7,y-2,6,5,2,"#8ad898");
+  fillRR(g,x+2,y+0,6,5,2,"#79cc86");
+  fillRR(g,x-4,y-13,5,5,2,"#a2e8ac");
+  /* 잎맥 */
+  pf(g,x-7,y-6,5,1,"#4d8a58");
+  pf(g,x+3,y-4,5,1,"#4d8a58");
+  pf(g,x-6,y+0,4,1,"#4d8a58");
+  pf(g,x+3,y+2,4,1,"#4d8a58");
+  pf(g,x-3,y-11,3,1,"#4d8a58");
+  /* 보랏빛 꽃 */
+  pf(g,x+4,y-10,2,2,"#c9a2e8");
+  pf(g,x+6,y-8,1,1,"#e0cbf7");
+  pf(g,x-7,y-11,2,2,"#b98de0");
+  pf(g,x-9,y-9,1,1,"#e0cbf7");
+  /* 밑동 그림자 */
+  pf(g,x-3,y+4,7,1,"#3f6b49");
+}
+function drawFishKind(g,cx,cy,kind,now,opt){
+  opt=opt||{};
+  g.save();
+  if(opt.alpha!=null) g.globalAlpha=opt.alpha;
+  var x=Math.round(cx), y=Math.round(cy)+(opt.bob||0);
+  if(opt.glow){
+    var rr=(kind==="big")?13:10;
+    dith(g,x-rr,y-rr+2,rr*2,rr*2-2,"rgba(255,150,196,0.20)",0.4,1);
+  }
+  if(kind==="big") fishBigArt(g,x,y);
+  else if(kind==="catnip") catnipArt(g,x,y);
+  else fishSmallArt(g,x,y);
   g.restore();
+}
+function drawFish(g,cx,cy,now,alpha,glow){
+  drawFishKind(g,cx,cy,"small",now,{alpha:alpha,glow:glow});
 }
 
 /* ================= 렌더 레이어 ================= */
@@ -1171,7 +1366,7 @@ function drawTargets(g,st,now){
   var blink=0.5+0.5*Math.sin(now/200);
   var fish=!!G.fishMode;
   var targets=fish?validFishTiles():(G.moveTiles||[]);
-  var col=fish?"255,158,196":"255,222,140";
+  var col=fish?(G.fishKind==="catnip"?"150,235,170":(G.fishKind==="big"?"255,176,110":"255,158,196")):"255,222,140";
   for(var ti=0;ti<targets.length;ti++){
     var tt=targets[ti], x0=tt.x*CELL, y0=tt.y*CELL;
     dith2(g,x0+4,y0+4,CELL-8,CELL-8,"rgba("+col+","+(0.09+0.05*blink).toFixed(3)+")",0.45,fish?1:0);
@@ -1218,16 +1413,96 @@ function drawWarnMarks(g,st,now){
   }
 }
 
+/* ---------- 기척(발소리) 범위 ---------- */
+function senseTilesOf(st,cat){
+  var out=[];
+  if(!cat.sense) return out;
+  for(var y=0;y<N;y++) for(var x=0;x<N;x++){
+    if(x===cat.x&&y===cat.y) continue;
+    if(Math.abs(x-cat.x)+Math.abs(y-cat.y)>cat.sense) continue;
+    if(isBlocked(st,x,y)) continue;
+    if(!lineClear(st,cat,{x:x,y:y})) continue;
+    out.push({x:x,y:y});
+  }
+  return out;
+}
+function drawSense(g,st,cat,now){
+  /* 눈(시야 콘)과 구분되는 보랏빛 점선 = 귀(기척)가 보는 반경.
+     생선에 정신이 팔린 lured/eat 중에는 귀도 닫혀서 안 그려집니다. */
+  if(cat.state!=="idle"&&cat.state!=="return") return;
+  if(!cat.sense) return;
+  var tl=senseTilesOf(st,cat);
+  var pulse=0.5+0.5*Math.sin(now/520+cat.x*1.3);
+  var a=(0.16+0.16*pulse).toFixed(3);
+  for(var i=0;i<tl.length;i++){
+    var t=tl[i], x0=t.x*CELL, y0=t.y*CELL;
+    for(var e=3;e<CELL-4;e+=8){
+      pf(g,x0+e,y0+2,3,1,"rgba(198,160,255,"+a+")");
+      pf(g,x0+e,y0+CELL-3,3,1,"rgba(198,160,255,"+a+")");
+      pf(g,x0+2,y0+e,1,3,"rgba(198,160,255,"+a+")");
+      pf(g,x0+CELL-3,y0+e,1,3,"rgba(198,160,255,"+a+")");
+    }
+    dith(g,x0+2,y0+2,CELL-4,CELL-4,"rgba(170,130,255,0.05)",0.4,1);
+  }
+  /* 고양이 옆으로 퍼지는 소리 파동 */
+  var cx=Math.round(cat.rx*CELL+CELL/2), hy=Math.round(cat.ry*CELL+CELL-26);
+  var ph=Math.floor(now/260)%3;
+  for(var w=0;w<3;w++){
+    if(w>ph) continue;
+    var rx=5+w*3, aa=(0.30+(2-w)*0.12).toFixed(3);
+    pf(g,cx-rx,hy-1,1,3,"rgba(198,160,255,"+aa+")");
+    pf(g,cx+rx,hy-1,1,3,"rgba(198,160,255,"+aa+")");
+  }
+}
+
+/* ---------- 바닥에 떨어져 있는 생선(줍기) ---------- */
+function drawPickupEntity(g,st,now){
+  if(!st.pickups||!st.pickups.length) return;
+  for(var i=0;i<st.pickups.length;i++){
+    var pk=st.pickups[i];
+    var x0=pk.x*CELL, y0=pk.y*CELL, cx=x0+CELL/2, cy=y0+CELL/2;
+    var pulse=0.5+0.5*Math.sin(now/430+pk.x*1.7);
+    shadowPix(g,cx,y0+CELL-7,9,3,0.24);
+    /* 금빛 점선 프레임 = '밟으면 주워요' */
+    var a=(0.22+0.26*pulse).toFixed(3);
+    for(var e=2;e<CELL-4;e+=7){
+      pf(g,x0+4+e,y0+4,4,1,"rgba(255,224,150,"+a+")");
+      pf(g,x0+4+e,y0+CELL-5,4,1,"rgba(255,224,150,"+a+")");
+      pf(g,x0+4,y0+4+e,1,4,"rgba(255,224,150,"+a+")");
+      pf(g,x0+CELL-5,y0+4+e,1,4,"rgba(255,224,150,"+a+")");
+    }
+    dith(g,x0+3,y0+3,CELL-6,CELL-6,"rgba(255,214,130,"+(0.05+0.05*pulse).toFixed(3)+")",0.4,1);
+    var bob=(Math.sin(now/520+pk.x*2.1)>0)?1:0;
+    drawFishKind(g,cx,cy-2+bob,pk.kind,now,{});
+    var sx=Math.round(cx+7), sy=Math.round(cy-9);
+    pf(g,sx,sy-1,1,3,"rgba(255,246,208,"+(0.35+0.45*pulse).toFixed(3)+")");
+    pf(g,sx-1,sy,3,1,"rgba(255,246,208,"+(0.35+0.45*pulse).toFixed(3)+")");
+  }
+}
+
 function drawFishEntity(g,st,now){
-  /* 던져 둔 생선은 모두 바닥에 그대로 남아 있습니다(수명·페이드 없음) */
+  /* 던져 둔 생선: 아무도 먹지 않으면 판이 끝날 때까지 바닥에 그대로(수명·페이드 없음).
+     고양이가 먹는 중이면 그 고양이 얼굴 쪽으로 살짝 비켜 그려서 오물오물하는 게 보이게 해요. */
   if(!st.fishes||!st.fishes.length) return;
-  var bob=Math.sin(now/300)>0?1:0;
+  var bob=(Math.sin(now/300)>0)?1:0;
   for(var i=0;i<st.fishes.length;i++){
     var f=st.fishes[i];
-    var cx=f.x*CELL+CELL/2, cy=f.y*CELL+CELL/2+bob;
-    shadowPix(g,cx,f.y*CELL+CELL-8,8,3,0.30);
-    dith(g,cx-11,cy-9,22,18,"rgba(255,170,205,0.16)",0.4,1);
-    drawFish(g,cx,cy,now,1,true);
+    var cx=f.x*CELL+CELL/2, cy=f.y*CELL+CELL/2;
+    if(f.eater!=null){
+      for(var ci=0;ci<st.cats.length;ci++){
+        var cc=st.cats[ci];
+        if(cc.id===f.eater&&cc.x===f.x&&cc.y===f.y){
+          var dd=DIRS[cc.dir]||[0,1];
+          cx+=dd[0]*7-(cc.dir===0?7:0); cy+=dd[1]*4+(cc.dir===0?6:0);
+          break;
+        }
+      }
+    }else{
+      cy+=bob;
+    }
+    shadowPix(g,cx,f.y*CELL+CELL-8,f.kind==="big"?10:8,3,0.30);
+    dith(g,cx-11,cy-9,22,18,"rgba(255,170,205,0.14)",0.4,1);
+    drawFishKind(g,cx,cy,f.kind,now,{});
   }
 }
 
@@ -1251,6 +1526,7 @@ function draw(){
   ctx.drawImage(board,0,0);
 
   if(G.mode!=="title"){
+    for(var si=0;si<st.cats.length;si++) drawSense(ctx,st,st.cats[si],now);
     for(var i=0;i<st.cats.length;i++){
       var c=st.cats[i];
       if(c.state==="idle"||c.state==="lured"||c.state==="chase") drawBeam(ctx,st,c,now);
@@ -1260,7 +1536,7 @@ function draw(){
 
   if(G.mode==="play") drawTargets(ctx,st,now);
 
-  if(!(G.pending&&G.pending.arc)) drawFishEntity(ctx,st,now);
+  if(!(G.pending&&G.pending.arc)){ drawPickupEntity(ctx,st,now); drawFishEntity(ctx,st,now); }
 
   if(G.pending&&G.pending.arc){
     var fa=G.pending.arc, t2=Math.min(1,(now-fa.t0)/FISH_MS);
@@ -1268,7 +1544,18 @@ function draw(){
       var fx0=fa.from.x*CELL+CELL/2, fy0=fa.from.y*CELL+CELL/2;
       var fx1=fa.to.x*CELL+CELL/2, fy1=fa.to.y*CELL+CELL/2;
       var ax=fx0+(fx1-fx0)*t2, ay=fy0+(fy1-fy0)*t2-CELL*0.6*Math.sin(Math.PI*t2);
-      drawFish(ctx,ax,ay,now,1,true);
+      drawFishKind(ctx,ax,ay,fa.kind||"small",now,{glow:true});
+    }
+  }
+
+  /* 주운 생선이 떠오르며 사라지는 연출 */
+  if(G.fx&&G.fx.length){
+    for(var fi2=G.fx.length-1;fi2>=0;fi2--){
+      var fxo=G.fx[fi2], k2=(now-fxo.t0)/520;
+      if(k2>=1){ G.fx.splice(fi2,1); continue; }
+      var fxp=fxo.x*CELL+CELL/2, fyp=fxo.y*CELL+CELL/2-8-k2*22;
+      drawFishKind(ctx,fxp,fyp,fxo.kind,now,{alpha:1-k2,glow:false});
+      pf(ctx,Math.round(fxp+6),Math.round(fyp-8),1,1,"rgba(255,246,208,"+(1-k2).toFixed(3)+")");
     }
   }
 
@@ -1335,6 +1622,10 @@ function sCatch(){ beep(200,0.4,"sawtooth",0.08,-120); }
 function sGoal(){ setTimeout(function(){beep(523,0.1,"square",0.05);},0); setTimeout(function(){beep(659,0.1,"square",0.05);},110); setTimeout(function(){beep(784,0.22,"square",0.06);},220); }
 function sUndo(){ beep(430,0.07,"triangle",0.05,-90); }
 function sReset(){ beep(320,0.09,"triangle",0.05,140); }
+function sPickup(){ beep(660,0.07,"square",0.05,180); setTimeout(function(){ beep(880,0.10,"square",0.05,120); },70); }
+function sBite(){ beep(300,0.09,"triangle",0.06,-80); }
+function sAte(){ beep(520,0.09,"sine",0.05,160); }
+function sChain(){ beep(600,0.08,"square",0.05,220); setTimeout(function(){ beep(820,0.10,"square",0.05,160); },90); }
 
 /* ================= HUD ================= */
 function updateHUD(){
@@ -1344,13 +1635,18 @@ function updateHUD(){
   $("hTurn").textContent="TURN "+G.st.turn;
   var hh=""; for(var i=0;i<3;i++){ hh+=(i<G.hearts)?"♥":"·"; }
   $("hHearts").textContent=hh;
-  $("fishN").textContent=G.st.fishLeft;
-  var busy=(G.mode==="anim"||!!G.pending);
+  var inv=G.st.inv, busy=(G.mode==="anim"||!!G.pending);
   var live=(G.mode==="play"||G.mode==="caught");
+  for(var fi=0;fi<FISH_ORDER.length;fi++){
+    var kd=FISH_ORDER[fi], btn=FBTN[kd];
+    if(!btn) continue;
+    var n=inv[kd]||0;
+    btn.num.textContent=n;
+    btn.el.disabled=(n<=0)||busy||G.mode!=="play";
+    btn.el.classList.toggle("on",!!G.fishMode&&G.fishKind===kd);
+  }
   $("bUndo").disabled=busy||G.undoStack.length===0||!(live||G.mode==="over");
   $("bReset").disabled=busy||!live;
-  $("bFish").disabled=busy||G.mode!=="play"||G.st.fishLeft<=0;
-  $("bFish").classList.toggle("on",!!G.fishMode);
 }
 function setWarn(msg,cls){
   var w=$("warn");
@@ -1376,12 +1672,13 @@ function validMoves(){
   return out;
 }
 function validFishTiles(){
-  /* 상하좌우 직선 2칸까지만 · 대각선 불가 · 장애물(벽/가구/고양이)을 만나면 그 방향은 거기서 끊김 */
+  /* 상하좌우 직선 2칸까지만 · 대각선 불가 · 장애물(벽/가구/고양이/다른 생선/아직 줍지 않은 생선)을 만나면 그 방향은 거기서 끊김 */
   var p=G.st.player, out=[];
   var free=function(x,y){
     if(!walkable(G.st,x,y)) return false;
     for(var i=0;i<G.st.cats.length;i++){ if(G.st.cats[i].x===x&&G.st.cats[i].y===y) return false; }
     for(var fi=0;fi<G.st.fishes.length;fi++){ if(G.st.fishes[fi].x===x&&G.st.fishes[fi].y===y) return false; }
+    for(var pi=0;pi<G.st.pickups.length;pi++){ if(G.st.pickups[pi].x===x&&G.st.pickups[pi].y===y) return false; }
     return true;
   };
   for(var d=0;d<4;d++){
@@ -1425,8 +1722,7 @@ function beginTurn(action){
   if(action.t==="move") G.playerDir=action.dir;
   else if(action.t==="fish") G.playerDir=dirFromTo({x:st.player.x,y:st.player.y,dir:G.playerDir},{x:action.x,y:action.y});
   st.player.x=next.player.x; st.player.y=next.player.y;
-  st.fishes=next.fishes.slice();
-  st.fishLeft=next.fishLeft;
+  st.inv=next.inv; st.pickups=next.pickups; st.fishes=next.fishes;
   for(var i=0;i<st.cats.length;i++){
     var c=st.cats[i], nc=next.cats[i];
     c.x=nc.x; c.y=nc.y; c.dir=nc.dir; c.state=nc.state; c.lure=nc.lure;
@@ -1436,12 +1732,27 @@ function beginTurn(action){
   var arc=null;
   for(var e=0;e<ev.length;e++){
     var v=ev[e];
-    if(v.k==="fish"){ arc={from:{x:snap.st.player.x,y:snap.st.player.y},to:{x:v.x,y:v.y},t0:performance.now()}; sFish(); }
+    if(v.k==="fish"){ arc={from:{x:snap.st.player.x,y:snap.st.player.y},to:{x:v.x,y:v.y},kind:v.kind,t0:performance.now()}; sFish(); }
     else if(v.k==="spot"){ var cat=catById(v.id); if(cat) cat.alertT=performance.now(); sSpot(); }
+    else if(v.k==="pickup"){
+      G.fx.push({kind:v.kind,x:v.x,y:v.y,t0:performance.now()});
+      var fbt=FBTN[v.kind];
+      if(fbt){ fbt.el.classList.remove("gain"); void fbt.el.offsetWidth; fbt.el.classList.add("gain"); }
+      sPickup();
+      setWarn(KIND[v.kind].label+"을(를) 주웠어요! 아래 버튼으로 던질 수 있어요","fish");
+      clearWarnSoon(2000);
+    }
+    else if(v.k==="bite"){ sBite(); }
+    else if(v.k==="chain"){
+      sChain();
+      setWarn("😺 연쇄 반응! 냄새를 따라 다음 먹이로 걸어가요","fish");
+      clearWarnSoon(2200);
+    }
+    else if(v.k==="ate"){ sAte(); }
   }
 
   G.pending={next:next,ev:ev,t0:performance.now(),arc:arc};
-  G.mode="anim"; G.fishMode=false;
+  G.mode="anim"; G.fishMode=false; G.fishKind=null;
   if(action.t==="move") sTap();
   setWarn("");
   updateHUD();
@@ -1496,7 +1807,7 @@ function undo(){
   for(var i=0;i<G.st.cats.length;i++){ var c=G.st.cats[i]; c.rx=c.x; c.ry=c.y; c.alertT=0; }
   if(G.panelTimer){ clearTimeout(G.panelTimer); G.panelTimer=null; }
   hidePanel();
-  G.mode="play"; G.fishMode=false;
+  G.mode="play"; G.fishMode=false; G.fishKind=null;
   sUndo();
   setWarn("↩ 한 수 되돌렸어요");
   clearWarnSoon(1400);
@@ -1525,7 +1836,7 @@ cvEl.addEventListener("pointerdown",function(e){
   if(G.fishMode){
     var ft=validFishTiles();
     for(var i=0;i<ft.length;i++){
-      if(ft[i].x===tx&&ft[i].y===ty){ beginTurn({t:"fish",x:tx,y:ty}); return; }
+      if(ft[i].x===tx&&ft[i].y===ty){ beginTurn({t:"fish",x:tx,y:ty,kind:G.fishKind}); return; }
     }
     setWarn("그곳에는 던질 수 없어요 (상하좌우 직선 2칸 · 장애물 불가)","fish");
     return;
@@ -1540,7 +1851,7 @@ cvEl.addEventListener("pointerdown",function(e){
       if(vm.length===0){
         setWarn("갈 수 있는 칸이 없어요 · ↩ 취소로 되돌아가세요","bad");
       }else{
-        setWarn("고양이가 길을 막고 있어요 · 🐟 생선으로 유인해 보세요","fish");
+        setWarn("고양이가 길을 막고 있어요 · 생선으로 유인해 보세요","fish");
       }
       clearWarnSoon(1900);
       return;
@@ -1550,17 +1861,38 @@ cvEl.addEventListener("pointerdown",function(e){
 });
 $("bUndo").addEventListener("click",function(){ undo(); });
 $("bReset").addEventListener("click",function(){ resetStage(); });
-$("bFish").addEventListener("click",function(){
-  if(G.mode!=="play"||G.pending||G.st.fishLeft<=0) return;
-  G.fishMode=!G.fishMode;
-  setWarn(G.fishMode?"던질 칸을 누르세요 🐟 (상하좌우 직선 2칸 · 장애물 불가 · 🐟 다시 누르면 취소)":"", G.fishMode?"fish":"");
+/* 생선 버튼 3개: 개수를 보여 주고, 1개 이상이면 눌러서 던지기 모드 */
+function initFishButtons(){
+  var bs=document.querySelectorAll("#fishbar button");
+  for(var i=0;i<bs.length;i++){
+    (function(el){
+      var kind=el.getAttribute("data-kind");
+      FBTN[kind]={el:el,num:el.querySelector(".n")};
+      el.addEventListener("click",function(){ toggleFishMode(kind); });
+    })(bs[i]);
+  }
+}
+function toggleFishMode(kind){
+  if(G.mode!=="play"||G.pending) return;
+  if((G.st.inv[kind]||0)<=0){
+    setWarn(KIND[kind].label+"이(가) 아직 없어요 · 바닥에 떨어진 생선을 밟아서 주우세요","fish");
+    clearWarnSoon(2100);
+    return;
+  }
+  if(G.fishMode&&G.fishKind===kind){ G.fishMode=false; G.fishKind=null; setWarn(""); }
+  else{
+    G.fishMode=true; G.fishKind=kind;
+    setWarn(KIND[kind].label+"을(를) 던질 칸을 누르세요 · 유인 사거리 "+KIND[kind].lure+"칸","fish");
+  }
   updateHUD();
-});
+}
 document.addEventListener("keydown",function(e){
   if(e.key==="u"||e.key==="U"){ undo(); return; }
-  if(e.key==="f"||e.key==="F"){ $("bFish").click(); return; }
+  if(e.key==="1"||e.key==="2"||e.key==="3"){
+    toggleFishMode(FISH_ORDER[parseInt(e.key,10)-1]); return;
+  }
   if(e.key==="Escape"){
-    if(G.fishMode){ G.fishMode=false; setWarn(""); updateHUD(); }
+    if(G.fishMode){ G.fishMode=false; G.fishKind=null; setWarn(""); updateHUD(); }
     else{ resetStage(); }
     return;
   }
@@ -1580,7 +1912,7 @@ function titlePanel(p){
   p.innerHTML='<canvas id="pCat" width="144" height="112"></canvas>'+
   '<div id="tSub">TACTICAL STEALTH PUZZLE</div><h2 id="tTitle">TINY &amp; PAWS</h2>'+
   '<div style="font-size:13px;font-weight:800;color:#cbbfae;margin-bottom:10px;">작은 인간과 거대 고양이</div>'+
-  '<div class="rows">· 인접한 칸을 누르면 <b>바로 한 턴</b>이 진행돼요 (이동·생선 모두)<br>· 빨간 <b>!</b> 칸은 그 수를 두면 고양이 <b>시선</b>에 들어와요<br>· <b>🐟 생선</b>을 던지면 고양이가 그쪽으로 눈을 돌려요 — 지나갈 틈이 생겨요<br>· 실수하면 <b>↩ 취소</b>로 몇 번이든 되돌릴 수 있어요<br>· <b>초록 탈출매트</b>에 도착하면 단계 클리어!</div>'+
+  '<div class="rows">· 인접한 칸을 누르면 <b>바로 한 턴</b>이 진행돼요 (이동·던지기 모두)<br>· 바닥에 떨어진 <b>먹이</b>는 그 칸을 밟으면 주워져요 — 처음엔 아무것도 없어요<br>· 고양이는 먹이를 <b>끝까지 걸어와 먹어요</b>. 먹는 동안은 눈·귀가 모두 닫혀요<br>· 🐟 <b>작은 생선</b> 사거리 3 · 한 입 먹고 돌아가요<br>· 🐠 <b>큰 통생선</b> 사거리 3 · 계속 먹느라 그 자리에 붙박여요<br>· 🌿 <b>캣닢</b> 사거리 5 · 멀리서도 끌려와 두 턴 정신없어요<br>· 보라 점선은 고양이 <b>기척</b> 범위 — 옆칸에 서면 들켜요<br>· 실수하면 <b>↩ 취소</b>로 몇 번이든 되돌릴 수 있어요</div>'+
   '<button id="pStart">시작하기 🐾</button>';
   var c=document.getElementById("pCat"), g=c.getContext("2d");
   g.imageSmoothingEnabled=false;
@@ -1627,6 +1959,7 @@ function resize(){
 
 /* ================= 시작 ================= */
 window.addEventListener("resize",resize);
+initFishButtons();
 loadStage(0);
 G.mode="title";
 resize();
