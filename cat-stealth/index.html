@@ -118,9 +118,14 @@ var STEP_MS=200, ANIM_MS=210, FISH_MS=190, UNDO_MAX=80;
 
 /* ---------------------------- 스테이지 데이터 ---------------------------- */
 var STAGES=[
- { name:"부엌 코너", fish:2, theme:{X:"counter","~":"rug"},
-   map:["#########","#XX~.GXX#","#...X...#","#.X...X.#","#.......#","#.X...X.#","#...X...#","#P......#","#########"],
-   cats:[{type:"A",x:4,y:4,dir:1}] },
+ { name:"E자 부엌", fish:2, theme:{X:"counter","~":"rug"},
+   /* 1단계: E자 모양 회랑. 왼쪽 세로줄(척추) + 위·가운데·아래 팔. 바닥 러그가 곧 E자 길.
+      고양이는 가운데 팔이 만나는 척추 목(1,4)에 앉아 길을 몸으로 막고 위쪽을 지켜봐요.
+      같은 좌표를 두 번 순찰하는 '제자리 초소'라서 평소엔 꼼짝하지 않고,
+      생선 냄새를 맡으면 그쪽으로 걸어가 길을 비켜 줘요. */
+   map:["#########","#~~~~~~~#","#~#######","#~#######","#~~~~~~~#","#~~~~~~~#","#~XXXXXX#","#~~~~~~~#","#########"],
+   start:[7,7], goalPos:[7,1],
+   cats:[{type:"C",x:1,y:4,dir:0,patrol:[[1,4],[1,4]]}] },
  { name:"거실 소파", fish:2, theme:{S:"sofa","~":"rug"},
    map:["#########","#~.....G#","#.......#","#SS.S.SS#","#.......#","#SS.S.SS#","#.......#","#P......#","#########"],
    cats:[{type:"B",x:4,y:4,dir:1,dirs:[1,3]}] },
@@ -160,6 +165,8 @@ function loadStage(idx){
     }
     grid.push(row);
   }
+  if(s.start) player={x:s.start[0],y:s.start[1]};
+  if(s.goalPos) goal={x:s.goalPos[0],y:s.goalPos[1]};
   G.st={ idx:idx, grid:grid, theme:s.theme, name:s.name,
          player:player, goal:goal, fish:null, fishLeft:s.fish, turn:1,
          cats:s.cats.map(makeCat) };
@@ -264,7 +271,8 @@ function catStep(st,cat,events){
   }else if(cat.state==="lured"){
     if(cat.type==="C"&&st.fish){
       var f=bfsNext(st,cat,st.fish);
-      if(f){ cat.dir=dirFromTo(cat,f); cat.x=f.x; cat.y=f.y; }
+      /* 유인된 고양이는 생선 쪽으로 걸어가되, 작은 인간의 칸을 밟고 지나가지는 않아요 */
+      if(f&&!(f.x===st.player.x&&f.y===st.player.y)){ cat.dir=dirFromTo(cat,f); cat.x=f.x; cat.y=f.y; }
       else faceToward(cat,st.fish);
     }
     cat.lure--;
@@ -1531,7 +1539,7 @@ function titlePanel(p){
   p.innerHTML='<canvas id="pCat" width="144" height="112"></canvas>'+
   '<div id="tSub">TACTICAL STEALTH PUZZLE</div><h2 id="tTitle">TINY &amp; PAWS</h2>'+
   '<div style="font-size:13px;font-weight:800;color:#cbbfae;margin-bottom:10px;">작은 인간과 거대 고양이</div>'+
-  '<div class="rows">· 인접한 칸을 누르면 <b>바로 한 턴</b>이 진행돼요 (이동·생선 모두)<br>· 빨간 <b>!</b> 칸은 그 수를 두면 고양이 <b>시선</b>에 들어와요<br>· <b>🐟 생선</b>으로 고양이 시선을 빼앗으세요<br>· 실수하면 <b>↩ 취소</b>로 몇 번이든 되돌릴 수 있어요<br>· <b>초록 탈출매트</b>에 도착하면 단계 클리어!</div>'+
+  '<div class="rows">· 인접한 칸을 누르면 <b>바로 한 턴</b>이 진행돼요 (이동·생선 모두)<br>· 빨간 <b>!</b> 칸은 그 수를 두면 고양이 <b>시선</b>에 들어와요<br>· <b>🐟 생선</b>을 던지면 고양이가 그쪽으로 눈을 돌려요 — 지나갈 틈이 생겨요<br>· 실수하면 <b>↩ 취소</b>로 몇 번이든 되돌릴 수 있어요<br>· <b>초록 탈출매트</b>에 도착하면 단계 클리어!</div>'+
   '<button id="pStart">시작하기 🐾</button>';
   var c=document.getElementById("pCat"), g=c.getContext("2d");
   g.imageSmoothingEnabled=false;
