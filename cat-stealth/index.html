@@ -1381,12 +1381,13 @@ function drawIntent(g,st,now){
 }
 /* 이동 방향 화살촉: dir 쪽으로 뾰족한 채워진 삼각형 */
 function arrowTip(g,cx,cy,dir,len,half,col){
-  var d=DIRS[dir]||[0,1];
+  /* 밑변은 뒤쪽, 꼭짓점은 dir 쪽 — 상하좌우 모두 그 방향으로 뾰족하게 */
+  var d=DIRS[dir]||[0,0];
   for(var t=-len;t<=len;t++){
     var w=Math.round(half*(1-(t+len)/(2*len)));
     if(w<0) continue;
-    if(d[0]!==0) pf(g,cx+t,cy-w,1,w*2+1,col);
-    else pf(g,cx-w,cy+t,w*2+1,1,col);
+    if(d[0]!==0) pf(g,cx+t*d[0],cy-w,1,w*2+1,col);
+    else pf(g,cx-w,cy+t*d[1],w*2+1,1,col);
   }
 }
 function drawTargets(g,st,now){
