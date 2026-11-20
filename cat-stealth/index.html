@@ -33,16 +33,19 @@ body{
     #141019;
   overflow:hidden;
 }
-#hud{display:flex;align-items:flex-start;justify-content:space-between;padding:0 6px 6px;gap:8px;position:relative;z-index:3;}
+#hud{display:flex;align-items:center;justify-content:space-between;padding:0 6px 6px;gap:8px;position:relative;z-index:3;}
 .hb{display:flex;flex-direction:column;gap:3px;min-width:64px;}
-.hb.mid{align-items:center;flex:1;}
+.hb.mid{align-items:center;flex:1;gap:0;}
 .hb.right{align-items:flex-end;}
 .hb .k{font-size:9px;letter-spacing:.22em;font-weight:800;color:var(--dim);}
 .hb .v{font-size:20px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;}
 .hb .v.stage{color:var(--amber);text-shadow:0 0 16px rgba(255,176,46,.55);}
-#hHearts{color:var(--red);letter-spacing:2px;font-size:15px;padding-top:3px;text-shadow:0 0 10px rgba(255,93,110,.45);}
-#hName{font-size:12.5px;font-weight:800;color:var(--cream);letter-spacing:.05em;}
-#hTurn{font-size:10px;font-weight:800;color:var(--dim);letter-spacing:.18em;}
+#hName{font-size:14px;font-weight:800;color:var(--cream);letter-spacing:.045em;text-align:center;}
+/* 우측 TURN 숫자 — 좌측 STAGE와 같은 크기·줄맞춤, 색만 차분한 크림색 */
+.hb .v.turnnum{color:var(--cream);text-shadow:0 0 14px rgba(255,255,255,.12);}
+#pReset{width:100%;padding:14px;border-radius:13px;font-size:15px;margin-top:8px;background:linear-gradient(#2a2030,#211a26);
+  box-shadow:inset 0 0 0 1.5px #45343d,0 8px 20px rgba(0,0,0,.4);color:#cbbfae;}
+#pReset .kc{color:#cbbfae;background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);}
 #stage{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;z-index:1;}
 #boardWrap{position:relative;filter:drop-shadow(0 18px 34px rgba(0,0,0,.55));}
 #cv{display:block;border-radius:10px;touch-action:none;image-rendering:pixelated;image-rendering:crisp-edges;
@@ -98,7 +101,6 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
   box-shadow:inset 0 0 0 1.5px #55c78c,0 8px 20px rgba(0,0,0,.4);color:#dcffee;}
 .panel button .kc{margin-left:6px;height:16px;padding:0 5px;font-size:9.5px;letter-spacing:.04em;
   color:#eafff5;background:rgba(0,0,0,.22);border-color:rgba(255,255,255,.34);box-shadow:none;}
-#pRestart .kc{color:#cbbfae;background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);}
 .panel .rows{margin:12px 0 16px;text-align:left;font-size:11.5px;color:#c9bcae;font-weight:600;line-height:1.45;letter-spacing:-.015em;}
 .panel .rows b{color:var(--amber);}
 #tTitle{font-size:27px;letter-spacing:.05em;margin:2px 0 2px;
@@ -112,8 +114,8 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
 <div id="app">
   <div id="hud">
     <div class="hb"><div class="k">STAGE</div><div class="v stage" id="hStage">1-5</div></div>
-    <div class="hb mid"><div class="k" id="hName">부엌 코너</div><div id="hTurn">TURN 1</div></div>
-    <div class="hb right"><div class="k">HEARTS</div><div id="hHearts">♥♥♥</div></div>
+    <div class="hb mid"><div id="hName">부엌 코너</div></div>
+    <div class="hb right"><div class="k">TURN</div><div class="v turnnum" id="hTurn">1</div></div>
   </div>
   <div id="stage">
     <div id="boardWrap"><canvas id="cv" width="360" height="360"></canvas></div>
@@ -262,7 +264,7 @@ var STAGES=[
 ];
 
 /* ---------------------------- 상태 ---------------------------- */
-var G={ mode:"title", stageIdx:0, hearts:3, st:null, fishMode:false, fishKind:null,
+var G={ mode:"title", stageIdx:0, st:null, fishMode:false, fishKind:null,
         fishAim:null,
         undoStack:[], moveTiles:[], dangerTiles:[], pending:null, playerDir:0,
         panelTimer:null, warnT:0, t:0, fx:[] };
@@ -2021,15 +2023,13 @@ function updateHUD(){
   var s=STAGES[G.stageIdx];
   $("hStage").textContent=(G.stageIdx+1)+"/"+STAGES.length;
   $("hName").textContent=s.name;
-  $("hTurn").textContent="TURN "+G.st.turn;
+  $("hTurn").textContent=G.st.turn;
   /* 수풀에 숨어 있는 동안은 하단 힌트가 은신 상태를 알려줘요 */
   if(isHideTile(G.st,G.st.player.x,G.st.player.y)){
     $("hint").textContent="🌿 수풀에 숨었어요 — 고양이 눈·귀에 안 걸리고 추격도 끊겼어요";
   }else{
     $("hint").textContent=s.hint||HINT_DEFAULT;
   }
-  var hh=""; for(var i=0;i<3;i++){ hh+=(i<G.hearts)?"♥":"·"; }
-  $("hHearts").textContent=hh;
   var inv=G.st.inv, busy=(G.mode==="anim"||!!G.pending);
   var live=(G.mode==="play"||G.mode==="caught");
   for(var fi=0;fi<FISH_ORDER.length;fi++){
@@ -2040,7 +2040,7 @@ function updateHUD(){
     btn.el.disabled=(n<=0)||busy||G.mode!=="play";
     btn.el.classList.toggle("on",!!G.fishMode&&G.fishKind===kd);
   }
-  $("bUndo").disabled=busy||G.undoStack.length===0||!(live||G.mode==="over");
+  $("bUndo").disabled=busy||G.undoStack.length===0||!live;
   $("bReset").disabled=busy||!live;
 }
 function setWarn(msg,cls){
@@ -2107,7 +2107,7 @@ function catById(id){
 }
 function beginTurn(action){
   if(G.mode!=="play"||G.pending) return;
-  var snap={st:cloneState(G.st),hearts:G.hearts,dir:G.playerDir};
+  var snap={st:cloneState(G.st),dir:G.playerDir};
   var next=cloneState(G.st), ev=[];
   simStep(next,action,ev);
 
@@ -2168,17 +2168,12 @@ function finishTurn(){
     if(p.ev[e].k==="goal") goal=true;
   }
   if(caught){
-    G.hearts--;
     sCatch();
     var stEl=$("stage"); stEl.classList.remove("shake"); void stEl.offsetWidth; stEl.classList.add("shake");
-    if(G.hearts<=0){
-      G.mode="over"; setWarn(""); updateHUD();
-      G.panelTimer=setTimeout(function(){ G.panelTimer=null; if(G.mode==="over") showPanel(overPanel); },700);
-      return;
-    }
     G.mode="caught";
-    setWarn("😹 들통! 하트 −1 · ↩ 취소로 되돌리기","bad");
+    setWarn("😿 들통! 고양이에게 잡혔어요 · ↩ 되돌리기 / ↻ 리셋","bad");
     updateHUD();
+    G.panelTimer=setTimeout(function(){ G.panelTimer=null; if(G.mode==="caught") showPanel(caughtPanel); },700);
     return;
   }
   G.st.turn++;
@@ -2201,9 +2196,9 @@ function finishTurn(){
 function undo(){
   if(G.pending) return;
   if(!G.undoStack.length) return;
-  if(G.mode!=="play"&&G.mode!=="caught"&&G.mode!=="over") return;
+  if(G.mode!=="play"&&G.mode!=="caught") return;
   var snap=G.undoStack.pop();
-  G.st=snap.st; G.hearts=snap.hearts; G.playerDir=snap.dir;
+  G.st=snap.st; G.playerDir=snap.dir;
   G.st.player.rx=G.st.player.x; G.st.player.ry=G.st.player.y;
   for(var i=0;i<G.st.cats.length;i++){ var c=G.st.cats[i]; c.rx=c.x; c.ry=c.y; c.alertT=0; }
   if(G.panelTimer){ clearTimeout(G.panelTimer); G.panelTimer=null; }
@@ -2351,9 +2346,9 @@ document.addEventListener("keydown",function(e){
   if(G.mode==="title"){ if(enter) startGame(); return; }
   if(G.mode==="clear"){ if(enter) nextStage(); return; }
   if(G.mode==="win"){ if(enter) restartFromStart(); return; }
-  if(G.mode==="over"){
+  if(G.mode==="caught"){
     if(enter||k==="u"||k==="U"||k==="z"||k==="Z"||k==="Backspace") undo();
-    else if(k==="r"||k==="R") restartFromStart();
+    else if(k==="r"||k==="R") resetStage();
     return;
   }
 
@@ -2388,9 +2383,9 @@ document.addEventListener("keydown",function(e){
 function showPanel(fn){ var ov=$("overlay"), p=$("panel"); p.innerHTML=""; fn(p); ov.classList.remove("hidden"); }
 function hidePanel(){ $("overlay").classList.add("hidden"); }
 /* 패널 버튼 동작 — 터치/클릭과 키보드(Enter·Space·u·z·r)가 같은 함수를 씁니다 */
-function startGame(){ hidePanel(); G.mode="play"; G.hearts=3; G.stageIdx=0; loadStage(0); setWarn(""); beep(600,0.1,"triangle",0.05,200); }
+function startGame(){ hidePanel(); G.mode="play"; G.stageIdx=0; loadStage(0); setWarn(""); beep(600,0.1,"triangle",0.05,200); }
 function nextStage(){ if(G.stageIdx>=STAGES.length-1) return; hidePanel(); G.stageIdx++; G.mode="play"; loadStage(G.stageIdx); setWarn(""); }
-function restartFromStart(){ hidePanel(); G.hearts=3; G.stageIdx=0; G.mode="play"; loadStage(0); setWarn(""); }
+function restartFromStart(){ hidePanel(); G.stageIdx=0; G.mode="play"; loadStage(0); setWarn(""); }
 function titlePanel(p){
   p.innerHTML='<canvas id="pCat" width="144" height="112"></canvas>'+
   '<div id="tSub">TACTICAL STEALTH PUZZLE</div><h2 id="tTitle">TINY &amp; PAWS</h2>'+
@@ -2411,12 +2406,13 @@ function clearPanel(p){
   p.innerHTML='<div class="big">🎉</div><h2>탈출 성공!</h2><p>'+(G.stageIdx+1)+'번째 방을 무사히 빠져나왔어요.<br>다음 방에는 더 예민한 고양이가 있어요…</p><button id="pNext">다음 방으로 →<span class="kc">Enter</span></button>';
   $("pNext").addEventListener("click",nextStage);
 }
-function overPanel(p){
-  p.innerHTML='<div class="big">😿</div><h2>하트를 모두 잃었어요</h2><p>고양이들에게 결국 발각된 작은 인간.<br>마지막 수를 되돌리면 하트도 함께 돌아와요.</p>'+
+/* 잡힘 패널 — 하트 없이 바로 되돌리기(마지막 수) 또는 이 방 다시하기만 고른다 */
+function caughtPanel(p){
+  p.innerHTML='<div class="big">😿</div><h2>고양이에게 잡혔어요!</h2><p>방금 그 수에 고양이가 달려들었어요.<br>마지막 수를 되돌리거나, 이 방을 다시 시작하세요.</p>'+
   '<button id="pUndo">↩ 마지막 수 되돌리기<span class="kc">Enter / U</span></button>'+
-  '<button id="pRestart" style="margin-top:8px;background:linear-gradient(#2a2030,#211a26);box-shadow:inset 0 0 0 1.5px #45343d,0 8px 20px rgba(0,0,0,.4);color:#cbbfae;">처음부터 🐾<span class="kc">R</span></button>';
+  '<button id="pReset">↻ 이 방 다시하기<span class="kc">R</span></button>';
   $("pUndo").addEventListener("click",function(){ undo(); });
-  $("pRestart").addEventListener("click",restartFromStart);
+  $("pReset").addEventListener("click",function(){ resetStage(); });
 }
 function winPanel(p){
   p.innerHTML='<div class="big">🏆</div><h2>완탈출!</h2><p>10개의 방을 모두 통과했어요.<br>당신은 최고의 잠입가… 고양이는 아직 모릅니다.</p><button id="pAgain">처음부터 다시 🐾<span class="kc">Enter</span></button>';
