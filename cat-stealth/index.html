@@ -251,6 +251,7 @@ var STAGES=[
 
 /* ---------------------------- 상태 ---------------------------- */
 var G={ mode:"title", stageIdx:0, hearts:3, st:null, fishMode:false, fishKind:null,
+        fishAim:null,
         undoStack:[], moveTiles:[], dangerTiles:[], pending:null, playerDir:0,
         panelTimer:null, warnT:0, t:0, fx:[] };
 
@@ -283,7 +284,7 @@ function loadStage(idx){
          player:player, goal:goal, inv:inv, pickups:pickups, fishes:[], turn:1,
          cats:s.cats.map(makeCat) };
   G.st.player.rx=player.x; G.st.player.ry=player.y;
-  G.fishMode=false; G.fishKind=null; G.pending=null; G.undoStack=[]; G.playerDir=0;
+  G.fishMode=false; G.fishKind=null; G.fishAim=null; G.pending=null; G.undoStack=[]; G.playerDir=0;
   G.moveTiles=[]; G.dangerTiles=[]; G.fx=[];
   if(G.panelTimer){ clearTimeout(G.panelTimer); G.panelTimer=null; }
   bakeBoard(G.st);
@@ -1708,6 +1709,35 @@ function drawTargets(g,st,now){
     }
   }
 }
+/* 키보드로 조준한 칸 — 선명한 노랑(외곽)+흰색(안쪽) 이중 타겟 테두리 */
+function drawFishAim(g,now){
+  if(!G.fishMode||!G.fishAim) return;
+  var a=G.fishAim, x0=a.x*CELL, y0=a.y*CELL, cx=Math.round(x0+CELL/2), cy=Math.round(y0+CELL/2);
+  var bl=0.5+0.5*Math.sin(now/140);
+  var amber="rgba(255,214,64,"+(0.78+0.22*bl).toFixed(3)+")";
+  var white="rgba(255,255,255,"+(0.80+0.20*bl).toFixed(3)+")";
+  /* 1) 밝은 바탕 — 다른 표시 위에서도 조준 칸만 훤해지게 */
+  pf(g,x0,y0,CELL,CELL,"rgba(255,255,255,"+(0.12+0.10*bl).toFixed(3)+")");
+  /* 2) 바깥 3px 노랑 테두리 */
+  pf(g,x0,y0,CELL,3,amber); pf(g,x0,y0+CELL-3,CELL,3,amber);
+  pf(g,x0,y0,3,CELL,amber); pf(g,x0+CELL-3,y0,3,CELL,amber);
+  /* 3) 안쪽 2px 흰색 테두리 */
+  pf(g,x0+3,y0+3,CELL-6,2,white); pf(g,x0+3,y0+CELL-5,CELL-6,2,white);
+  pf(g,x0+3,y0+3,2,CELL-6,white); pf(g,x0+CELL-5,y0+3,2,CELL-6,white);
+  /* 4) 네 모서리 굵은 브래킷 */
+  var arm=9, th=3, o=2, edge="rgba(255,214,64,0.98)";
+  pf(g,x0-o,y0-o,arm,th,edge); pf(g,x0-o,y0-o,th,arm,edge);
+  pf(g,x0+CELL+o-arm,y0-o,arm,th,edge); pf(g,x0+CELL+o-th,y0-o,th,arm,edge);
+  pf(g,x0-o,y0+CELL+o-th,arm,th,edge); pf(g,x0-o,y0+CELL+o-arm,th,arm,edge);
+  pf(g,x0+CELL+o-arm,y0+CELL+o-th,arm,th,edge); pf(g,x0+CELL+o-th,y0+CELL+o-arm,th,arm,edge);
+  /* 5) 가운데 십자선 — 선명한 흰색 */
+  pf(g,cx-8,cy-1,16,3,"rgba(18,12,6,0.55)");
+  pf(g,cx-1,cy-8,3,16,"rgba(18,12,6,0.55)");
+  pf(g,cx-6,cy-1,12,2,"rgba(255,255,255,0.98)");
+  pf(g,cx-1,cy-6,2,12,"rgba(255,255,255,0.98)");
+  /* 6) 2칸 조준이면 거리 배지 */
+  if(a.step===2) stepBadge(g,x0+CELL-13,y0+3,2,true);
+}
 function drawWarnMarks(g,st,now){
   var blink=0.5+0.5*Math.sin(now/190);
   for(var wi=0;wi<G.dangerTiles.length;wi++){
@@ -1876,7 +1906,10 @@ function draw(){
   }
   drawGoalPulse(ctx,st,now);
 
-  if(G.mode==="play") drawTargets(ctx,st,now);
+  if(G.mode==="play"){
+    drawTargets(ctx,st,now);
+    drawFishAim(ctx,now);
+  }
 
   if(!(G.pending&&G.pending.arc)){ drawPickupEntity(ctx,st,now); drawFishEntity(ctx,st,now); }
 
@@ -2109,7 +2142,7 @@ function beginTurn(action){
   }
 
   G.pending={next:next,ev:ev,t0:performance.now(),arc:arc};
-  G.mode="anim"; G.fishMode=false; G.fishKind=null;
+  G.mode="anim"; G.fishMode=false; G.fishKind=null; G.fishAim=null;
   if(action.t==="move") sTap();
   updateHUD();
 }
@@ -2163,7 +2196,7 @@ function undo(){
   for(var i=0;i<G.st.cats.length;i++){ var c=G.st.cats[i]; c.rx=c.x; c.ry=c.y; c.alertT=0; }
   if(G.panelTimer){ clearTimeout(G.panelTimer); G.panelTimer=null; }
   hidePanel();
-  G.mode="play"; G.fishMode=false; G.fishKind=null;
+  G.mode="play"; G.fishMode=false; G.fishKind=null; G.fishAim=null;
   sUndo();
   setWarn("↩ 한 수 되돌렸어요");
   clearWarnSoon(1400);
@@ -2235,6 +2268,7 @@ function toggleFishMode(kind){
     clearWarnSoon(2100);
     return;
   }
+  G.fishAim=null;
   if(G.fishMode&&G.fishKind===kind){ G.fishMode=false; G.fishKind=null; setWarn(""); }
   else{
     G.fishMode=true; G.fishKind=kind;
@@ -2242,28 +2276,109 @@ function toggleFishMode(kind){
   }
   updateHUD();
 }
-document.addEventListener("keydown",function(e){
-  if(e.key==="u"||e.key==="U"){ undo(); return; }
-  if(e.key==="1"||e.key==="2"||e.key==="3"){
-    toggleFishMode(FISH_ORDER[parseInt(e.key,10)-1]); return;
+
+/* ================= 키보드 조준 · 투척 ================= */
+/* 이 방향으로 던질 수 있는 칸들 (가까운 칸부터) */
+function fishAimOptions(d){
+  if(!G.st||!G.st.player) return [];
+  var p=G.st.player, ft=validFishTiles(), out=[];
+  for(var step=1;step<=FISH_RANGE;step++){
+    var x=p.x+DIRS[d][0]*step, y=p.y+DIRS[d][1]*step;
+    for(var i=0;i<ft.length;i++){
+      if(ft[i].x===x&&ft[i].y===y) out.push({x:x,y:y,dir:d,step:step});
+    }
   }
-  if(e.key==="Escape"){
-    if(G.fishMode){ G.fishMode=false; G.fishKind=null; setWarn(""); updateHUD(); }
-    else{ resetStage(); }
+  return out;
+}
+/* 방향키/WASD로 조준: 처음엔 1칸, 같은 방향을 한 번 더 누르면 2칸으로 토글 */
+function aimFishDir(d){
+  var opts=fishAimOptions(d);
+  if(!opts.length){
+    setWarn("그 방향에는 던질 칸이 없어요 (상하좌우 직선 2칸 · 장애물 불가)","fish");
+    clearWarnSoon(1700);
+    return false;
+  }
+  var pick=opts[0], prev=G.fishAim;
+  if(prev&&prev.dir===d){
+    for(var i=0;i<opts.length;i++){ if(opts[i].step!==prev.step){ pick=opts[i]; break; } }
+  }
+  G.fishAim={x:pick.x,y:pick.y,dir:pick.dir,step:pick.step};
+  setWarn("🎯 "+KIND[G.fishKind].label+" 조준 "+pick.step+"칸 · Enter/Space로 투척","fish");
+  return true;
+}
+function clearFishAim(){ G.fishAim=null; }
+/* 조준한 칸에 먹이를 던진다 */
+function throwAimedFish(){
+  if(G.mode!=="play"||G.pending) return false;
+  if(!G.fishMode||!G.fishAim) return false;
+  var a=G.fishAim, ft=validFishTiles(), ok=false;
+  for(var i=0;i<ft.length;i++){ if(ft[i].x===a.x&&ft[i].y===a.y) ok=true; }
+  if(!ok){ clearFishAim(); return false; }
+  beginTurn({t:"fish",x:a.x,y:a.y,kind:G.fishKind});
+  return true;
+}
+
+function arrowDirOf(key){
+  if(key==="ArrowUp"||key==="w"||key==="W") return 0;
+  if(key==="ArrowRight"||key==="d"||key==="D") return 1;
+  if(key==="ArrowDown"||key==="s"||key==="S") return 2;
+  if(key==="ArrowLeft"||key==="a"||key==="A") return 3;
+  return -1;
+}
+function isEnterKey(e){ return e.key==="Enter"||e.key===" "||e.key==="Spacebar"||e.code==="Space"; }
+
+document.addEventListener("keydown",function(e){
+  /* Ctrl/Cmd/Alt 조합은 브라우저 단축키라서 건드리지 않아요 */
+  if(e.ctrlKey||e.metaKey||e.altKey) return;
+  var k=e.key;
+  /* 스크롤 · 뒤로가기 같은 브라우저 기본 동작 막기 */
+  if(k==="ArrowUp"||k==="ArrowRight"||k==="ArrowDown"||k==="ArrowLeft"||k===" "||k==="Spacebar"||k==="Backspace"||e.code==="Space") e.preventDefault();
+  var enter=isEnterKey(e);
+
+  /* ---- 오버레이 패널 ---- */
+  if(G.mode==="title"){ if(enter) startGame(); return; }
+  if(G.mode==="clear"){ if(enter) nextStage(); return; }
+  if(G.mode==="win"){ if(enter) restartFromStart(); return; }
+  if(G.mode==="over"){
+    if(enter||k==="u"||k==="U"||k==="z"||k==="Z"||k==="Backspace") undo();
+    else if(k==="r"||k==="R") restartFromStart();
     return;
   }
-  if(G.mode!=="play"||G.pending) return;
-  var d=-1;
-  if(e.key==="ArrowUp")d=0; else if(e.key==="ArrowRight")d=1; else if(e.key==="ArrowDown")d=2; else if(e.key==="ArrowLeft")d=3;
-  if(d>=0){
-    var vm=validMoves();
-    for(var i=0;i<vm.length;i++){ if(vm[i].dir===d){ beginTurn({t:"move",x:vm[i].x,y:vm[i].y,dir:d}); return; } }
+
+  /* ---- ↩ 취소 · ↻ 리셋 ---- */
+  if(k==="u"||k==="U"||k==="z"||k==="Z"||k==="Backspace"){ undo(); return; }
+  if(k==="r"||k==="R"){ resetStage(); return; }
+
+  /* ---- 먹이 선택 (1/2/3, 누를 때마다 조준 초기화) ---- */
+  if(k==="1"||k==="2"||k==="3"){ toggleFishMode(FISH_ORDER[parseInt(k,10)-1]); return; }
+
+  /* ---- Escape: 먹이 모드 해제 → 플레이 중이면 리셋 ---- */
+  if(k==="Escape"){
+    if(G.fishMode){ G.fishMode=false; G.fishKind=null; clearFishAim(); setWarn(""); updateHUD(); }
+    else if(G.mode==="play"){ resetStage(); }
+    return;
   }
+
+  if(G.mode!=="play"||G.pending) return;
+
+  /* ---- 조준한 칸에 투척 ---- */
+  if(enter){ throwAimedFish(); return; }
+
+  /* ---- 이동 / 먹이 모드에서는 조준 ---- */
+  var d=arrowDirOf(k);
+  if(d<0) return;
+  if(G.fishMode){ aimFishDir(d); return; }
+  var vm=validMoves();
+  for(var i=0;i<vm.length;i++){ if(vm[i].dir===d){ beginTurn({t:"move",x:vm[i].x,y:vm[i].y,dir:d}); return; } }
 });
 
 /* ================= 패널 ================= */
 function showPanel(fn){ var ov=$("overlay"), p=$("panel"); p.innerHTML=""; fn(p); ov.classList.remove("hidden"); }
 function hidePanel(){ $("overlay").classList.add("hidden"); }
+/* 패널 버튼 동작 — 터치/클릭과 키보드(Enter·Space·u·z·r)가 같은 함수를 씁니다 */
+function startGame(){ hidePanel(); G.mode="play"; G.hearts=3; G.stageIdx=0; loadStage(0); setWarn(""); beep(600,0.1,"triangle",0.05,200); }
+function nextStage(){ if(G.stageIdx>=STAGES.length-1) return; hidePanel(); G.stageIdx++; G.mode="play"; loadStage(G.stageIdx); setWarn(""); }
+function restartFromStart(){ hidePanel(); G.hearts=3; G.stageIdx=0; G.mode="play"; loadStage(0); setWarn(""); }
 function titlePanel(p){
   p.innerHTML='<canvas id="pCat" width="144" height="112"></canvas>'+
   '<div id="tSub">TACTICAL STEALTH PUZZLE</div><h2 id="tTitle">TINY &amp; PAWS</h2>'+
@@ -2278,22 +2393,22 @@ function titlePanel(p){
   drawHuman(og,{rx:(13-20)/40,ry:(53-37)/40},performance.now(),0,false);
   drawCatAt(og,45,51,COATS.B,1,"B",performance.now(),{noShadow:false});
   g.drawImage(off,0,0,72,56,0,0,144,112);
-  $("pStart").addEventListener("click",function(){ hidePanel(); G.mode="play"; G.hearts=3; G.stageIdx=0; loadStage(0); setWarn(""); beep(600,0.1,"triangle",0.05,200); });
+  $("pStart").addEventListener("click",startGame);
 }
 function clearPanel(p){
   p.innerHTML='<div class="big">🎉</div><h2>탈출 성공!</h2><p>'+(G.stageIdx+1)+'번째 방을 무사히 빠져나왔어요.<br>다음 방에는 더 예민한 고양이가 있어요…</p><button id="pNext">다음 방으로 →</button>';
-  $("pNext").addEventListener("click",function(){ hidePanel(); G.stageIdx++; G.mode="play"; loadStage(G.stageIdx); setWarn(""); });
+  $("pNext").addEventListener("click",nextStage);
 }
 function overPanel(p){
   p.innerHTML='<div class="big">😿</div><h2>하트를 모두 잃었어요</h2><p>고양이들에게 결국 발각된 작은 인간.<br>마지막 수를 되돌리면 하트도 함께 돌아와요.</p>'+
   '<button id="pUndo">↩ 마지막 수 되돌리기</button>'+
   '<button id="pRestart" style="margin-top:8px;background:linear-gradient(#2a2030,#211a26);box-shadow:inset 0 0 0 1.5px #45343d,0 8px 20px rgba(0,0,0,.4);color:#cbbfae;">처음부터 🐾</button>';
   $("pUndo").addEventListener("click",function(){ undo(); });
-  $("pRestart").addEventListener("click",function(){ hidePanel(); G.hearts=3; G.stageIdx=0; G.mode="play"; loadStage(0); setWarn(""); });
+  $("pRestart").addEventListener("click",restartFromStart);
 }
 function winPanel(p){
   p.innerHTML='<div class="big">🏆</div><h2>완탈출!</h2><p>10개의 방을 모두 통과했어요.<br>당신은 최고의 잠입가… 고양이는 아직 모릅니다.</p><button id="pAgain">처음부터 다시 🐾</button>';
-  $("pAgain").addEventListener("click",function(){ hidePanel(); G.hearts=3; G.stageIdx=0; G.mode="play"; loadStage(0); setWarn(""); });
+  $("pAgain").addEventListener("click",restartFromStart);
 }
 
 /* ================= 리사이즈 ================= */
