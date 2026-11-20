@@ -32,7 +32,7 @@ function loadStage(idx){
   var pickups=(s.pickups||[]).map(function(p){ return {x:p.x,y:p.y,kind:p.kind}; });
   G.st={ idx:idx, grid:grid, theme:s.theme, name:s.name,
          player:player, goal:goal, inv:inv, pickups:pickups, fishes:[], turn:1,
-         maxTurns:(s.maxTurns||20),
+         maxTurns:(s.maxTurns||20), stam:STAM_MAX,
          cats:s.cats.map(makeCat) };
   G.st.player.rx=player.x; G.st.player.ry=player.y;
   G.fishMode=false; G.fishKind=null; G.fishAim=null; G.pending=null; G.undoStack=[]; G.playerDir=2;
@@ -216,6 +216,7 @@ function catStep(st,cat,events){
   if(cat.state==="chase"){
     var nxt=bfsNext(st,cat,st.player);
     if(nxt){ cat.dir=dirFromTo(cat,nxt); cat.x=nxt.x; cat.y=nxt.y; }
+    else{ cat.dir=dirFromTo(cat,st.player); }   /* 못 움직여도 쫓는 쪽은 바라봐요 */
     /* 시야나 기척에 잡히면 계속 추격: 보이면(들키면) 리셋, 안 보인 채 CHASE_LOST턴이면 포기 */
     if(inBeam(st,cat,st.player)||senseHit(st,cat,st.player)){ cat.chaseSteps=0; }
     else{ cat.chaseSteps++; if(cat.chaseSteps>=CHASE_LOST){ cat.state="return"; } }
@@ -296,9 +297,13 @@ function catStep(st,cat,events){
   }
 }
 function simStep(st,action,events){
+  var chase0=false;
+  for(var c0=0;c0<st.cats.length;c0++){ if(st.cats[c0].state==="chase"){ chase0=true; break; } }
   if(action){
     if(action.t==="move"){
       st.player.x=action.x; st.player.y=action.y;
+      /* 추격 중 이동은 지구력 1칸 소모 — 다 쓰면 제자리 대기만 가능 */
+      if(chase0&&st.stam>0) st.stam--;
       /* 밟은 칸에 생선이 떨어져 있으면 자동으로 주워요 */
       var pk=pickupAt(st,action.x,action.y);
       if(pk){
@@ -314,6 +319,11 @@ function simStep(st,action,events){
         st.fishes.push({x:action.x,y:action.y,kind:kind});
         events.push({k:"fish",x:action.x,y:action.y,kind:kind});
       }
+    }
+    else if(action.t==="wait"){
+      /* 지침: 제자리에서 한 턴 숨을 고르고 지구력 완충 (고양이는 그대로 움직여요) */
+      st.stam=STAM_MAX;
+      events.push({k:"rest"});
     }
   }
   /* 🌿 은신 수풀: 수풀 칸에 들어서면 추격 중이던 고양이는 그 턴에 바로 추격을 멈추고
@@ -354,6 +364,8 @@ function simStep(st,action,events){
     var seen=inBeam(st,c2,st.player), heard=senseHit(st,c2,st.player);
     if(seen||heard){
       c2.state="chase"; c2.chaseSteps=0; c2.alertT=0;
+      /* 발각 순간 플레이어 쪽으로 몸을 돌려요 — 귀로 들었든 눈으로 봤든 쫓는 쪽을 봐야 자연스러워요 */
+      c2.dir=dirFromTo(c2,st.player);
       events.push({k:"spot",id:c2.id,bySense:!seen&&heard});
     }
   }
@@ -362,5 +374,9 @@ function simStep(st,action,events){
     if(c3.state==="chase"&&c3.x===st.player.x&&c3.y===st.player.y){ events.push({k:"caught",id:c3.id}); }
   }
   if(st.player.x===st.goal.x&&st.player.y===st.goal.y){ events.push({k:"goal"}); }
+  /* 쫓기는 고양이가 한 마리도 없으면 지구력은 자동 완충 (다음 추격 때 다시 3칸) */
+  var stillC=false;
+  for(var c9=0;c9<st.cats.length;c9++){ if(st.cats[c9].state==="chase"){ stillC=true; break; } }
+  if(!stillC) st.stam=STAM_MAX;
   return st;
 }

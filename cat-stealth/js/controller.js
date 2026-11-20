@@ -25,6 +25,16 @@ function updateHUD(){
   $("bReset").disabled=busy||!live;
   /* 잡혔을 때는 패널 없이 보드를 본 채로, 취소 버튼에만 은은한 강조 */
   $("bUndo").classList.toggle("hot",G.mode==="caught");
+  /* 지구력 게이지: 추격 중에만 표시 — 칸당 1칸, 다 쓰면 빨간 점멸 */
+  var sm=$("stam");
+  if(anyChasing()&&G.mode==="play"){
+    var dots="";
+    for(var si=0;si<STAM_MAX;si++) dots+='<i class="'+(si<G.st.stam?'f':'e')+'"></i>';
+    sm.innerHTML='<span class="lb">💨</span>'+dots;
+    sm.className=(G.st.stam<=0)?"out":"on";
+  }else{
+    sm.className="hidden"; sm.innerHTML="";
+  }
 }
 function setWarn(msg,cls){
   var w=$("warn");
@@ -37,7 +47,14 @@ function clearWarnSoon(ms){
 }
 
 /* ================= 입력 · 즉시 실행 ================= */
+function anyChasing(){
+  if(!G.st) return false;
+  for(var i=0;i<G.st.cats.length;i++){ if(G.st.cats[i].state==="chase") return true; }
+  return false;
+}
 function validMoves(){
+  /* 추격 중 지구력이 다 떨어지면 이동 불가 — 제자리 대기(wait)만 가능 */
+  if(G.st.stam<=0&&anyChasing()) return [];
   var p=G.st.player, out=[];
   for(var d=0;d<4;d++){
     var nx=p.x+DIRS[d][0], ny=p.y+DIRS[d][1];
@@ -101,7 +118,7 @@ function beginTurn(action){
   if(action.t==="move") G.playerDir=action.dir;
   else if(action.t==="fish") G.playerDir=dirFromTo({x:st.player.x,y:st.player.y,dir:G.playerDir},{x:action.x,y:action.y});
   st.player.x=next.player.x; st.player.y=next.player.y;
-  st.inv=next.inv; st.pickups=next.pickups; st.fishes=next.fishes;
+  st.inv=next.inv; st.pickups=next.pickups; st.fishes=next.fishes; st.stam=next.stam;
   for(var i=0;i<st.cats.length;i++){
     var c=st.cats[i], nc=next.cats[i];
     c.x=nc.x; c.y=nc.y; c.dir=nc.dir; c.state=nc.state; c.lure=nc.lure;
@@ -134,6 +151,7 @@ function beginTurn(action){
       setWarn("🌿 수풀에 몸을 숨겼어요 — 고양이가 추격을 포기해요","fish");
       clearWarnSoon(2200);
     }
+    else if(v.k==="rest"){ setWarn("😮‍💨 제자리에서 숨을 골라요…","fish"); clearWarnSoon(1500); }
   }
 
   G.pending={next:next,ev:ev,t0:performance.now(),arc:arc};
@@ -181,6 +199,7 @@ function finishTurn(){
   }
   G.mode="play";
   setWarn("");
+  if(G.st.stam<=0&&anyChasing()) setWarn("😮‍💨 지쳤어요! 이번 턴은 제자리에서 쉬어야 해요","bad");
   computeDanger(); updateHUD();
 }
 function undo(){
@@ -227,6 +246,8 @@ cvEl.addEventListener("pointerdown",function(e){
     setWarn("그곳에는 던질 수 없어요 (상하좌우 직선 2칸 · 장애물 불가)","fish");
     return;
   }
+  /* 지침: 추격 중 지구력 0이면 화면 탭 = 제자리 대기 */
+  if(G.st.stam<=0&&anyChasing()){ beginTurn({t:"wait"}); return; }
   var vm=G.moveTiles&&G.moveTiles.length?G.moveTiles:validMoves();
   for(var j=0;j<vm.length;j++){
     if(vm[j].x===tx&&vm[j].y===ty){ beginTurn({t:"move",x:tx,y:ty,dir:vm[j].dir}); return; }
@@ -357,6 +378,9 @@ document.addEventListener("keydown",function(e){
   }
 
   if(G.mode!=="play"||G.pending) return;
+
+  /* ---- 지침(추격 중 지구력 0): 먹이 조준 중이 아니면 아무 입력이나 제자리 대기 ---- */
+  if(G.st.stam<=0&&anyChasing()&&!G.fishMode&&(enter||arrowDirOf(k)>=0)){ beginTurn({t:"wait"}); return; }
 
   /* ---- 조준한 칸에 투척 ---- */
   if(enter){ throwAimedFish(); return; }

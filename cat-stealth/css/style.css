@@ -46,6 +46,14 @@ body{
   color:#ffd9a6;transition:opacity .15s;}
 #warn.bad{color:var(--red);text-shadow:0 0 12px rgba(255,93,110,.6);animation:blink 1s infinite;}
 #warn.fish{color:var(--pink);}
+/* 추격 중 지구력 게이지 — 칸당 1칸, 다 쓰면 빨간 점멸 */
+#stam{display:flex;align-items:center;justify-content:center;gap:4px;min-height:14px;}
+#stam.hidden{visibility:hidden;}
+#stam .lb{font-size:11px;line-height:1;}
+#stam i{width:10px;height:10px;border-radius:3px;display:inline-block;}
+#stam i.f{background:var(--green);box-shadow:0 0 8px rgba(79,211,154,.5);}
+#stam i.e{background:rgba(255,255,255,.10);box-shadow:inset 0 0 0 1px rgba(255,255,255,.16);}
+#stam.out i.e{background:var(--red);animation:blink 1s infinite;}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.45}}
 #controls{position:relative;z-index:3;display:flex;flex-direction:column;gap:9px;padding:2px 4px 0;}
 button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weight:800;}
