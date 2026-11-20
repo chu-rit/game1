@@ -61,6 +61,12 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
   background:linear-gradient(#2a2030,#211a26);box-shadow:inset 0 0 0 1.5px #45343d,0 2px 0 rgba(0,0,0,.35);}
 #btnrow button:active{transform:translateY(1px);}
 #btnrow button:disabled{opacity:.34;}
+/* 단축키 키캡 배지 — 어두운 배경에 맞춘 작고 은은한 표시 */
+.kc{display:inline-flex;align-items:center;justify-content:center;min-width:13px;height:14px;padding:0 3px;
+  margin-left:4px;font-size:9px;font-weight:800;line-height:1;letter-spacing:.01em;font-variant-numeric:tabular-nums;
+  color:#cfc3b5;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:4px;
+  box-shadow:0 1px 0 rgba(0,0,0,.32);vertical-align:middle;transform:translateY(-1px);}
+#btnrow button .kc{min-width:14px;height:15px;font-size:9.5px;}
 #bUndo{flex:1.25;}
 #fishbar{display:flex;gap:8px;}
 #fishbar button{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:10px 2px;
@@ -68,6 +74,9 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
   background:linear-gradient(#241c2b,#1c1622);box-shadow:inset 0 0 0 1.5px #3a2c36,0 2px 0 rgba(0,0,0,.35);
   transition:transform .12s ease-out;}
 #fishbar button .nm{font-size:10.5px;font-weight:800;letter-spacing:-.02em;color:#c7b9ab;}
+#fishbar button .kc{min-width:11px;height:12px;padding:0 2px;margin-left:0;margin-right:0;font-size:8px;
+  color:#b3a596;background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.13);box-shadow:none;transform:translateY(-.5px);}
+#fishbar button.on .kc{color:#ffd7e6;background:rgba(255,255,255,.10);border-color:rgba(255,215,230,.34);}
 #fishbar button .n{font-size:12.5px;font-weight:800;font-variant-numeric:tabular-nums;color:#b9ab9c;}
 #fishbar button:active{transform:translateY(1px);}
 #fishbar button:disabled{opacity:.30;filter:grayscale(.85);}
@@ -87,6 +96,9 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
 .panel p{margin:4px 0 16px;font-size:12.5px;color:var(--dim);line-height:1.7;font-weight:600;}
 .panel button{width:100%;padding:14px;border-radius:13px;font-size:15px;background:linear-gradient(#2c6a47,#22543a);
   box-shadow:inset 0 0 0 1.5px #55c78c,0 8px 20px rgba(0,0,0,.4);color:#dcffee;}
+.panel button .kc{margin-left:6px;height:16px;padding:0 5px;font-size:9.5px;letter-spacing:.04em;
+  color:#eafff5;background:rgba(0,0,0,.22);border-color:rgba(255,255,255,.34);box-shadow:none;}
+#pRestart .kc{color:#cbbfae;background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);}
 .panel .rows{margin:12px 0 16px;text-align:left;font-size:11.5px;color:#c9bcae;font-weight:600;line-height:1.45;letter-spacing:-.015em;}
 .panel .rows b{color:var(--amber);}
 #tTitle{font-size:27px;letter-spacing:.05em;margin:2px 0 2px;
@@ -109,13 +121,13 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
   </div>
   <div id="controls">
     <div id="btnrow">
-      <button id="bUndo">↩ 취소</button>
-      <button id="bReset">↻ 리셋</button>
+      <button id="bUndo">↩ 취소 <span class="kc">U</span></button>
+      <button id="bReset">↻ 리셋 <span class="kc">R</span></button>
     </div>
     <div id="fishbar">
-      <button class="fb" data-kind="small" aria-label="작은 생선">🐟<span class="nm">작은생선</span><span class="n">0</span></button>
-      <button class="fb" data-kind="big" aria-label="큰 통생선">🐠<span class="nm">통생선</span><span class="n">0</span></button>
-      <button class="fb" data-kind="catnip" aria-label="캣닢">🌿<span class="nm">캣닢</span><span class="n">0</span></button>
+      <button class="fb" data-kind="small" aria-label="작은 생선"><span class="kc">1</span>🐟<span class="nm">작은생선</span><span class="n">0</span></button>
+      <button class="fb" data-kind="big" aria-label="큰 통생선"><span class="kc">2</span>🐠<span class="nm">통생선</span><span class="n">0</span></button>
+      <button class="fb" data-kind="catnip" aria-label="캣닢"><span class="kc">3</span>🌿<span class="nm">캣닢</span><span class="n">0</span></button>
     </div>
     <div id="hint">바닥의 먹이를 밟으면 주워요 · 보라 점선(기척) 안에 서면 들켜요</div>
   </div>
@@ -2383,8 +2395,8 @@ function titlePanel(p){
   p.innerHTML='<canvas id="pCat" width="144" height="112"></canvas>'+
   '<div id="tSub">TACTICAL STEALTH PUZZLE</div><h2 id="tTitle">TINY &amp; PAWS</h2>'+
   '<div style="font-size:13px;font-weight:800;color:#cbbfae;margin-bottom:10px;">작은 인간과 거대 고양이</div>'+
-  '<div class="rows">· 칸을 눌러 <b>1턴 이동</b> · <b>먹이</b> 밟아 주워 <b>직선 2칸 투척</b><br>· 주황 <b>시야</b>·보라 <b>기척</b> 피해 <b>EXIT</b> 탈출 · <b>↩ 취소</b>로 되돌리기<br>· 🪵 발판=고양이 · 🕳️ 구멍·🪴 수풀=나만 · 숨으면 추격 끊김</div>'+
-  '<button id="pStart">시작하기 🐾</button>';
+  '<div class="rows">· 칸 탭·<span class="kc">WASD</span><span class="kc">↑↓←→</span> <b>1턴 이동</b> · <b>먹이</b> 밟아 <b>직선 2칸 투척</b><br>· 주황 <b>시야</b>·보라 <b>기척</b> 피해 <b>EXIT</b> 탈출 · <b>↩ 취소</b>로 되돌리기<br>· 🪵 발판=고양이 · 🕳️ 구멍·🪴 수풀=나만 · 숨으면 추격 끊김</div>'+
+  '<button id="pStart">시작하기 🐾<span class="kc">Enter</span></button>';
   var c=document.getElementById("pCat"), g=c.getContext("2d");
   g.imageSmoothingEnabled=false;
   g.clearRect(0,0,c.width,c.height);
@@ -2396,18 +2408,18 @@ function titlePanel(p){
   $("pStart").addEventListener("click",startGame);
 }
 function clearPanel(p){
-  p.innerHTML='<div class="big">🎉</div><h2>탈출 성공!</h2><p>'+(G.stageIdx+1)+'번째 방을 무사히 빠져나왔어요.<br>다음 방에는 더 예민한 고양이가 있어요…</p><button id="pNext">다음 방으로 →</button>';
+  p.innerHTML='<div class="big">🎉</div><h2>탈출 성공!</h2><p>'+(G.stageIdx+1)+'번째 방을 무사히 빠져나왔어요.<br>다음 방에는 더 예민한 고양이가 있어요…</p><button id="pNext">다음 방으로 →<span class="kc">Enter</span></button>';
   $("pNext").addEventListener("click",nextStage);
 }
 function overPanel(p){
   p.innerHTML='<div class="big">😿</div><h2>하트를 모두 잃었어요</h2><p>고양이들에게 결국 발각된 작은 인간.<br>마지막 수를 되돌리면 하트도 함께 돌아와요.</p>'+
-  '<button id="pUndo">↩ 마지막 수 되돌리기</button>'+
-  '<button id="pRestart" style="margin-top:8px;background:linear-gradient(#2a2030,#211a26);box-shadow:inset 0 0 0 1.5px #45343d,0 8px 20px rgba(0,0,0,.4);color:#cbbfae;">처음부터 🐾</button>';
+  '<button id="pUndo">↩ 마지막 수 되돌리기<span class="kc">Enter / U</span></button>'+
+  '<button id="pRestart" style="margin-top:8px;background:linear-gradient(#2a2030,#211a26);box-shadow:inset 0 0 0 1.5px #45343d,0 8px 20px rgba(0,0,0,.4);color:#cbbfae;">처음부터 🐾<span class="kc">R</span></button>';
   $("pUndo").addEventListener("click",function(){ undo(); });
   $("pRestart").addEventListener("click",restartFromStart);
 }
 function winPanel(p){
-  p.innerHTML='<div class="big">🏆</div><h2>완탈출!</h2><p>10개의 방을 모두 통과했어요.<br>당신은 최고의 잠입가… 고양이는 아직 모릅니다.</p><button id="pAgain">처음부터 다시 🐾</button>';
+  p.innerHTML='<div class="big">🏆</div><h2>완탈출!</h2><p>10개의 방을 모두 통과했어요.<br>당신은 최고의 잠입가… 고양이는 아직 모릅니다.</p><button id="pAgain">처음부터 다시 🐾<span class="kc">Enter</span></button>';
   $("pAgain").addEventListener("click",restartFromStart);
 }
 
