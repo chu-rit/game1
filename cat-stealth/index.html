@@ -71,6 +71,10 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
   box-shadow:0 1px 0 rgba(0,0,0,.32);vertical-align:middle;transform:translateY(-1px);}
 #btnrow button .kc{min-width:14px;height:15px;font-size:9.5px;}
 #bUndo{flex:1.25;}
+/* 잡힌 상태: 보드를 보면서 바로 누르라고 취소 버튼에만 은은한 테두리 강조 */
+#bUndo.hot{box-shadow:inset 0 0 0 2px var(--amber),0 0 14px rgba(255,176,46,.28);animation:undoHot 1.6s ease-in-out infinite;}
+#bUndo.hot:disabled{animation:none;}
+@keyframes undoHot{0%,100%{box-shadow:inset 0 0 0 2px var(--amber),0 0 10px rgba(255,176,46,.16);}50%{box-shadow:inset 0 0 0 2px var(--amber),0 0 20px rgba(255,176,46,.42);}}
 #fishbar{display:flex;gap:8px;}
 #fishbar button{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:10px 2px;
   border-radius:13px;font-size:14px;line-height:1;
@@ -2042,6 +2046,8 @@ function updateHUD(){
   }
   $("bUndo").disabled=busy||G.undoStack.length===0||!live;
   $("bReset").disabled=busy||!live;
+  /* 잡혔을 때는 패널 없이 보드를 본 채로, 취소 버튼에만 은은한 강조 */
+  $("bUndo").classList.toggle("hot",G.mode==="caught");
 }
 function setWarn(msg,cls){
   var w=$("warn");
@@ -2171,9 +2177,9 @@ function finishTurn(){
     sCatch();
     var stEl=$("stage"); stEl.classList.remove("shake"); void stEl.offsetWidth; stEl.classList.add("shake");
     G.mode="caught";
-    setWarn("😿 들통! 고양이에게 잡혔어요 · ↩ 되돌리기 / ↻ 리셋","bad");
+    /* 전체 화면 모달 없이 보드를 그대로 보여 주고, 결과만 짧게 안내 */
+    setWarn("😿 잡혔어요 — ↩ 취소 [U] 또는 ↻ 리셋 [R]","bad");
     updateHUD();
-    G.panelTimer=setTimeout(function(){ G.panelTimer=null; if(G.mode==="caught") showPanel(caughtPanel); },700);
     return;
   }
   G.st.turn++;
@@ -2405,14 +2411,6 @@ function titlePanel(p){
 function clearPanel(p){
   p.innerHTML='<div class="big">🎉</div><h2>탈출 성공!</h2><p>'+(G.stageIdx+1)+'번째 방을 무사히 빠져나왔어요.<br>다음 방에는 더 예민한 고양이가 있어요…</p><button id="pNext">다음 방으로 →<span class="kc">Enter</span></button>';
   $("pNext").addEventListener("click",nextStage);
-}
-/* 잡힘 패널 — 하트 없이 바로 되돌리기(마지막 수) 또는 이 방 다시하기만 고른다 */
-function caughtPanel(p){
-  p.innerHTML='<div class="big">😿</div><h2>고양이에게 잡혔어요!</h2><p>방금 그 수에 고양이가 달려들었어요.<br>마지막 수를 되돌리거나, 이 방을 다시 시작하세요.</p>'+
-  '<button id="pUndo">↩ 마지막 수 되돌리기<span class="kc">Enter / U</span></button>'+
-  '<button id="pReset">↻ 이 방 다시하기<span class="kc">R</span></button>';
-  $("pUndo").addEventListener("click",function(){ undo(); });
-  $("pReset").addEventListener("click",function(){ resetStage(); });
 }
 function winPanel(p){
   p.innerHTML='<div class="big">🏆</div><h2>완탈출!</h2><p>10개의 방을 모두 통과했어요.<br>당신은 최고의 잠입가… 고양이는 아직 모릅니다.</p><button id="pAgain">처음부터 다시 🐾<span class="kc">Enter</span></button>';
