@@ -167,22 +167,72 @@ var STAGES=[
    start:[1,7], goalPos:[7,1],
    cats:[{type:"C",x:1,y:4,dir:0,patrol:[[1,4],[1,4]]}],
    pickups:[{x:3,y:7,kind:"big"}] },
- { name:"거실 소파", theme:{S:"sofa","~":"rug"},
-   map:["#########","#~.....G#","#.......#","#SS.S.SS#","#.......#","#SS.S.SS#","#.......#","#P......#","#########"],
-   cats:[{type:"B",x:4,y:4,dir:1,dirs:[1,3]}],
-   pickups:[{x:4,y:6,kind:"small"},{x:6,y:6,kind:"catnip"}] },
- { name:"복도 순찰", theme:{X:"counter","~":"rug"},
-   map:["#########","#..~..G.#","#XX.XXXX#","#.......#","#.......#","#XXX.XXX#","#.......#","#P......#","#########"],
-   cats:[{type:"C",x:1,y:4,patrol:[[1,4],[7,4]]}],
-   pickups:[{x:2,y:7,kind:"small"},{x:5,y:6,kind:"catnip"},{x:3,y:3,kind:"big"}] },
- { name:"식탁 미로", theme:{T:"table"},
-   map:["#########","#....G..#","#.T.T.T.#","#.......#","#.T.T.T.#","#.......#","#.T.T.T.#","#P......#","#########"],
-   cats:[{type:"B",x:4,y:3,dir:1,dirs:[1,3]},{type:"C",x:7,y:3,patrol:[[7,1],[7,7]]}],
-   pickups:[{x:3,y:7,kind:"catnip"},{x:3,y:6,kind:"small"},{x:5,y:2,kind:"big"}] },
- { name:"안방 탈출", theme:{B:"bed",X:"nightstand"},
-   map:["#########","#G......#","#BBBB.X.#","#.......#","#.......#","#B.BB.BB#","#.......#","#P......#","#########"],
-   cats:[{type:"A",x:1,y:4,dir:1},{type:"C",x:7,y:6,patrol:[[1,6],[7,6]]}],
-   pickups:[{x:2,y:6,kind:"catnip"},{x:6,y:7,kind:"big"},{x:3,y:7,kind:"small"}] }
+ {
+   /* 2단계 거실 소파 — 소파 곁 복도. 출구 계단 입구에 앉은 문지기(A)가 계단을 막고 있어요.
+      복도 건너 소파 니치(7,6)로 큰 통생선을 던지면 고양이가 계단을 비우고 그 자리에 붙박여요.
+      그 틈에 계단을 올라 EXIT. 작은 생선으로는 금방 돌아와 계단을 다시 막아요. */
+   name:"거실 소파", theme:{S:"sofa","~":"rug"},
+   map:["#########","#SSSSSGS#","#SSSSS.S#","#SSSSS.S#","#.S.SS.S#","#.S.SS.S#","#.......#","#PSSSSSS#","#########"],
+   cats:[{type:"A",x:6,y:4,dir:0}],
+   pickups:[{x:1,y:4,kind:"big"},{x:3,y:4,kind:"small"}] },
+ {
+   /* 3단계 복도 순찰 — 동서로 오가는 순찰 고양이(C). 순찰 복도는 1칸 폭이라 몸으로 길을 막아요.
+      순찰이 서쪽 끝에 있을 때를 노려 (6,5)를 건너고, 출구 계단의 문지기(A)는 큰 통생선으로 부른다. */
+   name:"복도 순찰", theme:{X:"counter","~":"rug"},
+   map:["#########","#XXXXGXX#","#XXXX.XX#","#......X#","#XXXXX.X#","#.......#","#XXXXX.X#","#P......#","#########"],
+   cats:[{type:"A",x:5,y:2,dir:0},{type:"C",x:1,y:5,dir:1,patrol:[[1,5],[7,5]]}],
+   pickups:[{x:2,y:7,kind:"big"},{x:7,y:7,kind:"small"}] },
+ {
+   /* 4단계 식탁 미로 — 자물쇠 두 개. 큰 통생선 두 개가 각각 한 문씩 열어요.
+      두 번째 먹이는 첫 문 너머 식탁 위(5,4)에 있어서 순서가 정해져 있어요.
+      각 문은 '문지기 뒤쪽 복도 끝'으로 먹이를 던져 고양이를 비켜 세우는 방식. */
+   name:"식탁 미로", theme:{T:"table","~":"rug"},
+   map:["#########","#TGTTTTT#","#T.TTTTT#","#T.TTTTT#","#......T#","#TTTTT.T#","#TTTTT.T#","#P......#","#########"],
+   cats:[{type:"A",x:6,y:5,dir:2},{type:"A",x:2,y:3,dir:0}],
+   pickups:[{x:2,y:7,kind:"big"},{x:5,y:4,kind:"big"}] },
+ {
+   /* 5단계 안방 탈출 — 왕복. 큰 통생선으로 문을 영구히 열어 두고, 문 안쪽 골방(6,3)의 먹이를
+      회수해 다시 계단을 내려와 두 번째 문으로 가요. 작은 생선으로는 안쪽에 있는 동안 문이 닫혀요. */
+   name:"안방 탈출", theme:{B:"bed",X:"nightstand","~":"rug"},
+   map:["#########","#BGBBBBB#","#B.XBBBB#","#B.BBB.X#","#......B#","#XBBXB.B#","#XBBXB.B#","#P......#","#########"],
+   cats:[{type:"A",x:6,y:5,dir:0},{type:"A",x:2,y:3,dir:0}],
+   pickups:[{x:2,y:7,kind:"big"},{x:6,y:3,kind:"big"}] },
+ {
+   /* 6단계 서재 — 연쇄 반응. 큰 통생선이 없어서 작은 생선 두 개를 복도에 이어 던져요.
+      고양이가 첫 먹이를 다 먹고 그 자리에서 둘째 냄새를 맡아 이어서 걸어가니,
+      그만큼 문이 오래 비어 그 사이 왕복이 가능해요. */
+   name:"서재", theme:{T:"table","~":"rug"},
+   map:["#########","#TGTTTTT#","#T.TTTTT#","#T.TTT.T#","#......T#","#TTTTT.T#","#TTTTT.T#","#P......#","#########"],
+   cats:[{type:"A",x:6,y:5,dir:0},{type:"A",x:2,y:3,dir:0}],
+   pickups:[{x:3,y:7,kind:"small"},{x:5,y:7,kind:"small"},{x:6,y:3,kind:"big"}] },
+ {
+   /* 7단계 욕실 — 캣닢. 문지기(A)가 계단 아래에서 4~5칸 떨어져 있어 유인 3칸인 생선으로는
+      닿지 않고, 유인 5칸인 캣닢만 냄새를 전해요. 캣닢이 먹히는 사이 계단을 올라요. */
+   name:"욕실", theme:{X:"counter","~":"rug"},
+   map:["#########","#XGXXXXX#","#X.XXXXX#","#X.XXXXX#","#X.XXXXX#","#X.XXXXX#","#P...XXX#","#XXXXXXX#","#########"],
+   cats:[{type:"A",x:2,y:3,dir:0}],
+   pickups:[{x:3,y:6,kind:"catnip"},{x:4,y:6,kind:"small"}] },
+ {
+   /* 8단계 다락 — 순찰 + 작은 생선. 복도를 건넌 뒤 문지기(A)를 작은 생선 두 끼로 이어 불러
+      문이 비는 동안 계단을 올라요. 순찰이 지나간 틈을 놓치면 다시 기다려야 해요. */
+   name:"다락", theme:{T:"table","~":"rug"},
+   map:["#########","#TTTGTTT#","#TTT.TTT#","#......T#","#TTTTT.T#","#.......#","#TTTTT.T#","#P......#","#########"],
+   cats:[{type:"A",x:4,y:2,dir:0},{type:"C",x:1,y:5,dir:1,patrol:[[1,5],[7,5]]}],
+   pickups:[{x:2,y:7,kind:"small"},{x:6,y:3,kind:"small"}] },
+ {
+   /* 9단계 아이방 — 자물쇠 둘과 순찰. 첫 문(6,6)을 큰 통생선으로 열고, 순찰 복도를 건너고,
+      두 번째 문(2,2)을 또 다른 큰 통생선으로 열어요. 열고·건너고·또 연다. */
+   name:"아이방", theme:{B:"bed",T:"table","~":"rug"},
+   map:["#########","#BGBBBBB#","#T.TTTTT#","#......T#","#BBBBB.B#","#.......#","#BBBBB.B#","#P......#","#########"],
+   cats:[{type:"A",x:6,y:6,dir:0},{type:"A",x:2,y:2,dir:0},{type:"C",x:1,y:5,dir:1,patrol:[[1,5],[7,5]]}],
+   pickups:[{x:3,y:7,kind:"big"},{x:5,y:3,kind:"big"}] },
+ {
+   /* 10단계 마지막 방 — 총집합. 가까운 문(6,6)은 큰 통생선, 먼 문(2,3)은 캣닢,
+      남는 작은 생선은 연쇄용. 먹이 셋을 어디에 쓸지 정하는 마지막 방. */
+   name:"마지막 방", theme:{S:"sofa",X:"counter","~":"rug"},
+   map:["#########","#G.SSSSS#","#S.SSSSS#","#X.XXXXX#","#X.XXXXX#","#......X#","#SSSSS.X#","#P......#","#########"],
+   cats:[{type:"A",x:6,y:6,dir:0},{type:"A",x:2,y:3,dir:0}],
+   pickups:[{x:3,y:7,kind:"big"},{x:4,y:5,kind:"catnip"},{x:2,y:7,kind:"small"}] }
 ];
 
 /* ---------------------------- 상태 ---------------------------- */
@@ -1686,7 +1736,7 @@ function sChain(){ beep(600,0.08,"square",0.05,220); setTimeout(function(){ beep
 /* ================= HUD ================= */
 function updateHUD(){
   var s=STAGES[G.stageIdx];
-  $("hStage").textContent=(G.stageIdx+1)+"-"+STAGES.length;
+  $("hStage").textContent=(G.stageIdx+1)+"/"+STAGES.length;
   $("hName").textContent=s.name;
   $("hTurn").textContent="TURN "+G.st.turn;
   var hh=""; for(var i=0;i<3;i++){ hh+=(i<G.hearts)?"♥":"·"; }
@@ -1992,7 +2042,7 @@ function overPanel(p){
   $("pRestart").addEventListener("click",function(){ hidePanel(); G.hearts=3; G.stageIdx=0; G.mode="play"; loadStage(0); setWarn(""); });
 }
 function winPanel(p){
-  p.innerHTML='<div class="big">🏆</div><h2>완탈출!</h2><p>5개의 방을 모두 통과했어요.<br>당신은 최고의 잠입가… 고양이는 아직 모릅니다.</p><button id="pAgain">처음부터 다시 🐾</button>';
+  p.innerHTML='<div class="big">🏆</div><h2>완탈출!</h2><p>10개의 방을 모두 통과했어요.<br>당신은 최고의 잠입가… 고양이는 아직 모릅니다.</p><button id="pAgain">처음부터 다시 🐾</button>';
   $("pAgain").addEventListener("click",function(){ hidePanel(); G.hearts=3; G.stageIdx=0; G.mode="play"; loadStage(0); setWarn(""); });
 }
 
