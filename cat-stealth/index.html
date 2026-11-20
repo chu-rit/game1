@@ -135,6 +135,7 @@ var SIGHT_LEN=4, FISH_RANGE=2, CHASE_LOST=3;
    A 고정 감시 · B 교대 감시 · C 순회 */
 var CAT_SENSE={ A:1, B:1, C:2 };
 var STEP_MS=200, ANIM_MS=210, FISH_MS=190, UNDO_MAX=80;
+var HINT_DEFAULT="바닥의 먹이를 밟으면 주워요 · 보라 점선(기척) 안에 서면 들켜요";
 
 /* ---------------------------- 생선 3종 ----------------------------
    lure : 유인 사거리(맨해튼 칸). 이 안에 떨어진 생선이 있으면 고양이가 걸어와요.
@@ -206,33 +207,43 @@ var STAGES=[
    cats:[{type:"A",x:6,y:5,dir:0},{type:"A",x:2,y:3,dir:0}],
    pickups:[{x:3,y:7,kind:"small"},{x:5,y:7,kind:"small"},{x:6,y:3,kind:"big"}] },
  {
-   /* 7단계 욕실 — 캣닢. 문지기(A)가 계단 아래에서 4~5칸 떨어져 있어 유인 3칸인 생선으로는
-      닿지 않고, 유인 5칸인 캣닢만 냄새를 전해요. 캣닢이 먹히는 사이 계단을 올라요. */
-   name:"욕실", theme:{X:"counter","~":"rug"},
-   map:["#########","#XGXXXXX#","#X.XXXXX#","#X.XXXXX#","#X.XXXXX#","#X.XXXXX#","#P...XXX#","#XXXXXXX#","#########"],
+   /* 7단계 창고 — 고양이 발판(^). 목(2,4)을 지키는 문지기가 세로 통로를 몸으로 막고 있어요.
+      작은 인간은 발판(^)에 올라갈 수 없어서, (3,6)에서 복쪽으로 생선을 던져 발판 위에 떨어뜨려야 해요.
+      고양이가 발판으로 올라가 먹는 동안 통로(x=2)가 비어 EXIT까지 올라갈 수 있어요.
+      통로(x=2) 안쪽으로 던지면 고양이가 내려와 앉아 길을 더 막아 버려요. */
+   name:"창고 선반", theme:{X:"counter","~":"rug"},
+   map:["#########","#XGXXXXX#","#X.XXXXX#","#X.XXXXX#","#X.XXXXX#","#X.^XXXX#","#X.XXXXX#","#XPXXXXX#","#########"],
    cats:[{type:"A",x:2,y:3,dir:0}],
-   pickups:[{x:3,y:6,kind:"catnip"},{x:4,y:6,kind:"small"}] },
+   pickups:[{x:2,y:6,kind:"big"}],
+   hint:"🪵 발판(^)은 고양이만 올라가요 · 발판에 먹이를 던져 고양이를 불러내세요" },
  {
-   /* 8단계 다락 — 순찰 + 작은 생선. 복도를 건넌 뒤 문지기(A)를 작은 생선 두 끼로 이어 불러
-      문이 비는 동안 계단을 올라요. 순찰이 지나간 틈을 놓치면 다시 기다려야 해요. */
-   name:"다락", theme:{T:"table","~":"rug"},
-   map:["#########","#TTTGTTT#","#TTT.TTT#","#......T#","#TTTTT.T#","#.......#","#TTTTT.T#","#P......#","#########"],
-   cats:[{type:"A",x:4,y:2,dir:0},{type:"C",x:1,y:5,dir:1,patrol:[[1,5],[7,5]]}],
-   pickups:[{x:2,y:7,kind:"small"},{x:6,y:3,kind:"small"}] },
+   /* 8단계 다락 — 인간 전용 구멍(H) + 벽 직상 발판(^). 벽 툴(y=4)을 지나는 길은 작은 구멍 하나빿이고,
+      그 구멍을 고양이는 지나가지도, 봐삤지지도 못해요. 위 통로는 한 칸 넓이(x=4)로 들어가며
+      문지기(A)가 도어(1,2)를 막아요. 도어를 여는 생선은 통로 직상 발판(4,1)에만 떨어지고,
+      사람은 발판에 올라갈 수 없어서 기적을 발할 수 없어요. 그 거리에 닿으려면 캟닢(5칸)이 필요해요. */
+   name:"다락 틈", theme:{X:"counter","~":"rug"},
+   map:["#########","#G#^#####","#....####","####.####","####H####","#.......#","#.......#","#P......#","#########"],
+   cats:[{type:"A",x:1,y:2,dir:2}],
+   pickups:[{x:2,y:7,kind:"big"},{x:5,y:7,kind:"catnip"}],
+   hint:"🕳️ 구멍(H)은 나만 지나가요 · 고양이 시선과 기척도 구멍에서 끊겨요" },
  {
-   /* 9단계 아이방 — 자물쇠 둘과 순찰. 첫 문(6,6)을 큰 통생선으로 열고, 순찰 복도를 건너고,
-      두 번째 문(2,2)을 또 다른 큰 통생선으로 열어요. 열고·건너고·또 연다. */
-   name:"아이방", theme:{B:"bed",T:"table","~":"rug"},
-   map:["#########","#BGBBBBB#","#T.TTTTT#","#......T#","#BBBBB.B#","#.......#","#BBBBB.B#","#P......#","#########"],
-   cats:[{type:"A",x:6,y:6,dir:0},{type:"A",x:2,y:2,dir:0},{type:"C",x:1,y:5,dir:1,patrol:[[1,5],[7,5]]}],
-   pickups:[{x:3,y:7,kind:"big"},{x:5,y:3,kind:"big"}] },
+   /* 9단계 지하 창고 — 두 특수 타일의 첫 결합. 아래 복도 문지기(A)는 발판(5,6)으로,
+      위 골방 문지기(A)는 발판(3,1)으로 빼내요. 벽 틈의 구멍(H)은 둘을 잇는 유일한 길이고,
+      고양이는 구멍을 못 지나가요. 생선은 문지기 하나당 하나씩 — 쓸 순서를 정해야 해요. */
+   name:"지하 창고", theme:{X:"counter",T:"table","~":"rug"},
+   map:["#########","#G#^#####","#....####","####.####","####H####","####.####","####.^###","####...P#","#########"],
+   cats:[{type:"A",x:1,y:2,dir:2},{type:"A",x:4,y:6,dir:2}],
+   pickups:[{x:6,y:7,kind:"big"},{x:4,y:2,kind:"small"},{x:3,y:2,kind:"catnip"}],
+   hint:"발판(^)은 고양이만 · 구멍(H)은 나만 지나가요" },
  {
-   /* 10단계 마지막 방 — 총집합. 가까운 문(6,6)은 큰 통생선, 먼 문(2,3)은 캣닢,
-      남는 작은 생선은 연쇄용. 먹이 셋을 어디에 쓸지 정하는 마지막 방. */
+   /* 10단계 마지막 방 — 총집합. 아래 창고 문지기는 발판(5,6)으로, 위 골방 문지기는 발판(3,1)으로
+      빼내고, 그 사이는 가운데 방을 지나 구멍(H) 하나로만 넘어가요. 중간 방에서 먹이를 하나 더
+      주워 오는 왕복이 필요해요 — 먹이 3종을 어느 문에 쓸지 정하는 마지막 방. */
    name:"마지막 방", theme:{S:"sofa",X:"counter","~":"rug"},
-   map:["#########","#G.SSSSS#","#S.SSSSS#","#X.XXXXX#","#X.XXXXX#","#......X#","#SSSSS.X#","#P......#","#########"],
-   cats:[{type:"A",x:6,y:6,dir:0},{type:"A",x:2,y:3,dir:0}],
-   pickups:[{x:3,y:7,kind:"big"},{x:4,y:5,kind:"catnip"},{x:2,y:7,kind:"small"}] }
+   map:["#########","#G#^#####","#....####","####.####","####H####","#.......#","####.^###","####...P#","#########"],
+   cats:[{type:"A",x:1,y:2,dir:2},{type:"A",x:4,y:6,dir:2}],
+   pickups:[{x:6,y:7,kind:"big"},{x:2,y:5,kind:"big"},{x:4,y:2,kind:"catnip"},{x:3,y:2,kind:"small"}],
+   hint:"발판은 고양이만 · 구멍은 나만 · 먹이 3종을 어디에 쓸지 정하세요" }
 ];
 
 /* ---------------------------- 상태 ---------------------------- */
@@ -283,11 +294,41 @@ function tileAt(st,x,y){
   return st.grid[y][x];
 }
 var DECOR={"~":1};
+/* ---- 특수 타일 2종 ----
+   ^ 고양이 전용 발판 : 고양이는 올라가고 지나가요. 작은 인간은 못 올라가요.
+                        낮은 우드 단차라서 시선·기척은 그대로 통과해요.
+   H 인간 전용 구멍   : 인간만 지나가요. 고양이는 몸이 커서 못 들어가고,
+                        좁고 낮은 벽 틈이라 시선(beam)과 기척(sense)이 거기서 끊겨요. */
+var SPECIAL={
+  "^":{name:"고양이 발판", human:false, cat:true,  sight:false},
+  "H":{name:"작은 구멍",   human:true,  cat:false, sight:true }
+};
+function specialAt(st,x,y){ return SPECIAL[tileAt(st,x,y)]||null; }
+/* 시선·기척을 막는 칸인가 — 구멍(H)은 막고, 발판(^)은 통과 */
 function isBlocked(st,x,y){
   var ch=tileAt(st,x,y);
-  return ch==="#"||(st.theme[ch]!==undefined&&!DECOR[ch]);
+  if(ch==="#") return true;
+  var sp=SPECIAL[ch];
+  if(sp) return !!sp.sight;
+  return (st.theme[ch]!==undefined&&!DECOR[ch]);
 }
-function walkable(st,x,y){ return !isBlocked(st,x,y); }
+/* 인간(플레이어)이 밟을 수 있는 칸 */
+function humanWalkable(st,x,y){
+  var ch=tileAt(st,x,y);
+  if(ch==="#") return false;
+  var sp=SPECIAL[ch];
+  if(sp) return !!sp.human;
+  return !(st.theme[ch]!==undefined&&!DECOR[ch]);
+}
+/* 고양이가 밟을 수 있는 칸 (BFS·유인·추격 모두 이 기준) */
+function catWalkable(st,x,y){
+  var ch=tileAt(st,x,y);
+  if(ch==="#") return false;
+  var sp=SPECIAL[ch];
+  if(sp) return !!sp.cat;
+  return !(st.theme[ch]!==undefined&&!DECOR[ch]);
+}
+function walkable(st,x,y){ return humanWalkable(st,x,y); }
 function man(a,b){ return Math.abs(a.x-b.x)+Math.abs(a.y-b.y); }
 function dirFromTo(a,b){
   var dx=b.x-a.x, dy=b.y-a.y;
@@ -323,7 +364,7 @@ function bfsNext(st,from,target,ignoreCats){
     if(cur.x===target.x&&cur.y===target.y){ found=true; break; }
     for(var d=0;d<4;d++){
       var nx=cur.x+DIRS[d][0], ny=cur.y+DIRS[d][1];
-      if(!walkable(st,nx,ny)||blockedCat(nx,ny)) continue;
+      if(!catWalkable(st,nx,ny)||blockedCat(nx,ny)) continue;
       var k=key(nx,ny);
       if(prev.hasOwnProperty(k)) continue;
       prev[k]=cur; q.push({x:nx,y:ny});
@@ -390,6 +431,8 @@ function lineClear(st,a,b){
 function senseHit(st,cat,pos){
   if(!cat.sense) return false;
   if(man(cat,pos)>cat.sense) return false;
+  /* 구멍(H) 속에 몸을 숨기면 소리도 새지 않아요 */
+  if(isBlocked(st,pos.x,pos.y)) return false;
   return lineClear(st,cat,pos);
 }
 function startEat(st,cat,f,events){
@@ -679,6 +722,7 @@ function bakeBoard(st){
   paintWallShadow(g,st);
   paintGrid(g,st);
   paintFurniture(g,st);
+  paintSpecial(g,st);
   paintGoalMat(g,st);
   paintVignette(g,st);
   /* 바깥 프레임 */
@@ -1011,6 +1055,89 @@ function drawBed(g,st,x,y){
     pf(g,xA,y0+8,2,2,"#b5875a");
     pf(g,xA,y0+18,2,1,"#6b4426");
   }
+}
+
+/* ---------- 특수 타일 ---------- */
+/* 🐾 고양이 발판(^) : 따뜻한 우드 단차 + 발바닥·수염 마크. 작은 인간은 올라갈 수 없어요. */
+function drawCatPerch(g,st,x,y){
+  var x0=x*CELL, y0=y*CELL;
+  /* 단차 밑동 그림자 — 바닥에서 살짝 떠 보이게 */
+  pf(g,x0+6,y0+CELL-6,CELL-12,3,"rgba(24,11,6,0.42)");
+  dith(g,x0+5,y0+CELL-5,CELL-10,3,"rgba(24,11,6,0.32)",0.55,0);
+  /* 옆면(단 높이) */
+  fillRR(g,x0+2,y0+10,CELL-4,CELL-14,3,"#2e1a0d");
+  fillRR(g,x0+3,y0+11,CELL-6,CELL-15,2,"#8a5a34");
+  pf(g,x0+4,y0+13,CELL-8,1,"#a4713f");
+  pf(g,x0+4,y0+CELL-6,CELL-8,1,"#5a361c");
+  /* 상판 */
+  fillRR(g,x0+3,y0+6,CELL-6,CELL-15,3,"#6b4426");
+  fillRR(g,x0+4,y0+7,CELL-8,CELL-16,2,"#c58f55");
+  fillRR(g,x0+5,y0+8,CELL-10,CELL-13,2,"#d9ab6e");
+  pf(g,x0+6,y0+9,CELL-12,1,"#f2cd95");
+  /* 나뭇결 */
+  pf(g,x0+7,y0+13,CELL-14,1,"#c1884c");
+  pf(g,x0+10,y0+16,CELL-20,1,"#c1884c");
+  pf(g,x0+6,y0+20,CELL-13,1,"#b07c46");
+  pf(g,x0+12,y0+23,CELL-22,1,"#b07c46");
+  /* 고양이 발바닥 도장 */
+  var px=x0+20, py=y0+22;
+  fillRR(g,px-4,py-1,9,5,2,"#43260f");
+  pf(g,px-3,py,7,3,"#6b4426");
+  pf(g,px-6,py-6,2,3,"#43260f");
+  pf(g,px-3,py-7,2,3,"#43260f");
+  pf(g,px+1,py-7,2,3,"#43260f");
+  pf(g,px+4,py-6,2,3,"#43260f");
+  /* 수염 두 줄 */
+  pf(g,px+8,py-4,3,1,"#f2cd95");
+  pf(g,px+8,py-1,3,1,"#f2cd95");
+  pf(g,px-11,py-4,3,1,"#f2cd95");
+  pf(g,px-11,py-1,3,1,"#f2cd95");
+  /* 네 모서리 앰버 표식 — 바닥과 한눈에 구분되도록 */
+  pf(g,x0+1,y0+1,2,2,"#ffb338"); pf(g,x0+CELL-3,y0+1,2,2,"#ffb338");
+  pf(g,x0+1,y0+CELL-3,2,2,"#ffb338"); pf(g,x0+CELL-3,y0+CELL-3,2,2,"#ffb338");
+}
+/* 🕳️ 작은 구멍(H) : 벽 틈에 뚫린 어두운 아치 + 사람 발자국. 고양이는 들어올 수 없어요. */
+function drawHoleTile(g,st,x,y){
+  var x0=x*CELL, y0=y*CELL;
+  drawWallTile(g,st,x,y);
+  /* 구멍 둘레를 파낸 느낌의 그늘 */
+  dith(g,x0+4,y0+6,32,32,"rgba(18,10,14,0.55)",0.55,1);
+  /* 돌 턱(상인방) — 벽돌과 구분되는 밝은 돌 테두리 */
+  fillRR(g,x0+7,y0+6,26,6,2,"#3a2a30");
+  fillRR(g,x0+8,y0+7,24,4,1,"#9c7b70");
+  pf(g,x0+9,y0+7,22,1,"#c2a294");
+  /* 아치 입구(어두운 틈) */
+  fillRR(g,x0+9,y0+11,22,27,9,"#0b0709");
+  fillRR(g,x0+11,y0+13,18,24,8,"#1a1219");
+  dith(g,x0+12,y0+15,16,18,"#2b2029",0.5,1);
+  /* 구멍 너머에서 새어 나오는 빗빛 */
+  dith(g,x0+13,y0+26,14,10,"rgba(255,186,110,0.30)",0.5,1);
+  pf(g,x0+12,y0+13,16,1,"rgba(255,206,140,0.42)");
+  pf(g,x0+11,y0+14,1,12,"rgba(255,206,140,0.22)");
+  /* 입구 좌우 기둥(돌) */
+  pf(g,x0+8,y0+12,1,25,"#a98c80");
+  pf(g,x0+31,y0+12,1,25,"#6a5058");
+  /* 안쪽 바닥 턱 — 드나들 수 있는 틈이라는 신호 */
+  pf(g,x0+10,y0+34,20,4,"#3c2d27");
+  pf(g,x0+10,y0+34,20,1,"#5f4a3c");
+  dith(g,x0+11,y0+35,18,3,"#241a16",0.5,1);
+  /* 사람 발자국 두 개 (밝게) */
+  pf(g,x0+14,y0+29,3,4,"#e6d4b6"); pf(g,x0+14,y0+33,3,1,"#a8927a");
+  pf(g,x0+21,y0+25,3,4,"#f4e6cc"); pf(g,x0+21,y0+29,3,1,"#b09a80");
+  /* 구멍 밖으로 새는 빗살 광 */
+  pf(g,x0+7,y0+4,1,3,"rgba(255,206,140,0.18)");
+  pf(g,x0+32,y0+4,1,3,"rgba(255,206,140,0.12)");
+  pf(g,x0+13,y0+3,14,1,"rgba(255,206,140,0.14)");
+}
+
+function paintSpecial(g,st){
+  var drawn=false;
+  for(var y=0;y<N;y++) for(var x=0;x<N;x++){
+    var ch=st.grid[y][x];
+    if(ch==="^"){ drawCatPerch(g,st,x,y); drawn=true; }
+    else if(ch==="H"){ drawHoleTile(g,st,x,y); drawn=true; }
+  }
+  return drawn;
 }
 
 function paintFurniture(g,st){
@@ -1739,6 +1866,7 @@ function updateHUD(){
   $("hStage").textContent=(G.stageIdx+1)+"/"+STAGES.length;
   $("hName").textContent=s.name;
   $("hTurn").textContent="TURN "+G.st.turn;
+  $("hint").textContent=s.hint||HINT_DEFAULT;
   var hh=""; for(var i=0;i<3;i++){ hh+=(i<G.hearts)?"♥":"·"; }
   $("hHearts").textContent=hh;
   var inv=G.st.inv, busy=(G.mode==="anim"||!!G.pending);
@@ -1769,7 +1897,7 @@ function validMoves(){
   var p=G.st.player, out=[];
   for(var d=0;d<4;d++){
     var nx=p.x+DIRS[d][0], ny=p.y+DIRS[d][1];
-    if(!walkable(G.st,nx,ny)) continue;
+    if(!humanWalkable(G.st,nx,ny)) continue;
     var occupied=false;
     for(var i=0;i<G.st.cats.length;i++){ if(G.st.cats[i].x===nx&&G.st.cats[i].y===ny){ occupied=true; } }
     if(occupied) continue;
@@ -1781,7 +1909,8 @@ function validFishTiles(){
   /* 상하좌우 직선 2칸까지만 · 대각선 불가 · 장애물(벽/가구/고양이/다른 생선/아직 줍지 않은 생선)을 만나면 그 방향은 거기서 끊김 */
   var p=G.st.player, out=[];
   var free=function(x,y){
-    if(!walkable(G.st,x,y)) return false;
+    /* 벽·가구·구멍(H)은 넘지 못해요. 고양이 발판(^)에는 던져서 떨어뜨릴 수 있어요. */
+    if(!catWalkable(G.st,x,y)) return false;
     for(var i=0;i<G.st.cats.length;i++){ if(G.st.cats[i].x===x&&G.st.cats[i].y===y) return false; }
     for(var fi=0;fi<G.st.fishes.length;fi++){ if(G.st.fishes[fi].x===x&&G.st.fishes[fi].y===y) return false; }
     for(var pi=0;pi<G.st.pickups.length;pi++){ if(G.st.pickups[pi].x===x&&G.st.pickups[pi].y===y) return false; }
@@ -2018,7 +2147,7 @@ function titlePanel(p){
   p.innerHTML='<canvas id="pCat" width="144" height="112"></canvas>'+
   '<div id="tSub">TACTICAL STEALTH PUZZLE</div><h2 id="tTitle">TINY &amp; PAWS</h2>'+
   '<div style="font-size:13px;font-weight:800;color:#cbbfae;margin-bottom:10px;">작은 인간과 거대 고양이</div>'+
-  '<div class="rows">· 인접한 칸을 누르면 <b>바로 한 턴</b>이 진행돼요 (이동·던지기 모두)<br>· 바닥에 떨어진 <b>먹이</b>는 그 칸을 밟으면 주워져요 — 처음엔 아무것도 없어요<br>· 고양이는 먹이를 <b>끝까지 걸어와 먹어요</b>. 먹는 동안은 눈·귀가 모두 닫혀요<br>· 🐟 <b>작은 생선</b> 사거리 3 · 한 입 먹고 돌아가요<br>· 🐠 <b>큰 통생선</b> 사거리 3 · 계속 먹느라 그 자리에 붙박여요<br>· 🌿 <b>캣닢</b> 사거리 5 · 멀리서도 끌려와 두 턴 정신없어요<br>· 보라 점선은 그 고양이의 <b>기척</b> 범위 — 종류마다 넓이가 달라요(1~2칸)<br>· 실수하면 <b>↩ 취소</b>로 몇 번이든 되돌릴 수 있어요</div>'+
+  '<div class="rows">· 인접한 칸을 누르면 <b>바로 한 턴</b>이 진행돼요 (이동·던지기 모두)<br>· 바닥에 떨어진 <b>먹이</b>는 그 칸을 밟으면 주워져요 — 처음엔 아무것도 없어요<br>· 고양이는 먹이를 <b>끝까지 걸어와 먹어요</b>. 먹는 동안은 눈·귀가 모두 닫혀요<br>· 🐟 <b>작은 생선</b> 사거리 3 · 한 입 먹고 돌아가요<br>· 🐠 <b>큰 통생선</b> 사거리 3 · 계속 먹느라 그 자리에 붙박여요<br>· 🌿 <b>캣닢</b> 사거리 5 · 멀리서도 끌려와 두 턴 정신없어요<br>· 보라 점선은 그 고양이의 <b>기척</b> 범위 — 종류마다 넓이가 달라요(1~2칸)<br>· 🪵 <b>발판</b>은 고양이만 오르고, 🕳️ <b>작은 구멍</b>은 나만 지나갈 수 있어요<br>· 실수하면 <b>↩ 취소</b>로 몇 번이든 되돌릴 수 있어요</div>'+
   '<button id="pStart">시작하기 🐾</button>';
   var c=document.getElementById("pCat"), g=c.getContext("2d");
   g.imageSmoothingEnabled=false;
