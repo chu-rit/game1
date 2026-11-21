@@ -843,17 +843,6 @@ function catIntent(st,cat){
   }
   return null;
 }
-function triArrow(g,tx,ty,dir,len,half,col){
-  for(var r=-half;r<=half;r++){
-    var w=Math.round((1-Math.abs(r)/(half+1))*(len-1));
-    for(var i=0;i<=w;i++){
-      if(dir===1) pf(g,tx-i,ty+r,1,1,col);
-      else if(dir===3) pf(g,tx+i,ty+r,1,1,col);
-      else if(dir===2) pf(g,tx+r,ty-i,1,1,col);
-      else pf(g,tx+r,ty+i,1,1,col);
-    }
-  }
-}
 function drawIntent(g,st,now){
   var pu=0.34+0.20*(0.5+0.5*Math.sin(now/340));
   for(var i=0;i<st.cats.length;i++){
@@ -871,10 +860,6 @@ function drawIntent(g,st,now){
       pf(g,mx,my,1,8,"rgba(120,226,190,"+(pu*0.7).toFixed(3)+")");
       pf(g,mx+7,my,1,8,"rgba(120,226,190,"+(pu*0.7).toFixed(3)+")");
     }
-    var d=DIRS[it.dir];
-    var tx=Math.round(cx+d[0]*26), ty=Math.round(cy+d[1]*26);
-    triArrow(g,tx,ty,it.dir,7,5,"rgba(26,12,8,0.62)");
-    triArrow(g,tx,ty,it.dir,5,3,"rgba(255,230,158,"+(0.72+0.25*pu).toFixed(3)+")");
   }
 }
 /* 이동 방향 화살촉: dir 쪽으로 뾰족한 채워진 삼각형 */
