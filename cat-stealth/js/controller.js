@@ -26,6 +26,14 @@ function foodInfoOf(kd){
   var kk=KIND[kd];   /* 데이터에 설명이 없어도 이름은 알 수 있게 */
   return {em:"🍽️",name:kk?kk.label:kd,tag:"",rows:[],tip:""};
 }
+/* 먹이 아이콘: 보드와 같은 도트 스프라이트(FOODICON=FOODSPR 여백 제거본)를 <img>로.
+   스프라이트가 없는 종류만 이모지로 대신해요. */
+function foodIconHtml(k){
+  var b=(typeof FOODICON!=="undefined"&&FOODICON[k])||(typeof FOODSPR!=="undefined"&&FOODSPR[k]);
+  if(b) return '<img class="sp-ic" src="data:image/png;base64,'+b+'" alt="" draggable="false">';
+  var f=foodInfoOf(k);
+  return f.em||"";
+}
 /* 슬롯 그리기: 구성(어떤 아이템이 몇 번째 칸에)이 바뀔 때만 다시 채워요 */
 function renderInv(inv,busy){
   var kinds=invKinds(), sig=kinds.join("|"), i;
@@ -37,7 +45,7 @@ function renderInv(inv,busy){
       if(kd){
         var info=foodInfoOf(kd);
         s.el.classList.remove("empty","on");
-        s.em.textContent=info.em; s.nm.textContent=info.name;
+        s.em.innerHTML=foodIconHtml(kd); s.nm.textContent=info.name;
         s.el.setAttribute("aria-label",info.name+" "+((inv[kd]||0))+"개 · 길게 누르면 설명");
       }else{
         s.el.classList.add("empty");
@@ -75,7 +83,7 @@ function showItemTip(idx){
   for(var i=0;i<info.rows.length;i++){
     rows+='<div class="trow"><span class="tk">'+info.rows[i][0]+'</span><span class="tv">'+info.rows[i][1]+'</span></div>';
   }
-  $("tipEm").textContent=info.em;
+  $("tipEm").innerHTML=foodIconHtml(s.kind);
   $("tipNm").textContent=info.name;
   $("tipTag").textContent=info.tag||"";
   $("tipTag").style.display=info.tag?"":"none";
