@@ -641,6 +641,14 @@ function drawBushFront(g,st){
   g.drawImage(im,0,sy,im.width,sh,x0,dy,im.width,sh);
 }
 
+/* 발판(^) 상판의 화면 y — 스프라이트는 아래 맞춤이라 위에서 약 8px 지점이 고양이가 서는 면.
+   벡터 대체 그림(낮은 우드 단차)이면 상판이 칸 위에서 약 9px 지점이에요. */
+function perchTopPx(x,y){
+  var im=TILEIMG.perch;
+  if(im&&im.height) return y*CELL+CELL-im.height+8;
+  return y*CELL+9;
+}
+
 /* 특수 타일 스프라이트 — 바닥 판은 칸 바닥에 붙고, 오브젝트는 위 칸으로 살짝 솟아요 */
 function spriteTileAt(g,key,x,y){
   var im=TILEIMG[key];
@@ -1049,9 +1057,11 @@ function drawPickupEntity(g,st,now){
   if(!st.pickups||!st.pickups.length) return;
   for(var i=0;i<st.pickups.length;i++){
     var pk=st.pickups[i];
-    var x0=pk.x*CELL, y0=pk.y*CELL, cx=x0+CELL/2, cy=y0+CELL/2;
+    var onP=st.grid[pk.y]&&st.grid[pk.y][pk.x]==="^";
+    var ptop=onP?perchTopPx(pk.x,pk.y):0;
+    var x0=pk.x*CELL, y0=pk.y*CELL, cx=x0+CELL/2, cy=onP?ptop+3:y0+CELL/2;
     var pulse=0.5+0.5*Math.sin(now/430+pk.x*1.7);
-    shadowPix(g,cx,y0+CELL-7,9,3,0.24);
+    shadowPix(g,cx,onP?ptop+7:y0+CELL-7,9,3,0.24);
     /* 금빛 프레임 = '밟으면 주워요' (크림 타일에서도 보이도록 2px 실선 + 안쪽 점선) */
     pf(g,x0,y0,CELL,1,"rgba(70,35,0,0.42)"); pf(g,x0,y0+CELL-1,CELL,1,"rgba(70,35,0,0.42)");
     pf(g,x0,y0,1,CELL,"rgba(70,35,0,0.42)"); pf(g,x0+CELL-1,y0,1,CELL,"rgba(70,35,0,0.42)");
@@ -1079,7 +1089,9 @@ function drawFishEntity(g,st,now){
   if(!st.fishes||!st.fishes.length) return;
   for(var i=0;i<st.fishes.length;i++){
     var f=st.fishes[i];
-    var cx=f.x*CELL+CELL/2, cy=f.y*CELL+CELL/2;
+    var onP=st.grid[f.y]&&st.grid[f.y][f.x]==="^";
+    var ptop=onP?perchTopPx(f.x,f.y):0;
+    var cx=f.x*CELL+CELL/2, cy=onP?ptop+4:f.y*CELL+CELL/2;
     if(f.eater!=null){
       var held=false;
       for(var ci=0;ci<st.cats.length;ci++){
@@ -1088,7 +1100,7 @@ function drawFishEntity(g,st,now){
       }
       if(held) continue;                       /* 입에 물고 있는 중 → 바닥 중복 렌더 생략 */
     }
-    shadowPix(g,cx,f.y*CELL+CELL-8,f.kind==="big"?10:8,3,0.30);
+    shadowPix(g,cx,onP?ptop+8:f.y*CELL+CELL-8,f.kind==="big"?10:8,3,0.30);
     dith(g,cx-11,cy-9,22,18,"rgba(255,170,205,0.14)",0.4,1);
     drawFishKind(g,cx,cy,f.kind,now,{scale:0.7});
   }
@@ -1135,6 +1147,7 @@ function draw(){
     if(t2<1){
       var fx0=fa.from.x*CELL+CELL/2, fy0=fa.from.y*CELL+CELL/2;
       var fx1=fa.to.x*CELL+CELL/2, fy1=fa.to.y*CELL+CELL/2;
+      if(st.grid[fa.to.y][fa.to.x]==="^") fy1=perchTopPx(fa.to.x,fa.to.y)+4;
       var ax=fx0+(fx1-fx0)*t2, ay=fy0+(fy1-fy0)*t2-CELL*0.6*Math.sin(Math.PI*t2);
       drawFishKind(ctx,ax,ay,fa.kind||"small",now,{glow:true});
     }
@@ -1165,6 +1178,14 @@ function draw(){
     cat.rx+=(cat.x-cat.rx)*0.30; cat.ry+=(cat.y-cat.ry)*0.30;
     if(Math.abs(cat.rx-cat.x)<0.01) cat.rx=cat.x;
     if(Math.abs(cat.ry-cat.y)<0.01) cat.ry=cat.y;
+    /* 발판(^)을 오르내릴 때: 논리 위치(목적지)가 발판이면 이동 시작과 함께 몸이 먼저 뜨고,
+       뜬 채로 상판 위로 들어가요 — 들어간 뒤에 올라가는 게 아니라 '타고' 오르는 느낌.
+       내려올 때도 먼저 몸을 숙이듯 내려오면서 빠져나가요. lift = 발 들어올림 픽셀. */
+    var onP2=(cat.x>=0&&cat.x<N&&cat.y>=0&&cat.y<N&&st.grid[cat.y][cat.x]==="^");
+    var liftT=onP2?(cat.y*CELL+CELL-4-perchTopPx(cat.x,cat.y)):0;
+    if(cat.lift==null) cat.lift=liftT;
+    cat.lift+=(liftT-cat.lift)*0.42;
+    if(Math.abs(cat.lift-liftT)<0.4) cat.lift=liftT;
     drawCatEntity(ctx,cat,now);
   }
   if(!pDrawn) drawPlayerNow(st,now,G.playerDir);
@@ -1193,4 +1214,4 @@ function drawPlayerNow(st,now,plDir){
 }
 
 function loop(){ draw(); requestAnimationFrame(loop); }
-
+

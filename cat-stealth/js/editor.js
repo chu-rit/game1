@@ -96,7 +96,10 @@ function renderBoardArt(){
   entities.sort(function(a,b){return a.y-b.y||a.x-b.x;});
   entities.forEach(function(e){
     if(e.player) drawHuman(g,{rx:e.x,ry:e.y},0,2,false);
-    else drawCatAt(g,e.x*CELL+CELL/2,e.y*CELL+CELL-3,COATS[e.cat.type],e.cat.dir,e.cat.type,0,{pose:'idle',noEmote:true});
+    else{
+      var lift=(st.grid[e.y][e.x]==="^")?(e.y*CELL+CELL-3-perchTopPx(e.x,e.y)):0;
+      drawCatAt(g,e.x*CELL+CELL/2,e.y*CELL+CELL-3-lift,COATS[e.cat.type],e.cat.dir,e.cat.type,0,{pose:'idle',noEmote:true});
+    }
   });
   if(st.player){st.player.rx=st.player.x;st.player.ry=st.player.y;drawBushFront(g,st);}
 }

@@ -49,10 +49,10 @@ var STAGES=[
    cats:[{type:"A",x:3,y:6,dir:0},{type:"A",x:6,y:2,dir:3}],
    pickups:[], hint:"" },
  { name:"거실 소파", theme:{S:"sofa","~":"rug",X:"counter",W:"wardrobe",T:"table"},
-   map:["#########","#####X.##","#####X.##","#####X.##","#####X.##","#.WWWX.##","#......##","#.WW.T.##","#########"],
+   map:["#########","#####X.##","#####X~##","#####X~##","#####X~##","#WWWWX~##","#~~~~~~##","#..^.^..#","#########"],
    start:[1,7], goalPos:[6,1], maxTurns:20,
-   cats:[{type:"A",x:6,y:4,dir:2}],
-   pickups:[{x:1,y:5,kind:"small"}], hint:"" },
+   cats:[{type:"A",x:6,y:5,dir:2}],
+   pickups:[{x:2,y:7,kind:"small"}], hint:"" },
  { name:"9자 부엌", theme:{X:"counter","~":"rug"},
    /* 3단계: '6'을 좌우로 뒤집은 '9'자 부엌. 윗줄이 9자의 윗획(가로획, x=2~5),
       그 오른쪽 한 줄이 목(세로획, x=5), 그 아래가 9자의 배 — 폭 4칸짜리 닫힌 고리 회랑(x=2~5).
