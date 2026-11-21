@@ -39,9 +39,9 @@ function updateHUD(){
     db.el.classList.toggle("aim",!!(G.fishMode&&G.fishAim&&G.fishAim.dir===db.dir));
   }
   var bw=$("bWait");
+  /* 가운데 칸은 먹이 조준 중에만 등장 — 평소엔 빈 칸인 4방향 십자키 */
+  bw.classList.toggle("hidden",!G.fishMode);
   bw.disabled=!ready;
-  $("bWaitIc").textContent=G.fishMode?"\ud83c\udfaf":"\u23f8";
-  $("bWaitTx").textContent=G.fishMode?"\ud22c\ucc99":"\ub300\uae30";
   bw.classList.toggle("aimed",!!(G.fishMode&&G.fishAim));
   /* 잡혔을 때는 패널 없이 보드를 본 채로, 취소 버튼에만 은은한 강조 */
   $("bUndo").classList.toggle("hot",G.mode==="caught");
@@ -298,16 +298,13 @@ function pressDir(d){
   var vm=validMoves();
   for(var i=0;i<vm.length;i++){ if(vm[i].dir===d){ beginTurn({t:"move",x:vm[i].x,y:vm[i].y,dir:d}); return; } }
 }
-/* 가운데 버튼(키보드 Enter/Space): 제자리 대기 / 먹이 모드에선 조준한 칸에 투척 */
+/* 가운데 버튼(먹이 모드에서만 표시): 조준한 칸에 투척. 일반 모드엔 대기 버튼이 없어요 */
 function pressAction(){
   if(G.mode!=="play"||G.pending) return;
-  if(G.fishMode){
-    if(G.fishAim){ throwAimedFish(); return; }
-    setWarn("방향키로 던질 칸을 고르세요","fish");
-    clearWarnSoon(1800);
-    return;
-  }
-  beginTurn({t:"wait"});
+  if(!G.fishMode) return;
+  if(G.fishAim){ throwAimedFish(); return; }
+  setWarn("방향키로 던질 칸을 고르세요","fish");
+  clearWarnSoon(1800);
 }
 function initDpad(){
   var bs=document.querySelectorAll("#dpad .dk");
@@ -435,7 +432,7 @@ document.addEventListener("keydown",function(e){
   /* ---- 지침(추격 중 지구력 0): 먹이 조준 중이 아니면 아무 입력이나 제자리 대기 ---- */
   if(G.st.stam<=0&&anyChasing()&&!G.fishMode&&(enter||arrowDirOf(k)>=0)){ beginTurn({t:"wait"}); return; }
 
-  /* ---- 가운데 버튼과 같은 동작: 제자리 대기 / 조준한 칸에 투척 ---- */
+  /* ---- 가운데 버튼과 같은 동작: 먹이 모드에서 조준한 칸에 투척(일반 모드에선 동작 없음) ---- */
   if(enter){ pressAction(); return; }
 
   /* ---- 이동 / 먹이 모드에서는 조준 ---- */

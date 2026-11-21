@@ -60,7 +60,7 @@ body{
   grid-template-areas:"dpad actions" "hint hint";grid-row-gap:8px;grid-column-gap:10px;
   padding:2px 4px 0;align-items:start;}
 button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weight:800;}
-/* ---- 왼쪽: 십자 방향키 + 가운데 제자리 대기/투척 (3×3) ---- */
+/* ---- 왼쪽: 4방향 십자키 (3×3, 가운데는 먹이 조준 중에만 🎯 투척) ---- */
 #dpad{grid-area:dpad;display:grid;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(3,46px);gap:5px;}
 #dpad button{border-radius:13px;display:flex;align-items:center;justify-content:center;padding:0;
   background:linear-gradient(#2a2030,#211a26);box-shadow:inset 0 0 0 1.5px #45343d,0 2px 0 rgba(0,0,0,.35);
@@ -70,8 +70,10 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
 #dpad .left{grid-area:2/1;}
 #dpad .right{grid-area:2/3;}
 #dpad .down{grid-area:3/2;}
+/* 가운데 칸: 일반 플레이에선 비어 있는 깔끔한 +자 십자키, 먹이 조준 중에만 🎯 투척이 뜬다 */
 #bWait{grid-area:2/2;flex-direction:column;gap:1px;line-height:1;
   background:linear-gradient(#33263c,#261d2e);box-shadow:inset 0 0 0 1.5px #56415a,0 2px 0 rgba(0,0,0,.35);}
+#bWait.hidden{display:none;}
 #bWait .ic{font-size:16px;line-height:1;}
 #bWait .tx{font-size:9px;font-weight:800;letter-spacing:-.02em;color:#cbbfae;}
 #bWait.aimed{background:linear-gradient(#4a2233,#3a1a28);
