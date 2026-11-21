@@ -1,4 +1,5 @@
 "use strict";
+var DPADBTNS=[];   /* 하단 십자 방향키 버튼 ({el,dir}) */
 /* ================= HUD ================= */
 function updateHUD(){
   var s=STAGES[G.stageIdx];
@@ -23,6 +24,25 @@ function updateHUD(){
   }
   $("bUndo").disabled=busy||G.undoStack.length===0||!live;
   $("bReset").disabled=busy||!live;
+  /* 하단 십자키·가운데 버튼 상태: 플레이 중이 아니면 전부 잠그고, 이동 가능한 방향만 밝게 */
+  var ready=(G.mode==="play")&&!G.pending;
+  var tired=(G.st&&G.st.stam<=0&&anyChasing());
+  var vm=ready?validMoves():[];
+  var canDir={};
+  if(ready){
+    if(G.fishMode||tired){ canDir={0:1,1:1,2:1,3:1}; }   /* 조준 중·지침 상태에선 네 방향 모두 열어 둬요 */
+    else { for(var mi=0;mi<vm.length;mi++) canDir[vm[mi].dir]=1; }
+  }
+  for(var di=0;di<DPADBTNS.length;di++){
+    var db=DPADBTNS[di];
+    db.el.disabled=!ready||!canDir[db.dir];
+    db.el.classList.toggle("aim",!!(G.fishMode&&G.fishAim&&G.fishAim.dir===db.dir));
+  }
+  var bw=$("bWait");
+  bw.disabled=!ready;
+  $("bWaitIc").textContent=G.fishMode?"\ud83c\udfaf":"\u23f8";
+  $("bWaitTx").textContent=G.fishMode?"\ud22c\ucc99":"\ub300\uae30";
+  bw.classList.toggle("aimed",!!(G.fishMode&&G.fishAim));
   /* 잡혔을 때는 패널 없이 보드를 본 채로, 취소 버튼에만 은은한 강조 */
   $("bUndo").classList.toggle("hot",G.mode==="caught");
   /* 지구력 게이지: 추격 중에만 표시 — 칸당 1칸, 다 쓰면 빨간 점멸 */
@@ -266,8 +286,40 @@ cvEl.addEventListener("pointerdown",function(e){
   }
   if(vm.length===0){ setWarn("갈 수 있는 칸이 없어요 · ↩ 취소로 되돌아가세요","bad"); clearWarnSoon(1900); }
 });
-$("bUndo").addEventListener("click",function(){ undo(); });
-$("bReset").addEventListener("click",function(){ resetStage(); });
+$("bUndo").addEventListener("click",function(){ this.blur(); undo(); });
+$("bReset").addEventListener("click",function(){ this.blur(); resetStage(); });
+
+/* ================= 하단 버튼 조작 ================= */
+/* 방향키: 이동 / 먹이 조준 / 지침(지구력 0) 상태에선 제자리 대기 */
+function pressDir(d){
+  if(G.mode!=="play"||G.pending) return;
+  if(G.st.stam<=0&&anyChasing()&&!G.fishMode){ beginTurn({t:"wait"}); return; }
+  if(G.fishMode){ aimFishDir(d); return; }
+  var vm=validMoves();
+  for(var i=0;i<vm.length;i++){ if(vm[i].dir===d){ beginTurn({t:"move",x:vm[i].x,y:vm[i].y,dir:d}); return; } }
+}
+/* 가운데 버튼(키보드 Enter/Space): 제자리 대기 / 먹이 모드에선 조준한 칸에 투척 */
+function pressAction(){
+  if(G.mode!=="play"||G.pending) return;
+  if(G.fishMode){
+    if(G.fishAim){ throwAimedFish(); return; }
+    setWarn("방향키로 던질 칸을 고르세요","fish");
+    clearWarnSoon(1800);
+    return;
+  }
+  beginTurn({t:"wait"});
+}
+function initDpad(){
+  var bs=document.querySelectorAll("#dpad .dk");
+  for(var i=0;i<bs.length;i++){
+    (function(el){
+      var d=parseInt(el.getAttribute("data-dir"),10);
+      DPADBTNS.push({el:el,dir:d});
+      el.addEventListener("click",function(){ el.blur(); pressDir(d); });
+    })(bs[i]);
+  }
+  $("bWait").addEventListener("click",function(){ this.blur(); pressAction(); });
+}
 /* 생선 버튼 3개: 개수를 보여 주고, 1개 이상이면 눌러서 던지기 모드 */
 function initFishButtons(){
   var bs=document.querySelectorAll("#fishbar button");
@@ -321,7 +373,8 @@ function aimFishDir(d){
     for(var i=0;i<opts.length;i++){ if(opts[i].step!==prev.step){ pick=opts[i]; break; } }
   }
   G.fishAim={x:pick.x,y:pick.y,dir:pick.dir,step:pick.step};
-  setWarn("🎯 "+KIND[G.fishKind].label+" 조준 "+pick.step+"칸 · Enter/Space로 투척","fish");
+  setWarn("🎯 "+KIND[G.fishKind].label+" 조준 "+pick.step+"칸 · 가운데 🎯 버튼(Enter)으로 투척","fish");
+  updateHUD();
   return true;
 }
 function clearFishAim(){ G.fishAim=null; }
@@ -382,8 +435,8 @@ document.addEventListener("keydown",function(e){
   /* ---- 지침(추격 중 지구력 0): 먹이 조준 중이 아니면 아무 입력이나 제자리 대기 ---- */
   if(G.st.stam<=0&&anyChasing()&&!G.fishMode&&(enter||arrowDirOf(k)>=0)){ beginTurn({t:"wait"}); return; }
 
-  /* ---- 조준한 칸에 투척 ---- */
-  if(enter){ throwAimedFish(); return; }
+  /* ---- 가운데 버튼과 같은 동작: 제자리 대기 / 조준한 칸에 투척 ---- */
+  if(enter){ pressAction(); return; }
 
   /* ---- 이동 / 먹이 모드에서는 조준 ---- */
   var d=arrowDirOf(k);
@@ -451,6 +504,7 @@ function resize(){
 
 /* ================= 시작 ================= */
 window.addEventListener("resize",resize);
+initDpad();
 initFishButtons();
 loadStage(0);
 G.mode="title";

@@ -22,14 +22,23 @@
     <div id="stam" class="hidden"></div>
   </div>
   <div id="controls">
-    <div id="btnrow">
-      <button id="bUndo">↩ 취소 <span class="kc">U</span></button>
-      <button id="bReset">↻ 리셋 <span class="kc">R</span></button>
+    <div id="dpad">
+      <button class="dk up" data-dir="0" aria-label="위로 이동">▲</button>
+      <button class="dk left" data-dir="3" aria-label="왼쪽으로 이동">◀</button>
+      <button id="bWait" aria-label="제자리 대기 · 먹이 투척"><span class="ic" id="bWaitIc">⏸</span><span class="tx" id="bWaitTx">대기</span></button>
+      <button class="dk right" data-dir="1" aria-label="오른쪽으로 이동">▶</button>
+      <button class="dk down" data-dir="2" aria-label="아래로 이동">▼</button>
     </div>
-    <div id="fishbar">
-      <button class="fb" data-kind="small" aria-label="작은 생선"><span class="kc">1</span>🐟<span class="nm">작은생선</span><span class="n">0</span></button>
-      <button class="fb" data-kind="big" aria-label="큰 통생선"><span class="kc">2</span>🐠<span class="nm">통생선</span><span class="n">0</span></button>
-      <button class="fb" data-kind="catnip" aria-label="캣닢"><span class="kc">3</span>🌿<span class="nm">캣닢</span><span class="n">0</span></button>
+    <div id="actioncol">
+      <div id="btnrow">
+        <button id="bUndo">↩ 취소 <span class="kc">U</span></button>
+        <button id="bReset">↻ 리셋 <span class="kc">R</span></button>
+      </div>
+      <div id="fishbar">
+        <button class="fb" data-kind="small" aria-label="작은 생선"><span class="kc">1</span><span class="em">🐟</span><span class="nm">작은생선</span><span class="n">0</span></button>
+        <button class="fb" data-kind="big" aria-label="큰 통생선"><span class="kc">2</span><span class="em">🐠</span><span class="nm">통생선</span><span class="n">0</span></button>
+        <button class="fb" data-kind="catnip" aria-label="캣닢"><span class="kc">3</span><span class="em">🌿</span><span class="nm">캣닢</span><span class="n">0</span></button>
+      </div>
     </div>
     <div id="hint">바닥의 먹이를 밟으면 주워요 · 보라 점선(기척) 안에 서면 들켜요</div>
   </div>
