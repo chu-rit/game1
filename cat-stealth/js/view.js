@@ -1010,15 +1010,6 @@ function drawSense(g,st,cat,now){
     pf(g,x0+1,y0+1,3,3,"rgba(76,29,149,0.95)"); pf(g,x0+CELL-4,y0+1,3,3,"rgba(76,29,149,0.95)");
     pf(g,x0+1,y0+CELL-4,3,3,"rgba(76,29,149,0.95)"); pf(g,x0+CELL-4,y0+CELL-4,3,3,"rgba(76,29,149,0.95)");
   }
-  /* 고양이 옆으로 퍼지는 소리 파동 */
-  var cx=Math.round(cat.rx*CELL+CELL/2), hy=Math.round(cat.ry*CELL+CELL-26);
-  var ph=Math.floor(now/260)%3;
-  for(var w=0;w<3;w++){
-    if(w>ph) continue;
-    var rx=5+w*3, aa=(0.55+(2-w)*0.14).toFixed(3);
-    pf(g,cx-rx,hy-1,1,3,"rgba(124,58,237,"+aa+")");
-    pf(g,cx+rx,hy-1,1,3,"rgba(124,58,237,"+aa+")");
-  }
 }
 
 /* ---------- 바닥에 떨어져 있는 생선(줍기) ---------- */
