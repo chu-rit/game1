@@ -683,7 +683,38 @@ function paintFurniture(g,st){
     else if(ch==="S") drawSofa(g,st,x,y);
     else if(ch==="T") drawTable(g,st,x,y);
     else if(ch==="B") drawBed(g,st,x,y);
+    else if(ch==="W") drawWardrobe(g,st,x,y);
   }
+}
+
+/* 모듈형 장롱(W) = downloads/tile-wardrobe.png 의 2도어 모듈 한 칸(40×40).
+   가로로 이어 붙인 칸은 안쪽 모듈 프레임 1px을 잘라 그려 이음선이 겹치지 않게 하고,
+   줄의 양 끝 칸만 프레임을 남겨 장롱 덩이의 끝이 또렷해요. */
+function drawWardrobe(g,st,x,y){
+  var im=TILEIMG.wardrobe;
+  var x0=x*CELL, y0=y*CELL;
+  if(!im||!im.width){ drawWardrobeFallback(g,x0,y0); return; }
+  var lf=counterRun(st,x-1,y,"W"), rt=counterRun(st,x+1,y,"W");
+  var sx=lf?1:0, ex=rt?1:0;
+  g.drawImage(im,sx,0,im.width-sx-ex,im.height,x0,y0,CELL,CELL);
+}
+/* 스프라이트 디코드 전 폴백 — 갈색 장롱 두 짝. */
+function drawWardrobeFallback(g,x0,y0){
+  pf(g,x0+3,y0+35,CELL-6,2,"rgba(24,10,6,0.42)");
+  dith(g,x0+3,y0+36,CELL-6,4,"rgba(24,10,6,0.30)",0.6,0);
+  fillRR(g,x0+1,y0+3,CELL-2,33,2,"#2a1708");
+  fillRR(g,x0+2,y0+4,CELL-4,31,1,"#6b4426");
+  pf(g,x0+2,y0+4,CELL-4,3,"#9a6432");          /* 몰딩 */
+  pf(g,x0+2,y0+7,CELL-4,1,"#3d2410");
+  pf(g,x0+5,y0+10,13,22,"#58351a");            /* 왼쪽 문 */
+  pf(g,x0+CELL-18,y0+10,13,22,"#58351a");      /* 오른쪽 문 */
+  pf(g,x0+6,y0+11,11,1,"#8a5a34");
+  pf(g,x0+6,y0+20,11,1,"#3d2410");
+  pf(g,x0+CELL-17,y0+11,11,1,"#8a5a34");
+  pf(g,x0+CELL-17,y0+20,11,1,"#3d2410");
+  pf(g,x0+17,y0+17,2,6,"#e8cf95");             /* 손잡이 */
+  pf(g,x0+CELL-19,y0+17,2,6,"#e8cf95");
+  pf(g,x0+1,y0+33,CELL-2,2,"#3d2410");
 }
 
 /* EXIT 칸 = 새 탈출 매트 스프라이트(화살표 + 작은 EXIT 글자). */

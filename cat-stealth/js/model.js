@@ -70,6 +70,7 @@ function isHideTile(st,x,y){ return tileAt(st,x,y)==="U"; }
 function isBlocked(st,x,y){
   var ch=tileAt(st,x,y);
   if(ch==="#") return true;
+  if(ch==="W") return true;             /* 장롱(W): 벽처럼 시선·기척을 막아요 */
   var sp=SPECIAL[ch];
   if(sp) return !!sp.sight;
   return (st.theme[ch]!==undefined&&!DECOR[ch]);
@@ -78,6 +79,7 @@ function isBlocked(st,x,y){
 function humanWalkable(st,x,y){
   var ch=tileAt(st,x,y);
   if(ch==="#") return false;
+  if(ch==="W") return false;             /* 장롱(W): 사람도 지나갈 수 없어요 */
   var sp=SPECIAL[ch];
   if(sp) return !!sp.human;
   return !(st.theme[ch]!==undefined&&!DECOR[ch]);
@@ -86,6 +88,7 @@ function humanWalkable(st,x,y){
 function catWalkable(st,x,y){
   var ch=tileAt(st,x,y);
   if(ch==="#") return false;
+  if(ch==="W") return false;             /* 장롱(W): 고양이도 지나갈 수 없어요 */
   var sp=SPECIAL[ch];
   if(sp) return !!sp.cat;
   return !(st.theme[ch]!==undefined&&!DECOR[ch]);
