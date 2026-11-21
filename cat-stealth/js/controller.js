@@ -1,7 +1,8 @@
 "use strict";
-var DPADBTNS=[];   /* 하단 십자 방향키 버튼 ({el,dir}) */
-/* 인벤토리: 고정 3종 버튼이 아니라 3칸 슬롯 — G.st.inv 에 있는 아이템만 앞 칸부터 채워져요 */
-var INV=[];        /* 슬롯 DOM ({el,em,nm,n,kind}) 최대 3칸 */
+var DPADBTNS=[];   /* 하단 역T자 방향키 버튼 ({el,dir}) */
+/* 인벤토리: 고정 3종 버튼이 아니라 5칸 슬롯 — G.st.inv 에 있는 아이템만 앞 칸부터 채워져요 */
+var INVCAP=5;      /* 인벤토리 슬롯 수 (키보드 1~5 와 1:1) */
+var INV=[];        /* 슬롯 DOM ({el,em,nm,n,kind}) 최대 5칸 */
 var INVSIG="";     /* 지금 슬롯에 그려진 아이템 순서 — 바뀔 때만 다시 그려요 */
 var TIP={open:false,t0:0};   /* 아이템 상세 정보 카드 상태 */
 var LP={timer:0,fired:false,idx:-1,x:0,y:0}, LP_MS=400;   /* 슬롯 길게 누르기 */
@@ -109,7 +110,7 @@ function updateHUD(){
   renderInv(inv,busy);
   $("bUndo").disabled=busy||G.undoStack.length===0||!live;
   $("bReset").disabled=busy||!live;
-  /* 하단 십자키·가운데 버튼 상태: 플레이 중이 아니면 전부 잠그고, 이동 가능한 방향만 밝게 */
+  /* 하단 방향키·🎯 버튼 상태: 플레이 중이 아니면 전부 잠그고, 이동 가능한 방향만 밝게 */
   var ready=(G.mode==="play")&&!G.pending;
   var tired=(G.st&&G.st.stam<=0&&anyChasing());
   var vm=ready?validMoves():[];
@@ -124,7 +125,7 @@ function updateHUD(){
     db.el.classList.toggle("aim",!!(G.fishMode&&G.fishAim&&G.fishAim.dir===db.dir));
   }
   var bw=$("bWait");
-  /* 가운데 칸은 먹이 조준 중에만 등장 — 평소엔 빈 칸인 4방향 십자키 */
+  /* 오른쪽 위 칸(🎯 투척)은 먹이 조준 중에만 등장 — 평소엔 빈 칸인 역T자 방향키 */
   bw.classList.toggle("hidden",!G.fishMode);
   bw.disabled=!ready;
   bw.classList.toggle("aimed",!!(G.fishMode&&G.fishAim));
@@ -385,7 +386,7 @@ function pressDir(d){
   var vm=validMoves();
   for(var i=0;i<vm.length;i++){ if(vm[i].dir===d){ beginTurn({t:"move",x:vm[i].x,y:vm[i].y,dir:d}); return; } }
 }
-/* 가운데 버튼(먹이 모드에서만 표시): 조준한 칸에 투척. 일반 모드엔 대기 버튼이 없어요 */
+/* 🎯 버튼(먹이 모드에서만 표시): 조준한 칸에 투척. 일반 모드엔 보이지 않아요 */
 function pressAction(){
   if(G.mode!=="play"||G.pending) return;
   if(!G.fishMode) return;
@@ -404,13 +405,13 @@ function initDpad(){
   }
   $("bWait").addEventListener("click",function(){ this.blur(); pressAction(); });
 }
-/* 인벤토리 슬롯 3칸
+/* 인벤토리 슬롯 5칸
    - 짧게 터치/클릭: 그 칸의 아이템으로 던지기 모드 토글
    - 0.4초 길게 누르기(또는 우클릭): 아이템 상세 정보 카드 */
 function lpAbort(){ if(LP.timer){ clearTimeout(LP.timer); LP.timer=0; } LP.idx=-1; }
 function initInv(){
   var bs=document.querySelectorAll("#invbar .slot");
-  for(var i=0;i<bs.length;i++){
+  for(var i=0;i<bs.length&&i<INVCAP;i++){
     (function(el,idx){
       var s={el:el,em:el.querySelector(".em"),nm:el.querySelector(".nm"),n:el.querySelector(".n"),kind:null};
       INV.push(s);
@@ -500,7 +501,7 @@ function aimFishDir(d){
     for(var i=0;i<opts.length;i++){ if(opts[i].step!==prev.step){ pick=opts[i]; break; } }
   }
   G.fishAim={x:pick.x,y:pick.y,dir:pick.dir,step:pick.step};
-  setWarn("🎯 "+KIND[G.fishKind].label+" 조준 "+pick.step+"칸 · 가운데 🎯 버튼(Enter)으로 투척","fish");
+  setWarn("🎯 "+KIND[G.fishKind].label+" 조준 "+pick.step+"칸 · 오른쪽 위 🎯 버튼(Enter)으로 투척","fish");
   updateHUD();
   return true;
 }
@@ -550,8 +551,8 @@ document.addEventListener("keydown",function(e){
   if(k==="u"||k==="U"||k==="z"||k==="Z"||k==="Backspace"){ undo(); return; }
   if(k==="r"||k==="R"){ resetStage(); return; }
 
-  /* ---- 인벤토리 슬롯 선택 (1/2/3 = 지금 그 칸에 있는 아이템, 누를 때마다 조준 초기화) ---- */
-  if(k==="1"||k==="2"||k==="3"){
+  /* ---- 인벤토리 슬롯 선택 (1~5 = 지금 그 칸에 있는 아이템, 누를 때마다 조준 초기화) ---- */
+  if(k>="1"&&k<="5"&&k.length===1){
     var si=parseInt(k,10)-1, sslot=INV[si];
     if(sslot&&sslot.kind){ toggleFishMode(sslot.kind); }
     else{ setWarn("빈 슬롯이에요 · 바닥의 먹이를 밟으면 이 자리에 들어와요","fish"); clearWarnSoon(1900); }
@@ -570,7 +571,7 @@ document.addEventListener("keydown",function(e){
   /* ---- 지침(추격 중 지구력 0): 먹이 조준 중이 아니면 아무 입력이나 제자리 대기 ---- */
   if(G.st.stam<=0&&anyChasing()&&!G.fishMode&&(enter||arrowDirOf(k)>=0)){ beginTurn({t:"wait"}); return; }
 
-  /* ---- 가운데 버튼과 같은 동작: 먹이 모드에서 조준한 칸에 투척(일반 모드에선 동작 없음) ---- */
+  /* ---- 🎯 버튼과 같은 동작: 먹이 모드에서 조준한 칸에 투척(일반 모드에선 동작 없음) ---- */
   if(enter){ pressAction(); return; }
 
   /* ---- 이동 / 먹이 모드에서는 조준 ---- */

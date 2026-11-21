@@ -55,24 +55,24 @@ body{
 #stam i.e{background:rgba(255,255,255,.10);box-shadow:inset 0 0 0 1px rgba(255,255,255,.16);}
 #stam.out i.e{background:var(--red);animation:blink 1s infinite;}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.45}}
-/* 하단 조작부: 위 = 십자키 + 취소/리셋 · 아래 = 가로 꽉 찬 인벤토리 · 맨 아래 한 줄 힌트 */
+/* 하단 조작부: 위 = 역T자 방향키 + 취소/리셋 · 아래 = 가로 꽉 찬 인벤토리 · 맨 아래 한 줄 힌트 */
 #controls{position:relative;z-index:3;display:flex;flex-direction:column;gap:7px;
   padding:2px 4px 0;}
 button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weight:800;}
-/* ---- 상단 조작 행: 왼쪽 4방향 십자키, 오른쪽 취소/리셋 2단 ---- */
+/* ---- 상단 조작 행: 왼쪽 역T자 방향키, 오른쪽 취소/리셋 2단 ---- */
 #topControls{display:flex;align-items:stretch;gap:10px;}
-/* 4방향 십자키 (3×3, 가운데는 먹이 조준 중에만 🎯 투척) */
-#dpad{flex:none;display:grid;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(3,46px);gap:5px;}
+/* 역T자 방향키 (3열×2행: ▲ / ◀ ▼ ▶, 오른쪽 위 칸은 먹이 조준 중에만 🎯 투척) */
+#dpad{flex:none;display:grid;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(2,46px);gap:5px;}
 #dpad button{border-radius:13px;display:flex;align-items:center;justify-content:center;padding:0;
   background:linear-gradient(#2a2030,#211a26);box-shadow:inset 0 0 0 1.5px #45343d,0 2px 0 rgba(0,0,0,.35);
   transition:transform .1s ease-out,box-shadow .12s,opacity .12s;}
 #dpad .dk{font-size:17px;color:#e6d9c8;line-height:1;}
 #dpad .up{grid-area:1/2;}
 #dpad .left{grid-area:2/1;}
+#dpad .down{grid-area:2/2;}
 #dpad .right{grid-area:2/3;}
-#dpad .down{grid-area:3/2;}
-/* 가운데 칸: 일반 플레이에선 비어 있는 깔끔한 +자 십자키, 먹이 조준 중에만 🎯 투척이 뜬다 */
-#bWait{grid-area:2/2;flex-direction:column;gap:1px;line-height:1;
+/* 오른쪽 위 칸: 일반 플레이에선 비어 있는 역T자, 먹이 조준 중에만 🎯 투척이 뜬다 */
+#bWait{grid-area:1/3;flex-direction:column;gap:1px;line-height:1;
   background:linear-gradient(#33263c,#261d2e);box-shadow:inset 0 0 0 1.5px #56415a,0 2px 0 rgba(0,0,0,.35);}
 #bWait.hidden{display:none;}
 #bWait .ic{font-size:16px;line-height:1;}
@@ -83,7 +83,7 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
 #dpad button:active{transform:translateY(1px);}
 #dpad button:disabled{opacity:.30;filter:grayscale(.6);}
 #dpad .dk.aim{box-shadow:inset 0 0 0 2px var(--pink),0 0 14px rgba(255,143,179,.35);color:#ffd7e6;}
-/* ---- 오른쪽: 취소·리셋 — 십자키 높이에 맞춰 위아래 2단으로 크게 ---- */
+/* ---- 오른쪽: 취소·리셋 — 역T자 방향키 2줄 높이에 맞춰 위아래 2단 ---- */
 #btnrow{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;}
 #btnrow button{flex:1;min-height:0;padding:0 4px;border-radius:14px;font-size:15px;letter-spacing:.01em;white-space:nowrap;
   background:linear-gradient(#2a2030,#211a26);box-shadow:inset 0 0 0 1.5px #45343d,0 2px 0 rgba(0,0,0,.35);
@@ -101,17 +101,19 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
 #bUndo.hot{box-shadow:inset 0 0 0 2px var(--amber),0 0 14px rgba(255,176,46,.28);animation:undoHot 1.6s ease-in-out infinite;}
 #bUndo.hot:disabled{animation:none;}
 @keyframes undoHot{0%,100%{box-shadow:inset 0 0 0 2px var(--amber),0 0 10px rgba(255,176,46,.16);}50%{box-shadow:inset 0 0 0 2px var(--amber),0 0 20px rgba(255,176,46,.42);}}
-/* ---- 아래: 가로 꽉 찬 인벤토리 3칸 — 주운 먹이만 앞 슬롯부터 채워져요 ---- */
-#invbar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;height:50px;}
-#invbar .slot{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;align-items:center;gap:3px;
-  padding:0 6px;border-radius:12px;height:100%;min-width:0;overflow:hidden;touch-action:none;-webkit-touch-callout:none;
+/* ---- 아래: 가로 꽉 찬 인벤토리 5칸 — 주운 먹이만 앞 슬롯부터 채워져요 ---- */
+#invbar{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;height:62px;}
+/* 세로 컴팩트 카드: 위 키캡+×N · 가운데 큰 아이콘 · 아래 한 줄 이름 (375 폭에서도 잘리지 않게) */
+#invbar .slot{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:14px minmax(0,1fr) 12px;
+  align-items:center;justify-items:center;gap:1px 3px;
+  padding:3px 4px 4px;border-radius:11px;height:100%;min-width:0;overflow:hidden;touch-action:none;-webkit-touch-callout:none;
   background:linear-gradient(#241c2b,#1c1622);box-shadow:inset 0 0 0 1.5px #3a2c36,0 2px 0 rgba(0,0,0,.35);
   transition:transform .12s ease-out,box-shadow .12s,background .12s;}
-#invbar .slot .em{font-size:18px;line-height:1;}
-#invbar .slot .nm{min-width:0;font-size:10px;line-height:1.15;font-weight:800;letter-spacing:-.03em;color:#c7b9ab;
+#invbar .slot .em{grid-area:2/1/3/3;font-size:21px;line-height:1;}
+#invbar .slot .nm{grid-area:3/1/4/3;width:100%;min-width:0;font-size:9.5px;line-height:1.1;font-weight:800;letter-spacing:-.04em;color:#c7b9ab;
   text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-#invbar .slot .n{font-size:11.5px;line-height:1;font-weight:800;font-variant-numeric:tabular-nums;color:#b9ab9c;text-align:right;}
-#invbar .slot .kc{margin:0;min-width:11px;height:14px;padding:0 2px;font-size:8px;
+#invbar .slot .n{grid-area:1/2;justify-self:end;font-size:10px;line-height:1;font-weight:800;font-variant-numeric:tabular-nums;color:#b9ab9c;}
+#invbar .slot .kc{grid-area:1/1;justify-self:start;margin:0;min-width:11px;height:14px;padding:0 2px;font-size:8px;
   color:#b3a596;background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.13);box-shadow:none;transform:none;}
 /* 빈 슬롯: 이름·아이콘 없이 은은한 점선 테두리만 */
 #invbar .slot.empty{background:rgba(255,255,255,.015);border:1.5px dashed #3a2f33;box-shadow:none;}
