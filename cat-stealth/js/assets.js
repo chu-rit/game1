@@ -117,19 +117,20 @@ function catWalkPose(now,walking){
 }
 /* ================= 대기 모션(idle ↔ idle2) =================
    정지해 있는 고양이만: 타입별 [idle 표시 ms, idle2 표시 ms] 주기로 두 포즈를 번갈아 그려요.
+   - 두 번째 인자는 '실제 시각(now)'이 아니라 '이 고양이가 서 있던 시간(idleElapsed)'이에요.
+     그래서 걷다 멈춘 순간·복귀·유인·추격 중에는 항상 주기의 처음(idle)부터 시작해요.
+   - state 가 "idle" 이 아니면(return·lured·chase·eat) 항상 "idle" 반환 — 대기 모션 없음.
    - 고양이 인덱스(cat.id)마다 900ms 씩 시차를 둬서 한 화면 고양이들이 같이 깜빡이지 않게 함.
-   - 추격 중(state==="chase")인 고양이는 서 있어도 idle2를 쓰지 않음(긴장감 유지).
-   - 먹이를 먹는 중(state==="eat")에는 대기 모션 대신 '입에 생선을 문' eat 포즈를 씀(drawCatEntity).
    idle2는 idle 픽셀을 1~2px만 손댄 '초미세' 프레임(몸통·머리·발·외곽선 고정, 흔들림 0):
    A: 눈 깜빡임(정면·좌·우) / 뒷모습은 귀 끝 1px 접힘 — 2.4s / 0.18s
    B: 꼬리 끝 1~2px 살랑 — 0.9s / 0.9s
    C: 나른한 눈(홍채 위쪽만 덮음) + 꼬리 끝 1px — 2.8s / 0.24s */
 var CAT_IDLE_CYCLE={A:[2400,180],B:[900,900],C:[2800,240]};
-function catIdlePose(cat,now){
-  if(cat.state==="chase"||cat.state==="eat") return "idle";
+function catIdlePose(cat,idleElapsed){
+  if(cat.state&&cat.state!=="idle") return "idle";
   var cyc=CAT_IDLE_CYCLE[cat.type]||CAT_IDLE_CYCLE.A;
   var per=cyc[0]+cyc[1];
-  var t=((now||0)+(cat.id||0)*900)%per;
+  var t=((idleElapsed||0)+(cat.id||0)*900)%per;
   if(t<0) t+=per;
   return (t<cyc[0])?"idle":"idle2";
 }
@@ -223,14 +224,24 @@ function drawCatEntity(g,cat,now,opt){
   var cx=cat.rx*CELL+CELL/2;
   var gy=cat.ry*CELL+CELL-4;
   var walking=Math.abs((cat.rx||0)-cat.x)>0.02||Math.abs((cat.ry||0)-cat.y)>0.02;
-  /* 이동 중 = walk1↔walk2 · 먹는 중(state==="eat") = 입에 생선을 문 eat · 그 밖 = idle/idle2 */
-  var pose=walking?catWalkPose(now,true):(cat.state==="eat"?"eat":catIdlePose(cat,now));
-  /* 검냥이(C)는 '서서 가만히 있을 때(idle·복귀)'만 10프레임 졸다 깨는 모션 —
-     추격·먹기·걷기·먹이 쪽으로 걸어가는 중에는 쓰지 않아요. -1 = 이 모션 없음. */
-  var sleep=-1;
-  if(cat.type==="C"&&!walking&&(cat.state==="idle"||cat.state==="return")){
-    sleep=sleepFrameAt(now,(cat.id||0)*900);
+  /* 대기 모션은 '서서 가만히 있는(state==="idle" && !walking)' 고양이만.
+     그 시계는 전역 now 가 아니라 이 고양이가 멈춰 있던 시간(cat._idle0)이에요.
+     이동·복귀(return)·유인(lured)·추격(chase)·먹기(eat) 중에는 시계를 계속 now로 리셋해
+     대기/졸음 모션이 새로 시작될 수 없게 합니다. */
+  var idle=!walking&&cat.state==="idle";
+  var idleElapsed=0,pose;
+  if(idle){
+    if(cat._idle0==null) cat._idle0=now;
+    idleElapsed=Math.max(0,now-cat._idle0);
+    pose=catIdlePose(cat,idleElapsed);            /* idle ↔ idle2 */
+  }else{
+    cat._idle0=now;
+    /* 이동 중 = walk1↔walk2 · 먹는 중 = 입에 생선을 문 eat · 그 밖 = idle 고정(idle2 없음) */
+    pose=walking?catWalkPose(now,true):(cat.state==="eat"?"eat":"idle");
   }
+  /* 검냥이(C) 10프레임 졸다 깨는 모션: 정지 후 정확히 4초(F1 말똥) → 그 뒤 F2..F10.
+     걷기·복귀·유인·추격·먹기 중에는 -1(이 모션 없음). */
+  var sleep=(idle&&cat.type==="C")?sleepFrameAt(idleElapsed,0):-1;
   /* 걷기→정지 전환 순간 착지 스쿼시: 0~130ms 2px, 130~260ms 1px 크런치 */
   if(cat._wasWalk&&!walking) cat._landT=now;
   cat._wasWalk=walking;
