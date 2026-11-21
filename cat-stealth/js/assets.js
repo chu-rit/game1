@@ -87,9 +87,8 @@ function drawCatAt(g,cx,gy,P,dir,type,now,opt){
   if(!opt.noShadow) shadowPix(g,cx,gy-2*sc,Math.round(13*sc),Math.max(3,Math.round(4*sc)),opt.ghost?0.13:0.26);
   var step=walking&&(Math.floor(now/130)%2);
   var bob=0;
+  /* 걷기 밥만: 대기(idle)·먹기(eat) 중에는 위아래 1px 흔들림 없이 고정 */
   if(walking) bob=step?1:0;
-  /* 숨쉬기·오물오물: 2.2s 주기로 서서히 들숨(~4할 구간 1px 상승) — 예전엔 한 사이클의 1할만 움직여 거의 굳어 보였어요 */
-  else if((pose==="idle"||pose==="eat") && !opt.ghost && Math.sin(now/1100+(opt.seed||0))>0.25) bob=1;
   var sq=opt.landSq||0;
   g.save();
   g.translate(Math.round(cx),Math.round(gy-bob));

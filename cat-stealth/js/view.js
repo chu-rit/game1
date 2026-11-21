@@ -635,11 +635,10 @@ function drawBushFront(g,st){
   var im=TILEIMG.bush;
   if(!im||!im.width) return;
   var x0=Math.round(pl.rx*CELL), y0=Math.round(pl.ry*CELL);
-  var bob=(Math.sin(G.t/420)>0)?1:0;
   /* 스프라이트에서 잎이 가장 빽빽한 윗부분(2~18행)을 플레이어의 머리·몸통 자리(칸 11~27행)에
      한 번 더 얹어요. 화분과 바닥은 그대로 남아 수풀로 계속 읽히고, 머리와 어깨는 잎에 덮여요. */
   var sy=2, sh=14, dy=y0+10;
-  g.drawImage(im,0,sy,im.width,sh,x0,dy+bob,im.width,sh);
+  g.drawImage(im,0,sy,im.width,sh,x0,dy,im.width,sh);
 }
 
 /* 특수 타일 스프라이트 — 바닥 판은 칸 바닥에 붙고, 오브젝트는 위 칸으로 살짝 솟아요 */
