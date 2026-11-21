@@ -33,6 +33,13 @@ body{
 #hName{font-size:14px;font-weight:800;color:var(--cream);letter-spacing:.045em;text-align:center;}
 /* 우측 TURN 숫자 — 좌측 STAGE와 같은 크기·줄맞춤, 색만 차분한 크림색 */
 .hb .v.turnnum{color:var(--cream);text-shadow:0 0 14px rgba(255,255,255,.12);}
+/* 개발용 스테이지 넘기기 ‹ › — 스테이지 숫자 양옆 작은 버튼 */
+.hb .srow{display:flex;align-items:center;gap:6px;}
+.snav{width:20px;height:20px;padding:0;border-radius:7px;font-size:13px;line-height:1;color:var(--dim);
+  background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px rgba(255,255,255,.10);
+  display:flex;align-items:center;justify-content:center;}
+.snav:active{transform:translateY(1px);}
+.snav:disabled{opacity:.3;}
 #pReset{width:100%;padding:14px;border-radius:13px;font-size:15px;margin-top:8px;background:linear-gradient(#2a2030,#211a26);
   box-shadow:inset 0 0 0 1.5px #45343d,0 8px 20px rgba(0,0,0,.4);color:#cbbfae;}
 #pReset .kc{color:#cbbfae;background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);}
@@ -83,11 +90,15 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
 #dpad button:active{transform:translateY(1px);}
 #dpad button:disabled{opacity:.30;filter:grayscale(.6);}
 #dpad .dk.aim{box-shadow:inset 0 0 0 2px var(--pink),0 0 14px rgba(255,143,179,.35);color:#ffd7e6;}
-/* ---- 오른쪽: 취소·리셋 — 역T자 방향키 2줄 높이에 맞춰 위아래 2단 ---- */
-#btnrow{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;}
-#btnrow button{flex:1;min-height:0;padding:0 4px;border-radius:14px;font-size:15px;letter-spacing:.01em;white-space:nowrap;
-  background:linear-gradient(#2a2030,#211a26);box-shadow:inset 0 0 0 1.5px #45343d,0 2px 0 rgba(0,0,0,.35);
-  transition:transform .1s ease-out,box-shadow .12s;}
+/* ---- 오른쪽: 취소·리셋 — 역T자 방향키 2줄 높이에 맞춰 위아래 2단, 폭은 내용물만큼만 ---- */
+#btnrow{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;align-items:flex-end;}
+/* 인벤토리 슬롯처럼 살짝 정사각형 — 아이콘 위, 이름 아래, 좌상단 키캡 */
+#btnrow button{position:relative;flex:1;width:50px;min-height:0;padding:3px 4px;border-radius:11px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;line-height:1;
+  background:linear-gradient(#241c2b,#1c1622);box-shadow:inset 0 0 0 1.5px #3a2c36,0 2px 0 rgba(0,0,0,.35);
+  transition:transform .12s ease-out,box-shadow .12s;}
+#btnrow button .ic{font-size:19px;line-height:1;}
+#btnrow button .nm{font-size:10px;font-weight:800;letter-spacing:-.04em;color:#c7b9ab;}
 #btnrow button:active{transform:translateY(1px);}
 #btnrow button:disabled{opacity:.34;}
 /* 단축키 키캡 배지 — 어두운 배경에 맞춘 작고 은은한 표시 */
@@ -95,7 +106,8 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
   margin-left:4px;font-size:9px;font-weight:800;line-height:1;letter-spacing:.01em;font-variant-numeric:tabular-nums;
   color:#cfc3b5;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:4px;
   box-shadow:0 1px 0 rgba(0,0,0,.32);vertical-align:middle;transform:translateY(-1px);}
-#btnrow button .kc{min-width:16px;height:17px;font-size:10.5px;}
+#btnrow button .kc{position:absolute;top:3px;left:3px;margin:0;min-width:11px;height:12px;padding:0 2px;font-size:8px;
+  color:#b3a596;background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.13);box-shadow:none;transform:none;}
 #bUndo{flex:1;}
 /* 잡힌 상태: 보드를 보면서 바로 누르라고 취소 버튼에만 은은한 테두리 강조 */
 #bUndo.hot{box-shadow:inset 0 0 0 2px var(--amber),0 0 14px rgba(255,176,46,.28);animation:undoHot 1.6s ease-in-out infinite;}

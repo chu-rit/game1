@@ -12,7 +12,7 @@
 <body>
 <div id="app">
   <div id="hud">
-    <div class="hb"><div class="k">STAGE</div><div class="v stage" id="hStage">1-5</div></div>
+    <div class="hb"><div class="k">STAGE</div><div class="srow"><button class="snav" id="sPrev" aria-label="이전 스테이지">‹</button><div class="v stage" id="hStage">1-5</div><button class="snav" id="sNext" aria-label="다음 스테이지">›</button></div></div>
     <div class="hb mid"><div id="hName">부엌 코너</div></div>
     <div class="hb right"><div class="k">TURN</div><div class="v turnnum" id="hTurn">1</div></div>
   </div>
@@ -31,8 +31,8 @@
         <button class="dk right" data-dir="1" aria-label="오른쪽으로 이동">▶</button>
       </div>
       <div id="btnrow">
-        <button id="bUndo">↩ 취소 <span class="kc">U</span></button>
-        <button id="bReset">↻ 리셋 <span class="kc">R</span></button>
+        <button id="bUndo"><span class="ic">↩</span><span class="nm">취소</span><span class="kc">U</span></button>
+        <button id="bReset"><span class="ic">↻</span><span class="nm">리셋</span><span class="kc">R</span></button>
       </div>
     </div>
     <div id="invbar" aria-label="인벤토리 · 주운 먹이만 들어와요">

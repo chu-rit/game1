@@ -110,6 +110,8 @@ function updateHUD(){
   renderInv(inv,busy);
   $("bUndo").disabled=busy||G.undoStack.length===0||!live;
   $("bReset").disabled=busy||!live;
+  $("sPrev").disabled=G.stageIdx<=0;
+  $("sNext").disabled=G.stageIdx>=STAGES.length-1;
   /* 하단 방향키·🎯 버튼 상태: 플레이 중이 아니면 전부 잠그고, 이동 가능한 방향만 밝게 */
   var ready=(G.mode==="play")&&!G.pending;
   var tired=(G.st&&G.st.stam<=0&&anyChasing());
@@ -173,7 +175,7 @@ function validMoves(){
   return out;
 }
 function validFishTiles(){
-  /* 상하좌우 직선 2칸까지만 · 대각선 불가 · 장애물(벽/가구/고양이/다른 생선/아직 줍지 않은 생선)을 만나면 그 방향은 거기서 끊김 */
+  /* 상하좌우 직선으로 선택한 먹이의 사거리(range)까지만 · 대각선 불가 · 장애물(벽/가구/고양이/다른 생선/아직 줍지 않은 생선)을 만나면 그 방향은 거기서 끊김 */
   var p=G.st.player, out=[];
   var free=function(x,y){
     /* 벽·가구·구멍(H)은 넘지 못해요. 고양이 발판(^)에는 던져서 떨어뜨릴 수 있어요. */
@@ -183,8 +185,9 @@ function validFishTiles(){
     for(var pi=0;pi<G.st.pickups.length;pi++){ if(G.st.pickups[pi].x===x&&G.st.pickups[pi].y===y) return false; }
     return true;
   };
+  var rng=fishRange();
   for(var d=0;d<4;d++){
-    for(var step=1;step<=FISH_RANGE;step++){
+    for(var step=1;step<=rng;step++){
       var x=p.x+DIRS[d][0]*step, y=p.y+DIRS[d][1]*step;
       if(!free(x,y)) break;
       out.push({x:x,y:y});
@@ -192,6 +195,8 @@ function validFishTiles(){
   }
   return out;
 }
+/* 선택한 먹이의 던지기 사거리 — 종류별 KIND.range (없으면 기본 FISH_RANGE) */
+function fishRange(){ var k=KIND[G.fishKind]; return (k&&k.range!=null)?k.range:FISH_RANGE; }
 function computeDanger(){
   G.moveTiles=validMoves();
   G.dangerTiles=[];
@@ -351,7 +356,7 @@ cvEl.addEventListener("pointerdown",function(e){
     for(var i=0;i<ft.length;i++){
       if(ft[i].x===tx&&ft[i].y===ty){ beginTurn({t:"fish",x:tx,y:ty,kind:G.fishKind}); return; }
     }
-    setWarn("그곳에는 던질 수 없어요 (상하좌우 직선 2칸 · 장애물 불가)","fish");
+    setWarn("그곳에는 던질 수 없어요 (상하좌우 직선 "+fishRange()+"칸 · 장애물 불가)","fish");
     return;
   }
   /* 지침: 추격 중 지구력 0이면 화면 탭 = 제자리 대기 */
@@ -376,6 +381,14 @@ cvEl.addEventListener("pointerdown",function(e){
 });
 $("bUndo").addEventListener("click",function(){ this.blur(); undo(); });
 $("bReset").addEventListener("click",function(){ this.blur(); resetStage(); });
+/* 개발용 스테이지 넘기기 (‹ ›) — 앞뒤 자유 이동 */
+function stageNav(d){
+  var ni=G.stageIdx+d;
+  if(ni<0||ni>=STAGES.length) return;
+  hidePanel(); G.stageIdx=ni; G.mode="play"; loadStage(ni); setWarn("");
+}
+$("sPrev").addEventListener("click",function(){ this.blur(); stageNav(-1); });
+$("sNext").addEventListener("click",function(){ this.blur(); stageNav(1); });
 
 /* ================= 하단 버튼 조작 ================= */
 /* 방향키: 이동 / 먹이 조준 / 지침(지구력 0) 상태에선 제자리 대기 */
@@ -470,7 +483,12 @@ function toggleFishMode(kind){
   if(G.fishMode&&G.fishKind===kind){ G.fishMode=false; G.fishKind=null; setWarn(""); }
   else{
     G.fishMode=true; G.fishKind=kind;
-    setWarn(KIND[kind].label+"을(를) 던질 칸을 누르세요 · 유인 사거리 "+KIND[kind].lure+"칸","fish");
+    /* 캐릭터가 바라보는 방향의 앞 칸을 기본 조준으로 — 그쪽에 못 던지면 던질 수 있는 다른 방향을 자동 탐색 */
+    if(!aimFishDir(G.playerDir)){
+      for(var d2=0;d2<4;d2++){
+        if(d2!==G.playerDir&&aimFishDir(d2)) break;
+      }
+    }
   }
   updateHUD();
 }
@@ -480,7 +498,7 @@ function toggleFishMode(kind){
 function fishAimOptions(d){
   if(!G.st||!G.st.player) return [];
   var p=G.st.player, ft=validFishTiles(), out=[];
-  for(var step=1;step<=FISH_RANGE;step++){
+  for(var step=1;step<=fishRange();step++){
     var x=p.x+DIRS[d][0]*step, y=p.y+DIRS[d][1]*step;
     for(var i=0;i<ft.length;i++){
       if(ft[i].x===x&&ft[i].y===y) out.push({x:x,y:y,dir:d,step:step});
@@ -492,13 +510,16 @@ function fishAimOptions(d){
 function aimFishDir(d){
   var opts=fishAimOptions(d);
   if(!opts.length){
-    setWarn("그 방향에는 던질 칸이 없어요 (상하좌우 직선 2칸 · 장애물 불가)","fish");
+    setWarn("그 방향에는 던질 칸이 없어요 (상하좌우 직선 "+fishRange()+"칸 · 장애물 불가)","fish");
     clearWarnSoon(1700);
     return false;
   }
   var pick=opts[0], prev=G.fishAim;
   if(prev&&prev.dir===d){
-    for(var i=0;i<opts.length;i++){ if(opts[i].step!==prev.step){ pick=opts[i]; break; } }
+    /* 같은 방향 재입력: 현재 칸 다음 칸으로 순환 (1→2→3→1… 사거리만큼) */
+    var idx=0;
+    for(var i=0;i<opts.length;i++){ if(opts[i].step===prev.step){ idx=i; break; } }
+    pick=opts[(idx+1)%opts.length];
   }
   G.fishAim={x:pick.x,y:pick.y,dir:pick.dir,step:pick.step};
   setWarn("🎯 "+KIND[G.fishKind].label+" 조준 "+pick.step+"칸 · 오른쪽 위 🎯 버튼(Enter)으로 투척","fish");
