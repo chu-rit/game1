@@ -34,13 +34,25 @@
         <button id="bUndo">↩ 취소 <span class="kc">U</span></button>
         <button id="bReset">↻ 리셋 <span class="kc">R</span></button>
       </div>
-      <div id="fishbar">
-        <button class="fb" data-kind="small" aria-label="작은 생선"><span class="kc">1</span><span class="em">🐟</span><span class="nm">작은생선</span><span class="n">0</span></button>
-        <button class="fb" data-kind="big" aria-label="큰 통생선"><span class="kc">2</span><span class="em">🐠</span><span class="nm">통생선</span><span class="n">0</span></button>
-        <button class="fb" data-kind="catnip" aria-label="캣닢"><span class="kc">3</span><span class="em">🌿</span><span class="nm">캣닢</span><span class="n">0</span></button>
+      <div id="invbar" aria-label="인벤토리 · 주운 먹이만 들어와요">
+        <button class="slot empty" data-slot="0" aria-label="빈 인벤토리 슬롯 1"><span class="kc">1</span><span class="em"></span><span class="nm"></span><span class="n"></span></button>
+        <button class="slot empty" data-slot="1" aria-label="빈 인벤토리 슬롯 2"><span class="kc">2</span><span class="em"></span><span class="nm"></span><span class="n"></span></button>
+        <button class="slot empty" data-slot="2" aria-label="빈 인벤토리 슬롯 3"><span class="kc">3</span><span class="em"></span><span class="nm"></span><span class="n"></span></button>
       </div>
     </div>
     <div id="hint">바닥의 먹이를 밟으면 주워요 · 보라 점선(기척) 안에 서면 들켜요</div>
+  </div>
+  <div id="itemTip" class="hidden" role="dialog" aria-modal="true" aria-label="아이템 상세 정보">
+    <div class="tipcard" id="tipCard">
+      <button class="tipx" id="tipX" aria-label="닫기">✕</button>
+      <div class="thead">
+        <span class="tem" id="tipEm">🐟</span>
+        <div class="tmeta"><b id="tipNm">작은 생선</b>
+          <div class="tsub"><span class="ttag" id="tipTag">짧은 유인</span><span class="tqty" id="tipQty">보유 1개</span></div>
+        </div>
+      </div>
+      <div class="tbody" id="tipBody"></div>
+    </div>
   </div>
   <div id="overlay" class="hidden"><div class="panel" id="panel"></div></div>
 </div>

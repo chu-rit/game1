@@ -83,7 +83,7 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
 #dpad button:disabled{opacity:.30;filter:grayscale(.6);}
 #dpad .dk.aim{box-shadow:inset 0 0 0 2px var(--pink),0 0 14px rgba(255,143,179,.35);color:#ffd7e6;}
 /* ---- 오른쪽: 취소/리셋 위 · 먹이 3줄 아래 ---- */
-#actioncol{grid-area:actions;display:flex;flex-direction:column;gap:6px;min-width:0;}
+#actioncol{grid-area:actions;display:flex;flex-direction:column;gap:6px;min-width:0;height:148px;}
 #btnrow{display:flex;gap:6px;}
 #btnrow button{flex:1;height:36px;padding:0 2px;border-radius:12px;font-size:13.5px;letter-spacing:.01em;white-space:nowrap;
   background:linear-gradient(#2a2030,#211a26);box-shadow:inset 0 0 0 1.5px #45343d,0 2px 0 rgba(0,0,0,.35);}
@@ -100,25 +100,55 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
 #bUndo.hot{box-shadow:inset 0 0 0 2px var(--amber),0 0 14px rgba(255,176,46,.28);animation:undoHot 1.6s ease-in-out infinite;}
 #bUndo.hot:disabled{animation:none;}
 @keyframes undoHot{0%,100%{box-shadow:inset 0 0 0 2px var(--amber),0 0 10px rgba(255,176,46,.16);}50%{box-shadow:inset 0 0 0 2px var(--amber),0 0 20px rgba(255,176,46,.42);}}
-#fishbar{display:flex;flex-direction:column;gap:5px;min-width:0;}
-#fishbar button{display:flex;align-items:center;justify-content:flex-start;gap:6px;height:32px;padding:0 9px;
-  border-radius:11px;font-size:13px;line-height:1;white-space:nowrap;min-width:0;
+/* ---- 오른쪽 아래: 인벤토리 3칸 — 주운 먹이만 앞 슬롯부터 채워져요 ---- */
+#invbar{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;}
+#invbar .slot{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  padding:14px 4px 8px;border-radius:12px;min-width:0;overflow:hidden;touch-action:none;-webkit-touch-callout:none;
   background:linear-gradient(#241c2b,#1c1622);box-shadow:inset 0 0 0 1.5px #3a2c36,0 2px 0 rgba(0,0,0,.35);
-  transition:transform .12s ease-out;}
-#fishbar button .em{font-size:15px;line-height:1;}
-#fishbar button .nm{flex:1;text-align:left;font-size:11px;font-weight:800;letter-spacing:-.02em;color:#c7b9ab;
-  overflow:hidden;text-overflow:ellipsis;}
-#fishbar button .kc{min-width:11px;height:12px;padding:0 2px;margin-left:0;margin-right:0;font-size:8px;
-  color:#b3a596;background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.13);box-shadow:none;transform:translateY(-.5px);}
-#fishbar button.on .kc{color:#ffd7e6;background:rgba(255,255,255,.10);border-color:rgba(255,215,230,.34);}
-#fishbar button .n{font-size:12.5px;font-weight:800;font-variant-numeric:tabular-nums;color:#b9ab9c;}
-#fishbar button:active{transform:translateY(1px);}
-#fishbar button:disabled{opacity:.30;filter:grayscale(.85);}
-#fishbar button.on{background:#3c2330;box-shadow:inset 0 0 0 2px var(--pink),0 0 18px rgba(255,143,179,.35);color:#ffd7e6;}
-#fishbar button.on .n{color:#ffd7e6;}
-#fishbar button.on .nm{color:#ffd7e6;}
-#fishbar button.gain{animation:gain .5s ease-out;}
+  transition:transform .12s ease-out,box-shadow .12s,background .12s;}
+#invbar .slot .em{font-size:22px;line-height:1;}
+#invbar .slot .nm{max-width:100%;font-size:9.5px;line-height:1.15;font-weight:800;letter-spacing:-.03em;color:#c7b9ab;
+  text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#invbar .slot .n{font-size:11px;line-height:1;font-weight:800;font-variant-numeric:tabular-nums;color:#b9ab9c;}
+#invbar .slot .kc{position:absolute;top:5px;left:5px;margin:0;min-width:12px;height:13px;padding:0 2px;font-size:8px;
+  color:#b3a596;background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.13);box-shadow:none;transform:none;}
+/* 빈 슬롯: 이름·아이콘 없이 은은한 점선 테두리만 */
+#invbar .slot.empty{background:rgba(255,255,255,.015);border:1.5px dashed #3a2f33;box-shadow:none;}
+#invbar .slot.empty .kc{color:#6d625c;background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08);}
+#invbar .slot:active{transform:translateY(1px);}
+#invbar .slot:disabled{opacity:.34;}
+#invbar .slot.on{background:#3c2330;box-shadow:inset 0 0 0 2px var(--pink),0 0 18px rgba(255,143,179,.35);}
+#invbar .slot.on .nm,#invbar .slot.on .n{color:#ffd7e6;}
+#invbar .slot.on .kc{color:#ffd7e6;background:rgba(255,255,255,.10);border-color:rgba(255,215,230,.34);}
+#invbar .slot.gain{animation:gain .5s ease-out;}
 @keyframes gain{0%{transform:scale(1)}38%{transform:scale(1.16)}100%{transform:scale(1)}}
+/* ---- 아이템 상세 정보 카드(슬롯 길게 누르기) ---- */
+#itemTip{position:absolute;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;padding:18px;
+  background:radial-gradient(70% 50% at 50% 42%,rgba(20,14,24,.66),rgba(8,6,10,.86));backdrop-filter:blur(3px);}
+#itemTip.hidden{display:none;}
+.tipcard{position:relative;width:min(100%,320px);border-radius:20px;padding:18px 18px 16px;text-align:left;
+  background:linear-gradient(#261d31,#1a1422);
+  box-shadow:0 0 0 1.5px #4a3550,0 0 0 6px rgba(255,143,179,.05),0 26px 60px rgba(0,0,0,.75);
+  animation:tipin .16s ease-out;}
+@keyframes tipin{0%{transform:scale(.94);opacity:0}100%{transform:scale(1);opacity:1}}
+.tipx{position:absolute;top:8px;right:8px;width:28px;height:28px;padding:0;border-radius:9px;font-size:13px;color:#cbbfae;
+  background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;}
+.thead{display:flex;align-items:center;gap:11px;padding-right:26px;}
+.tem{flex:none;width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;
+  background:radial-gradient(circle at 35% 30%,rgba(255,176,46,.18),rgba(255,143,179,.06));
+  box-shadow:inset 0 0 0 1.5px rgba(255,143,179,.22);}
+.tmeta{min-width:0;}
+#tipNm{display:block;font-size:17px;font-weight:800;letter-spacing:.01em;color:#ffe9c8;}
+.tsub{display:flex;align-items:center;gap:7px;margin-top:4px;}
+.ttag{font-size:10px;font-weight:800;color:#ffd7e6;background:rgba(255,143,179,.14);border:1px solid rgba(255,143,179,.30);border-radius:6px;padding:2px 5px;}
+.tqty{font-size:11px;font-weight:800;color:#b9ab9c;font-variant-numeric:tabular-nums;}
+.tbody{margin-top:13px;display:flex;flex-direction:column;gap:8px;}
+.trow{display:grid;grid-template-columns:56px minmax(0,1fr);gap:8px;align-items:start;}
+.tk{font-size:10px;font-weight:800;letter-spacing:.02em;color:var(--amber);background:rgba(255,176,46,.10);border-radius:6px;padding:3px 0;text-align:center;}
+.tv{font-size:11.5px;line-height:1.5;font-weight:700;color:#d6c9ba;letter-spacing:-.01em;word-break:keep-all;}
+.tnote{margin-top:2px;padding-top:8px;border-top:1px dashed rgba(255,255,255,.10);
+  font-size:10.5px;line-height:1.45;font-weight:700;color:#8f837a;letter-spacing:-.01em;word-break:keep-all;}
+.tnote.trule{margin-top:0;padding-top:3px;border-top:0;font-size:10px;color:#7b706a;}
 #hint{grid-area:hint;text-align:center;font-size:10.5px;color:var(--dim);font-weight:700;letter-spacing:.02em;
   min-height:14px;line-height:1.35;}
 #overlay{position:absolute;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;

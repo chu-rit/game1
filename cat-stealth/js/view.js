@@ -5,7 +5,7 @@ var low=document.createElement("canvas"); low.width=CV; low.height=CV;
 var ctx=low.getContext("2d");
 var board=document.createElement("canvas"); board.width=CV; board.height=CV;
 var $=function(id){ return document.getElementById(id); };
-var FBTN={};   /* 생선 종류별 HUD 버튼 ({small:{el,num},...}) */
+/* 인벤토리 슬롯·아이템 카드 DOM 은 controller.js 에서 다룹니다 */
 
 function hashf(x,y,s){
   var h=((x|0)*374761393+(y|0)*668265263+((s||0)|0)*1274126177)>>>0;

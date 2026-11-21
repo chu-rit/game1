@@ -1,5 +1,97 @@
 "use strict";
 var DPADBTNS=[];   /* 하단 십자 방향키 버튼 ({el,dir}) */
+/* 인벤토리: 고정 3종 버튼이 아니라 3칸 슬롯 — G.st.inv 에 있는 아이템만 앞 칸부터 채워져요 */
+var INV=[];        /* 슬롯 DOM ({el,em,nm,n,kind}) 최대 3칸 */
+var INVSIG="";     /* 지금 슬롯에 그려진 아이템 순서 — 바뀔 때만 다시 그려요 */
+var TIP={open:false,t0:0};   /* 아이템 상세 정보 카드 상태 */
+var LP={timer:0,fired:false,idx:-1,x:0,y:0}, LP_MS=400;   /* 슬롯 길게 누르기 */
+/* ================= 인벤토리 (주운 아이템만 슬롯에) ================= */
+/* 지금 들고 있는 아이템 종류를 슬롯 순서대로 — 데이터의 기본 순서(FISH_ORDER) 먼저,
+   나중에 늘어난 종류가 있으면 뒤에 붙여요. UI가 3종에 고정되지 않게. */
+function invKinds(){
+  var inv=(G.st&&G.st.inv)||{}, out=[], k;
+  for(var i=0;i<FISH_ORDER.length;i++){ k=FISH_ORDER[i]; if((inv[k]||0)>0) out.push(k); }
+  for(k in inv){
+    if(!inv.hasOwnProperty(k)) continue;
+    if((inv[k]||0)<=0) continue;
+    if(FISH_ORDER.indexOf(k)>=0) continue;
+    out.push(k);
+  }
+  return out;
+}
+function foodInfoOf(kd){
+  var f=FOOD_INFO[kd];
+  if(f) return f;
+  var kk=KIND[kd];   /* 데이터에 설명이 없어도 이름은 알 수 있게 */
+  return {em:"🍽️",name:kk?kk.label:kd,tag:"",rows:[],tip:""};
+}
+/* 슬롯 그리기: 구성(어떤 아이템이 몇 번째 칸에)이 바뀔 때만 다시 채워요 */
+function renderInv(inv,busy){
+  var kinds=invKinds(), sig=kinds.join("|"), i;
+  if(sig!==INVSIG){
+    INVSIG=sig;
+    for(i=0;i<INV.length;i++){
+      var s=INV[i], kd=kinds[i]||null;
+      s.kind=kd;
+      if(kd){
+        var info=foodInfoOf(kd);
+        s.el.classList.remove("empty","on");
+        s.em.textContent=info.em; s.nm.textContent=info.name;
+        s.el.setAttribute("aria-label",info.name+" "+((inv[kd]||0))+"개 · 길게 누르면 설명");
+      }else{
+        s.el.classList.add("empty");
+        s.el.classList.remove("on");
+        s.em.textContent=""; s.nm.textContent="";
+        s.el.setAttribute("aria-label","빈 인벤토리 슬롯 "+(i+1));
+      }
+    }
+  }
+  for(i=0;i<INV.length;i++){
+    var sl=INV[i], k=sl.kind;
+    if(k){
+      sl.n.textContent="×"+((inv[k]||0));
+      sl.el.disabled=busy||G.mode!=="play";
+      sl.el.classList.toggle("on",!!G.fishMode&&G.fishKind===k);
+    }else{
+      sl.n.textContent="";
+      sl.el.disabled=false;
+      sl.el.classList.remove("on");
+    }
+  }
+  /* 획득 애니메이션은 슬롯이 새로 그려진 뒤에 */
+  if(G.gainPend){
+    var pk=G.gainPend; G.gainPend=null;
+    for(i=0;i<INV.length;i++){
+      if(INV[i].kind===pk){ var el=INV[i].el; el.classList.remove("gain"); void el.offsetWidth; el.classList.add("gain"); break; }
+    }
+  }
+}
+/* 아이템 상세 정보 카드 */
+function showItemTip(idx){
+  var s=INV[idx];
+  if(!s||!s.kind) return;
+  var info=foodInfoOf(s.kind), n=(G.st.inv[s.kind]||0), rows="";
+  for(var i=0;i<info.rows.length;i++){
+    rows+='<div class="trow"><span class="tk">'+info.rows[i][0]+'</span><span class="tv">'+info.rows[i][1]+'</span></div>';
+  }
+  $("tipEm").textContent=info.em;
+  $("tipNm").textContent=info.name;
+  $("tipTag").textContent=info.tag||"";
+  $("tipTag").style.display=info.tag?"":"none";
+  $("tipQty").textContent="보유 "+n+"개";
+  $("tipBody").innerHTML=rows+(info.tip?'<div class="tnote">'+info.tip+'</div>':"")+
+    (typeof FOOD_TIP==="string"?'<div class="tnote trule">'+FOOD_TIP+'</div>':"");
+  $("itemTip").classList.remove("hidden");
+  TIP.open=true; TIP.t0=performance.now();
+  sBeepTip();
+}
+function hideItemTip(){
+  if(!TIP.open) return;
+  TIP.open=false;
+  $("itemTip").classList.add("hidden");
+}
+function sBeepTip(){ if(typeof beep==="function") beep(720,0.06,"sine",0.035,0); }
+
 /* ================= HUD ================= */
 function updateHUD(){
   var s=STAGES[G.stageIdx];
@@ -14,14 +106,7 @@ function updateHUD(){
   }
   var inv=G.st.inv, busy=(G.mode==="anim"||!!G.pending);
   var live=(G.mode==="play"||G.mode==="caught");
-  for(var fi=0;fi<FISH_ORDER.length;fi++){
-    var kd=FISH_ORDER[fi], btn=FBTN[kd];
-    if(!btn) continue;
-    var n=inv[kd]||0;
-    btn.num.textContent=n;
-    btn.el.disabled=(n<=0)||busy||G.mode!=="play";
-    btn.el.classList.toggle("on",!!G.fishMode&&G.fishKind===kd);
-  }
+  renderInv(inv,busy);
   $("bUndo").disabled=busy||G.undoStack.length===0||!live;
   $("bReset").disabled=busy||!live;
   /* 하단 십자키·가운데 버튼 상태: 플레이 중이 아니면 전부 잠그고, 이동 가능한 방향만 밝게 */
@@ -127,6 +212,7 @@ function catById(id){
 }
 function beginTurn(action){
   if(G.mode!=="play"||G.pending) return;
+  hideItemTip();
   var snap={st:cloneState(G.st),dir:G.playerDir};
   var next=cloneState(G.st), ev=[];
   simStep(next,action,ev);
@@ -153,10 +239,9 @@ function beginTurn(action){
     else if(v.k==="spot"){ var cat=catById(v.id); if(cat) cat.alertT=performance.now(); sSpot(); }
     else if(v.k==="pickup"){
       G.fx.push({kind:v.kind,x:v.x,y:v.y,t0:performance.now()});
-      var fbt=FBTN[v.kind];
-      if(fbt){ fbt.el.classList.remove("gain"); void fbt.el.offsetWidth; fbt.el.classList.add("gain"); }
+      G.gainPend=v.kind;
       sPickup();
-      setWarn(KIND[v.kind].label+"을(를) 주웠어요! 아래 버튼으로 던질 수 있어요","fish");
+      setWarn(KIND[v.kind].label+"을(를) 주웠어요! 아래 슬롯을 눌러 던지기 · 길게 누르면 설명","fish");
       clearWarnSoon(2000);
     }
     else if(v.k==="bite"){ sBite(); }
@@ -226,6 +311,7 @@ function undo(){
   if(G.pending) return;
   if(!G.undoStack.length) return;
   if(G.mode!=="play"&&G.mode!=="caught") return;
+  hideItemTip();
   var snap=G.undoStack.pop();
   G.st=snap.st; G.playerDir=snap.dir;
   G.st.player.rx=G.st.player.x; G.st.player.ry=G.st.player.y;
@@ -241,6 +327,7 @@ function undo(){
 function resetStage(){
   if(G.pending) return;
   if(G.mode!=="play"&&G.mode!=="caught") return;
+  hideItemTip();
   if(G.panelTimer){ clearTimeout(G.panelTimer); G.panelTimer=null; }
   hidePanel();
   var idx=G.stageIdx;
@@ -317,16 +404,59 @@ function initDpad(){
   }
   $("bWait").addEventListener("click",function(){ this.blur(); pressAction(); });
 }
-/* 생선 버튼 3개: 개수를 보여 주고, 1개 이상이면 눌러서 던지기 모드 */
-function initFishButtons(){
-  var bs=document.querySelectorAll("#fishbar button");
+/* 인벤토리 슬롯 3칸
+   - 짧게 터치/클릭: 그 칸의 아이템으로 던지기 모드 토글
+   - 0.4초 길게 누르기(또는 우클릭): 아이템 상세 정보 카드 */
+function lpAbort(){ if(LP.timer){ clearTimeout(LP.timer); LP.timer=0; } LP.idx=-1; }
+function initInv(){
+  var bs=document.querySelectorAll("#invbar .slot");
   for(var i=0;i<bs.length;i++){
-    (function(el){
-      var kind=el.getAttribute("data-kind");
-      FBTN[kind]={el:el,num:el.querySelector(".n")};
-      el.addEventListener("click",function(){ toggleFishMode(kind); });
-    })(bs[i]);
+    (function(el,idx){
+      var s={el:el,em:el.querySelector(".em"),nm:el.querySelector(".nm"),n:el.querySelector(".n"),kind:null};
+      INV.push(s);
+      el.addEventListener("pointerdown",function(e){
+        if(el.disabled) return;
+        if(e.pointerType==="mouse"&&e.button!==0) return;   /* 우클릭은 contextmenu 로 */
+        lpAbort();
+        LP.fired=false; LP.idx=idx; LP.x=e.clientX; LP.y=e.clientY;
+        LP.timer=setTimeout(function(){
+          LP.timer=0;
+          if(LP.idx!==idx||!s.kind) return;   /* 빈 슬롯·앞 칸으로 옮긴 아이템은 무시 */
+          LP.fired=true; LP.idx=-1;
+          showItemTip(idx);
+        },LP_MS);
+      });
+      el.addEventListener("pointermove",function(e){
+        if(!LP.timer||LP.idx!==idx) return;
+        if(Math.abs(e.clientX-LP.x)>10||Math.abs(e.clientY-LP.y)>10) lpAbort();   /* 스크롤·드래그로 보면 취소 */
+      });
+      el.addEventListener("pointerup",lpAbort);
+      el.addEventListener("pointercancel",lpAbort);
+      el.addEventListener("pointerleave",lpAbort);
+      el.addEventListener("click",function(e){
+        /* 방금 길게 눌러 카드가 떴으면 손을 뗄 때의 클릭은 무시 */
+        if(LP.fired){ LP.fired=false; e.preventDefault(); return; }
+        if(!s.kind){
+          setWarn("빈 슬롯이에요 · 바닥의 먹이를 밟으면 이 자리에 들어와요","fish");
+          clearWarnSoon(1900);
+          return;
+        }
+        toggleFishMode(s.kind);
+      });
+      el.addEventListener("contextmenu",function(e){
+        e.preventDefault();
+        if(s.kind) showItemTip(idx);
+      });
+    })(bs[i],i);
   }
+  /* 카드 바깥(배경)이나 ✕ 를 탭하면 닫기 — 새로 누르는 순간(pointerdown)에 닫아서
+     길게 누르던 손가락을 떼는 동작으로는 닫히지 않게 */
+  $("itemTip").addEventListener("pointerdown",function(){
+    if((performance.now()-(TIP.t0||0))<180) return;
+    hideItemTip();
+  });
+  $("tipCard").addEventListener("pointerdown",function(e){ e.stopPropagation(); });
+  $("tipX").addEventListener("click",function(e){ e.stopPropagation(); hideItemTip(); });
 }
 function toggleFishMode(kind){
   if(G.mode!=="play"||G.pending) return;
@@ -403,6 +533,9 @@ document.addEventListener("keydown",function(e){
   if(k==="ArrowUp"||k==="ArrowRight"||k==="ArrowDown"||k==="ArrowLeft"||k===" "||k==="Spacebar"||k==="Backspace"||e.code==="Space") e.preventDefault();
   var enter=isEnterKey(e);
 
+  /* ---- 아이템 상세 카드: Escape 로만 닫고, 그동안 게임 입력은 막음 ---- */
+  if(TIP.open){ if(k==="Escape") hideItemTip(); return; }
+
   /* ---- 오버레이 패널 ---- */
   if(G.mode==="title"){ if(enter) startGame(); return; }
   if(G.mode==="clear"){ if(enter) nextStage(); return; }
@@ -417,8 +550,13 @@ document.addEventListener("keydown",function(e){
   if(k==="u"||k==="U"||k==="z"||k==="Z"||k==="Backspace"){ undo(); return; }
   if(k==="r"||k==="R"){ resetStage(); return; }
 
-  /* ---- 먹이 선택 (1/2/3, 누를 때마다 조준 초기화) ---- */
-  if(k==="1"||k==="2"||k==="3"){ toggleFishMode(FISH_ORDER[parseInt(k,10)-1]); return; }
+  /* ---- 인벤토리 슬롯 선택 (1/2/3 = 지금 그 칸에 있는 아이템, 누를 때마다 조준 초기화) ---- */
+  if(k==="1"||k==="2"||k==="3"){
+    var si=parseInt(k,10)-1, sslot=INV[si];
+    if(sslot&&sslot.kind){ toggleFishMode(sslot.kind); }
+    else{ setWarn("빈 슬롯이에요 · 바닥의 먹이를 밟으면 이 자리에 들어와요","fish"); clearWarnSoon(1900); }
+    return;
+  }
 
   /* ---- Escape: 먹이 모드 해제 → 플레이 중이면 리셋 ---- */
   if(k==="Escape"){
@@ -444,7 +582,7 @@ document.addEventListener("keydown",function(e){
 });
 
 /* ================= 패널 ================= */
-function showPanel(fn){ var ov=$("overlay"), p=$("panel"); p.innerHTML=""; fn(p); ov.classList.remove("hidden"); }
+function showPanel(fn){ hideItemTip(); var ov=$("overlay"), p=$("panel"); p.innerHTML=""; fn(p); ov.classList.remove("hidden"); }
 function hidePanel(){ $("overlay").classList.add("hidden"); }
 /* 패널 버튼 동작 — 터치/클릭과 키보드(Enter·Space·u·z·r)가 같은 함수를 씁니다 */
 function startGame(){ hidePanel(); G.mode="play"; G.stageIdx=0; loadStage(0); setWarn(""); beep(600,0.1,"triangle",0.05,200); }
@@ -502,7 +640,7 @@ function resize(){
 /* ================= 시작 ================= */
 window.addEventListener("resize",resize);
 initDpad();
-initFishButtons();
+initInv();
 loadStage(0);
 G.mode="title";
 resize();
