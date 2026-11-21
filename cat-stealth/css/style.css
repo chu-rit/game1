@@ -55,13 +55,14 @@ body{
 #stam i.e{background:rgba(255,255,255,.10);box-shadow:inset 0 0 0 1px rgba(255,255,255,.16);}
 #stam.out i.e{background:var(--red);animation:blink 1s infinite;}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.45}}
-/* 하단 조작부: 왼쪽 십자키 · 오른쪽 취소/리셋+먹이 · 아래 한 줄 힌트 */
-#controls{position:relative;z-index:3;display:grid;grid-template-columns:auto minmax(0,1fr);
-  grid-template-areas:"dpad actions" "hint hint";grid-row-gap:8px;grid-column-gap:10px;
-  padding:2px 4px 0;align-items:start;}
+/* 하단 조작부: 위 = 십자키 + 취소/리셋 · 아래 = 가로 꽉 찬 인벤토리 · 맨 아래 한 줄 힌트 */
+#controls{position:relative;z-index:3;display:flex;flex-direction:column;gap:7px;
+  padding:2px 4px 0;}
 button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weight:800;}
-/* ---- 왼쪽: 4방향 십자키 (3×3, 가운데는 먹이 조준 중에만 🎯 투척) ---- */
-#dpad{grid-area:dpad;display:grid;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(3,46px);gap:5px;}
+/* ---- 상단 조작 행: 왼쪽 4방향 십자키, 오른쪽 취소/리셋 2단 ---- */
+#topControls{display:flex;align-items:stretch;gap:10px;}
+/* 4방향 십자키 (3×3, 가운데는 먹이 조준 중에만 🎯 투척) */
+#dpad{flex:none;display:grid;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(3,46px);gap:5px;}
 #dpad button{border-radius:13px;display:flex;align-items:center;justify-content:center;padding:0;
   background:linear-gradient(#2a2030,#211a26);box-shadow:inset 0 0 0 1.5px #45343d,0 2px 0 rgba(0,0,0,.35);
   transition:transform .1s ease-out,box-shadow .12s,opacity .12s;}
@@ -82,11 +83,11 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
 #dpad button:active{transform:translateY(1px);}
 #dpad button:disabled{opacity:.30;filter:grayscale(.6);}
 #dpad .dk.aim{box-shadow:inset 0 0 0 2px var(--pink),0 0 14px rgba(255,143,179,.35);color:#ffd7e6;}
-/* ---- 오른쪽: 취소/리셋 위 · 먹이 3줄 아래 ---- */
-#actioncol{grid-area:actions;display:flex;flex-direction:column;gap:6px;min-width:0;height:148px;}
-#btnrow{display:flex;gap:6px;}
-#btnrow button{flex:1;height:36px;padding:0 2px;border-radius:12px;font-size:13.5px;letter-spacing:.01em;white-space:nowrap;
-  background:linear-gradient(#2a2030,#211a26);box-shadow:inset 0 0 0 1.5px #45343d,0 2px 0 rgba(0,0,0,.35);}
+/* ---- 오른쪽: 취소·리셋 — 십자키 높이에 맞춰 위아래 2단으로 크게 ---- */
+#btnrow{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;}
+#btnrow button{flex:1;min-height:0;padding:0 4px;border-radius:14px;font-size:15px;letter-spacing:.01em;white-space:nowrap;
+  background:linear-gradient(#2a2030,#211a26);box-shadow:inset 0 0 0 1.5px #45343d,0 2px 0 rgba(0,0,0,.35);
+  transition:transform .1s ease-out,box-shadow .12s;}
 #btnrow button:active{transform:translateY(1px);}
 #btnrow button:disabled{opacity:.34;}
 /* 단축키 키캡 배지 — 어두운 배경에 맞춘 작고 은은한 표시 */
@@ -94,27 +95,28 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
   margin-left:4px;font-size:9px;font-weight:800;line-height:1;letter-spacing:.01em;font-variant-numeric:tabular-nums;
   color:#cfc3b5;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:4px;
   box-shadow:0 1px 0 rgba(0,0,0,.32);vertical-align:middle;transform:translateY(-1px);}
-#btnrow button .kc{min-width:14px;height:15px;font-size:9.5px;}
-#bUndo{flex:1.25;}
+#btnrow button .kc{min-width:16px;height:17px;font-size:10.5px;}
+#bUndo{flex:1;}
 /* 잡힌 상태: 보드를 보면서 바로 누르라고 취소 버튼에만 은은한 테두리 강조 */
 #bUndo.hot{box-shadow:inset 0 0 0 2px var(--amber),0 0 14px rgba(255,176,46,.28);animation:undoHot 1.6s ease-in-out infinite;}
 #bUndo.hot:disabled{animation:none;}
 @keyframes undoHot{0%,100%{box-shadow:inset 0 0 0 2px var(--amber),0 0 10px rgba(255,176,46,.16);}50%{box-shadow:inset 0 0 0 2px var(--amber),0 0 20px rgba(255,176,46,.42);}}
-/* ---- 오른쪽 아래: 인벤토리 3칸 — 주운 먹이만 앞 슬롯부터 채워져요 ---- */
-#invbar{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;}
-#invbar .slot{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-  padding:14px 4px 8px;border-radius:12px;min-width:0;overflow:hidden;touch-action:none;-webkit-touch-callout:none;
+/* ---- 아래: 가로 꽉 찬 인벤토리 3칸 — 주운 먹이만 앞 슬롯부터 채워져요 ---- */
+#invbar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;height:50px;}
+#invbar .slot{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;align-items:center;gap:3px;
+  padding:0 6px;border-radius:12px;height:100%;min-width:0;overflow:hidden;touch-action:none;-webkit-touch-callout:none;
   background:linear-gradient(#241c2b,#1c1622);box-shadow:inset 0 0 0 1.5px #3a2c36,0 2px 0 rgba(0,0,0,.35);
   transition:transform .12s ease-out,box-shadow .12s,background .12s;}
-#invbar .slot .em{font-size:22px;line-height:1;}
-#invbar .slot .nm{max-width:100%;font-size:9.5px;line-height:1.15;font-weight:800;letter-spacing:-.03em;color:#c7b9ab;
+#invbar .slot .em{font-size:18px;line-height:1;}
+#invbar .slot .nm{min-width:0;font-size:10px;line-height:1.15;font-weight:800;letter-spacing:-.03em;color:#c7b9ab;
   text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-#invbar .slot .n{font-size:11px;line-height:1;font-weight:800;font-variant-numeric:tabular-nums;color:#b9ab9c;}
-#invbar .slot .kc{position:absolute;top:5px;left:5px;margin:0;min-width:12px;height:13px;padding:0 2px;font-size:8px;
+#invbar .slot .n{font-size:11.5px;line-height:1;font-weight:800;font-variant-numeric:tabular-nums;color:#b9ab9c;text-align:right;}
+#invbar .slot .kc{margin:0;min-width:11px;height:14px;padding:0 2px;font-size:8px;
   color:#b3a596;background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.13);box-shadow:none;transform:none;}
 /* 빈 슬롯: 이름·아이콘 없이 은은한 점선 테두리만 */
 #invbar .slot.empty{background:rgba(255,255,255,.015);border:1.5px dashed #3a2f33;box-shadow:none;}
 #invbar .slot.empty .kc{color:#6d625c;background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08);}
+#invbar .slot.empty .em,#invbar .slot.empty .n{display:none;}
 #invbar .slot:active{transform:translateY(1px);}
 #invbar .slot:disabled{opacity:.34;}
 #invbar .slot.on{background:#3c2330;box-shadow:inset 0 0 0 2px var(--pink),0 0 18px rgba(255,143,179,.35);}
@@ -149,7 +151,7 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
 .tnote{margin-top:2px;padding-top:8px;border-top:1px dashed rgba(255,255,255,.10);
   font-size:10.5px;line-height:1.45;font-weight:700;color:#8f837a;letter-spacing:-.01em;word-break:keep-all;}
 .tnote.trule{margin-top:0;padding-top:3px;border-top:0;font-size:10px;color:#7b706a;}
-#hint{grid-area:hint;text-align:center;font-size:10.5px;color:var(--dim);font-weight:700;letter-spacing:.02em;
+#hint{text-align:center;font-size:10.5px;color:var(--dim);font-weight:700;letter-spacing:.02em;
   min-height:14px;line-height:1.35;}
 #overlay{position:absolute;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;
   background:radial-gradient(60% 45% at 50% 42%,rgba(20,14,24,.72),rgba(8,6,10,.9));backdrop-filter:blur(4px);}
