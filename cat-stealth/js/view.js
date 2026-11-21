@@ -797,7 +797,8 @@ function drawFishKind(g,cx,cy,kind,now,opt){
     var rr=(kind==="small")?10:15;
     dith(g,x-rr,y-rr+2,rr*2,rr*2-2,"rgba(255,150,196,0.20)",0.4,1);
   }
-  g.drawImage(spr,x-32,y-32);
+  var half=Math.round(32*(opt.scale!=null?opt.scale:1));
+  g.drawImage(spr,x-half,y-half,half*2,half*2);
   g.restore();
 }
 function drawFish(g,cx,cy,now,alpha,glow){
@@ -1063,8 +1064,7 @@ function drawPickupEntity(g,st,now){
       pf(g,x0+4,y0+4+e,1,4,"rgba(255,232,168,"+a+")");
       pf(g,x0+CELL-5,y0+4+e,1,4,"rgba(255,232,168,"+a+")");
     }
-    var bob=(Math.sin(now/520+pk.x*2.1)>0)?1:0;
-    drawFishKind(g,cx,cy-2+bob,pk.kind,now,{});
+    drawFishKind(g,cx,cy-2,pk.kind,now,{scale:0.7});
     var sx=Math.round(cx+7), sy=Math.round(cy-9);
     pf(g,sx,sy-1,1,3,"rgba(255,246,208,"+(0.35+0.45*pulse).toFixed(3)+")");
     pf(g,sx-1,sy,3,1,"rgba(255,246,208,"+(0.35+0.45*pulse).toFixed(3)+")");
@@ -1077,7 +1077,6 @@ function drawFishEntity(g,st,now){
      그 고양이는 '입에 생선을 문' eat 프레임으로 그려지므로 생선이 두 번 보이면 안 되니까요.
      (게임 상태 st.fishes·eater·eatLeft는 그대로 두고 그리기만 건너뜀) */
   if(!st.fishes||!st.fishes.length) return;
-  var bob=(Math.sin(now/300)>0)?1:0;
   for(var i=0;i<st.fishes.length;i++){
     var f=st.fishes[i];
     var cx=f.x*CELL+CELL/2, cy=f.y*CELL+CELL/2;
@@ -1088,12 +1087,10 @@ function drawFishEntity(g,st,now){
         if(cc.id===f.eater&&cc.x===f.x&&cc.y===f.y&&cc.state==="eat"){ held=true; break; }
       }
       if(held) continue;                       /* 입에 물고 있는 중 → 바닥 중복 렌더 생략 */
-    }else{
-      cy+=bob;
     }
     shadowPix(g,cx,f.y*CELL+CELL-8,f.kind==="big"?10:8,3,0.30);
     dith(g,cx-11,cy-9,22,18,"rgba(255,170,205,0.14)",0.4,1);
-    drawFishKind(g,cx,cy,f.kind,now,{});
+    drawFishKind(g,cx,cy,f.kind,now,{scale:0.7});
   }
 }
 

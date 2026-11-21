@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#141019">
+<title>TINY &amp; PAWS · 맵 에디터</title>
+<link rel="stylesheet" href="css/editor.css?v=20261121-merged">
+</head>
+<body>
+<div id="edApp">
+  <div id="edTop">
+    <h1>🐾 맵 에디터</h1>
+    <select id="edStageSel" aria-label="기존 스테이지 선택"></select>
+    <button id="edLoad">불러오기</button>
+    <button id="edNew">새 맵</button>
+    <span class="sp"></span>
+    <button id="edPlayTest" class="accent" aria-label="만든 맵을 실제 게임으로 테스트">▶ 테스트 플레이</button>
+    <button id="edUndo" aria-label="되돌리기">↩ 되돌리기</button>
+    <button id="edRedo" aria-label="다시하기">↪ 다시하기</button>
+  </div>
+  <div id="edMain">
+    <div id="edBoardWrap"><canvas id="cv" width="360" height="360"></canvas><div id="edGrid" role="grid" aria-label="9x9 맵 격자"></div></div>
+    <div id="edSide">
+      <div class="card">
+        <h2>도구</h2>
+        <div class="toolrow" id="edTerrainTools"></div>
+        <div class="toolrow" id="edEntityTools" style="margin-top:6px"></div>
+        <div class="note">도구를 고르고 칸을 클릭하세요 · 지형은 드래그로 칠할 수 있어요</div>
+      </div>
+      <div class="card">
+        <h2>선택</h2>
+        <div id="edSelInfo">개체 선택 도구로 칸을 누르세요</div>
+        <div id="edSelBody"></div>
+      </div>
+      <div class="card">
+        <h2>검사</h2>
+        <div class="conn" id="edConn"></div>
+        <label class="chk"><input type="checkbox" id="edDanger" checked> 현재 배치 기준 시야·기척</label>
+        <div class="note">연결 검사만 확인합니다. 고양이 이동·먹이·턴 제한을 포함한 클리어 보장은 아닙니다.</div>
+      </div>
+      <div class="card">
+        <h2>스테이지 정보</h2>
+        <div class="frow"><label for="edName">이름</label><input type="text" id="edName"></div>
+        <div class="frow"><label for="edTurns">최대 턴</label><input type="number" id="edTurns" min="1" step="1" value="20"></div>
+        <div class="frow"><label for="edHint">힌트</label><input type="text" id="edHint"></div>
+        <div id="edThemes"></div>
+      </div>
+      <div class="card">
+        <h2>JSON 가져오기 · 내보내기</h2>
+        <div class="note">스테이지 객체 JSON, 또는 맵만 담은 9개 문자열 배열(JSON)을 붙여넣을 수 있어요. JS 리터럴(작은따옴표 등)은 안 돼요.</div>
+        <textarea id="edJson" aria-label="스테이지 JSON" spellcheck="false"></textarea>
+        <div class="jrow">
+          <button id="edImport">가져오기</button>
+          <button id="edExport" class="accent">내보내기(JSON)</button>
+          <button id="edCopy">복사</button>
+          <button id="edDl" class="good">stage.json 다운로드</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="edStatus" role="status"></div>
+</div>
+<dialog id="edPlayDialog" aria-label="맵 테스트 플레이">
+  <div id="edPlayBar">
+    <button id="edPlayRestart" disabled aria-label="현재 편집 내용으로 처음부터 다시 테스트">↻ 다시 시작</button>
+    <button id="edPlayBack" aria-label="테스트를 닫고 에디터로 돌아가기">✕ 편집으로 돌아가기</button>
+    <span id="edPlayLoading">불러오는 중…</span>
+    <span id="edPlayErr" role="alert"></span>
+  </div>
+  <div id="edPlayBox"></div>
+</dialog>
+<script src="js/data.js?v=20261121-level2-user"></script>
+<script src="js/model.js?v=20261121-cat-vacate"></script>
+<script src="js/assets.js?v=20261121-merged2"></script>
+<script src="js/view.js?v=20261121-merged"></script>
+<script src="js/editor-model.js?v=20261121-shelf"></script>
+<script src="js/editor.js?v=20261121-shelf"></script>
+</body>
+</html>

@@ -169,16 +169,11 @@ function anyChasing(){
   return false;
 }
 function validMoves(){
-  /* 추격 중 지구력이 다 떨어지면 이동 불가 — 제자리 대기(wait)만 가능 */
-  if(G.st.stam<=0&&anyChasing()) return [];
+  if(!G.st||!G.st.player) return [];
   var p=G.st.player, out=[];
   for(var d=0;d<4;d++){
     var nx=p.x+DIRS[d][0], ny=p.y+DIRS[d][1];
-    if(!humanWalkable(G.st,nx,ny)) continue;
-    var occupied=false;
-    for(var i=0;i<G.st.cats.length;i++){ if(G.st.cats[i].x===nx&&G.st.cats[i].y===ny){ occupied=true; } }
-    if(occupied) continue;
-    out.push({x:nx,y:ny,dir:d});
+    if(canPlayerMoveTo(G.st,nx,ny)) out.push({x:nx,y:ny,dir:d});
   }
   return out;
 }
@@ -226,6 +221,7 @@ function catById(id){
 }
 function beginTurn(action){
   if(G.mode!=="play"||G.pending) return;
+  if(action.t==="move"&&!canPlayerMoveTo(G.st,action.x,action.y)) return;
   hideItemTip();
   var snap={st:cloneState(G.st),dir:G.playerDir};
   var next=cloneState(G.st), ev=[];
@@ -558,6 +554,7 @@ function isEnterKey(e){ return e.key==="Enter"||e.key===" "||e.key==="Spacebar"|
 document.addEventListener("keydown",function(e){
   /* Ctrl/Cmd/Alt 조합은 브라우저 단축키라서 건드리지 않아요 */
   if(e.ctrlKey||e.metaKey||e.altKey) return;
+  if(EDITOR_PLAYTEST&&!G.st) return;
   var k=e.key;
   /* 스크롤 · 뒤로가기 같은 브라우저 기본 동작 막기 */
   if(k==="ArrowUp"||k==="ArrowRight"||k==="ArrowDown"||k==="ArrowLeft"||k===" "||k==="Spacebar"||k==="Backspace"||e.code==="Space") e.preventDefault();
@@ -646,6 +643,11 @@ function clearPanel(p){
   $("pNext").addEventListener("click",nextStage);
 }
 function winPanel(p){
+  if(EDITOR_PLAYTEST){
+    p.innerHTML='<div class="big">🎉</div><h2>테스트 클리어!</h2><p>만든 스테이지를 탈출했어요.</p><button id="pAgain">다시 테스트 <span class="kc">Enter</span></button><button id="pEdit">편집으로 돌아가기</button>';
+    $('pAgain').addEventListener('click',restartFromStart);
+    $('pEdit').addEventListener('click',playtestReturn);return;
+  }
   p.innerHTML='<div class="big">🏆</div><h2>완탈출!</h2><p>10개의 방을 모두 통과했어요.<br>당신은 최고의 잠입가… 고양이는 아직 모릅니다.</p><button id="pAgain">처음부터 다시 🐾<span class="kc">Enter</span></button>';
   $("pAgain").addEventListener("click",restartFromStart);
 }
@@ -669,11 +671,7 @@ function resize(){
 
 /* ================= 시작 ================= */
 window.addEventListener("resize",resize);
-initDpad();
-initInv();
-loadStage(0);
-G.mode="title";
-resize();
-showPanel(titlePanel);
-updateHUD();
+initDpad();initInv();
+if(EDITOR_PLAYTEST){G.mode="test-wait";resize();playtestReady();}
+else{loadStage(0);G.mode="title";resize();showPanel(titlePanel);updateHUD();}
 requestAnimationFrame(loop);
