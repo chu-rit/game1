@@ -233,11 +233,43 @@
   },true);
 
   var startBtn=document.getElementById("stStart");
-  if(startBtn) startBtn.addEventListener("click",function(e){
-    e.preventDefault(); e.stopPropagation();
-    hideStart();
-    if(_startGame) _startGame();
-  });
+
+  /* 나무판때기 버튼 눌림 표시 — 손을 대고 있는 동안 .pressed(금색 글자 + 2px 눌림).
+     iOS 사파리는 :active 가 짧은 탭에서 거의 안 보이거나 pointerdown 의 preventDefault 에
+     먹히기도 해서 클래스를 직접 켜고 끕니다. 손을 빨리 떼도 색 변화가 눈에 남게
+     최소 110ms 는 유지해요. */
+  var pressT0=0, pressTmr=0;
+  function pressOn(){
+    if(!startBtn) return;
+    pressT0=performance.now();
+    if(pressTmr){ clearTimeout(pressTmr); pressTmr=0; }
+    startBtn.classList.add("pressed");
+  }
+  function pressOff(){
+    if(!startBtn) return;
+    var left=110-(performance.now()-pressT0);
+    if(pressTmr){ clearTimeout(pressTmr); pressTmr=0; }
+    if(left>0){
+      pressTmr=setTimeout(function(){ pressTmr=0; startBtn.classList.remove("pressed"); },left);
+    }else{
+      startBtn.classList.remove("pressed");
+    }
+  }
+  if(startBtn){
+    startBtn.addEventListener("pointerdown",pressOn);
+    startBtn.addEventListener("pointerup",pressOff);
+    startBtn.addEventListener("pointercancel",pressOff);
+    startBtn.addEventListener("pointerleave",pressOff);
+    /* 포인터 이벤트가 없는 아주 옛 사파리를 위한 보험 */
+    startBtn.addEventListener("touchstart",pressOn,{passive:true});
+    startBtn.addEventListener("touchend",pressOff,{passive:true});
+    startBtn.addEventListener("touchcancel",pressOff,{passive:true});
+    startBtn.addEventListener("click",function(e){
+      e.preventDefault(); e.stopPropagation();
+      hideStart();
+      if(_startGame) _startGame();
+    });
+  }
   var optBtn=document.getElementById("stOpts");
   if(optBtn) optBtn.addEventListener("click",function(e){
     e.preventDefault(); e.stopPropagation();
