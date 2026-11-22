@@ -2,6 +2,8 @@
 :root{
   --cream:#f6ecdc; --dim:#a2948a; --line:#3a2f33;
   --amber:#ffb338; --red:#ff5d6e; --green:#4fd39a; --pink:#ff9ec4;
+  /* 하단 조작 버튼 공통 톤 — 아래 인벤토리 빈 칸과 같은 어두운 반투명 숲 톤 */
+  --ctl-bg:rgba(8,12,10,.46); --ctl-line:rgba(246,236,220,.16);
 }
 html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#060a07;}
 body{background:radial-gradient(120% 80% at 50% 40%,#0b1410 0%,#060a07 62%,#040604 100%);}
@@ -85,38 +87,44 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
 /* ---- 상단 조작 행: 왼쪽 역T자 방향키, 오른쪽 취소/리셋 2단 ---- */
 #topControls{display:flex;align-items:stretch;gap:10px;}
 /* 역T자 방향키 (3열×2행: ▲ / ◀ ▼ ▶, 오른쪽 위 칸은 먹이 조준 중에만 🎯 투척) */
-#dpad{--dk:60px;flex:none;display:grid;grid-template-columns:repeat(3,var(--dk));grid-template-rows:repeat(2,var(--dk));gap:5px;}
-#dpad button{border-radius:15px;display:flex;align-items:center;justify-content:center;padding:0;
-  background:linear-gradient(#2a2030,#211a26);box-shadow:inset 0 0 0 1.5px #45343d,0 2px 0 rgba(0,0,0,.35);
-  transition:transform .1s ease-out,box-shadow .12s,opacity .12s;}
-#dpad .dk{font-size:21px;color:#e6d9c8;line-height:1;}
+#dpad{--dk:52px;flex:none;display:grid;grid-template-columns:repeat(3,var(--dk));grid-template-rows:repeat(2,var(--dk));gap:5px;}
+#dpad button{border-radius:14px;display:flex;align-items:center;justify-content:center;padding:0;
+  background:var(--ctl-bg);box-shadow:inset 0 0 0 1.5px var(--ctl-line),0 2px 0 rgba(0,0,0,.35);
+  transition:transform .1s ease-out,box-shadow .12s,background .12s;}
+#dpad .dk{font-size:19px;color:#e6d9c8;line-height:1;}
 #dpad .up{grid-area:1/2;}
 #dpad .left{grid-area:2/1;}
 #dpad .down{grid-area:2/2;}
 #dpad .right{grid-area:2/3;}
 /* 오른쪽 위 칸: 일반 플레이에선 비어 있는 역T자, 먹이 조준 중에만 🎯 투척이 뜬다 */
 #bWait{grid-area:1/3;flex-direction:column;gap:1px;line-height:1;
-  background:linear-gradient(#33263c,#261d2e);box-shadow:inset 0 0 0 1.5px #56415a,0 2px 0 rgba(0,0,0,.35);}
+  background:var(--ctl-bg);box-shadow:inset 0 0 0 1.5px var(--ctl-line),0 2px 0 rgba(0,0,0,.35);}
 #bWait.hidden{display:none;}
-#bWait .ic{font-size:20px;line-height:1;}
-#bWait .tx{font-size:10px;font-weight:800;letter-spacing:-.02em;color:#cbbfae;}
-#bWait.aimed{background:linear-gradient(#4a2233,#3a1a28);
+#bWait .ic{font-size:18px;line-height:1;}
+#bWait .tx{font-size:9.5px;font-weight:800;letter-spacing:-.02em;color:#cbbfae;}
+#bWait.aimed{background:rgba(52,24,36,.58);
   box-shadow:inset 0 0 0 2px var(--pink),0 0 16px rgba(255,143,179,.42);}
 #bWait.aimed .tx{color:#ffd7e6;}
-#dpad button:active{transform:translateY(1px);}
-#dpad button:disabled{opacity:.30;filter:grayscale(.6);}
-#dpad .dk.aim{box-shadow:inset 0 0 0 2px var(--pink),0 0 14px rgba(255,143,179,.35);color:#ffd7e6;}
+#dpad button:active{transform:translateY(1px);filter:brightness(.74) saturate(.9);}
+/* 막힌 방향: 배경·테두리를 더 비우고 아이콘 밝기를 낮춰 한눈에 구분 */
+#dpad button:disabled{background:rgba(8,12,10,.22);
+  box-shadow:inset 0 0 0 1.5px rgba(246,236,220,.07),0 2px 0 rgba(0,0,0,.18);}
+#dpad .dk:disabled{color:rgba(230,217,200,.28);}
+#dpad .dk.aim{background:rgba(44,22,33,.56);box-shadow:inset 0 0 0 2px var(--pink),0 0 14px rgba(255,143,179,.35);color:#ffd7e6;}
+#dpad .dk.aim:disabled{color:#ffd7e6;}
 /* ---- 오른쪽: 취소·리셋 — 역T자 방향키 2줄 높이에 맞춰 위아래 2단, 폭은 내용물만큼만 ---- */
 #btnrow{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;align-items:flex-end;}
 /* 인벤토리 슬롯처럼 살짝 정사각형 — 아이콘 위, 이름 아래, 좌상단 키캡 */
-#btnrow button{position:relative;flex:1;width:56px;min-height:0;padding:3px 4px;border-radius:12px;
+#btnrow button{position:relative;flex:1;width:52px;min-height:0;padding:3px 4px;border-radius:12px;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;line-height:1;
-  background:linear-gradient(#241c2b,#1c1622);box-shadow:inset 0 0 0 1.5px #3a2c36,0 2px 0 rgba(0,0,0,.35);
-  transition:transform .12s ease-out,box-shadow .12s;}
-#btnrow button .ic{font-size:21px;line-height:1;}
+  background:var(--ctl-bg);box-shadow:inset 0 0 0 1.5px var(--ctl-line),0 2px 0 rgba(0,0,0,.35);
+  transition:transform .12s ease-out,box-shadow .12s,background .12s;}
+#btnrow button .ic{font-size:19px;line-height:1;}
 #btnrow button .nm{font-size:11px;font-weight:800;letter-spacing:-.04em;color:#c7b9ab;}
-#btnrow button:active{transform:translateY(1px);}
-#btnrow button:disabled{opacity:.34;}
+#btnrow button:active{transform:translateY(1px);filter:brightness(.74) saturate(.9);}
+#btnrow button:disabled{background:rgba(8,12,10,.22);
+  box-shadow:inset 0 0 0 1.5px rgba(246,236,220,.07),0 2px 0 rgba(0,0,0,.18);}
+#btnrow button:disabled .ic,#btnrow button:disabled .nm{color:rgba(230,217,200,.28);}
 /* 단축키 키캡 배지 — 어두운 배경에 맞춘 작고 은은한 표시 */
 .kc{display:inline-flex;align-items:center;justify-content:center;min-width:13px;height:14px;padding:0 3px;
   margin-left:4px;font-size:9px;font-weight:800;line-height:1;letter-spacing:.01em;font-variant-numeric:tabular-nums;
