@@ -352,9 +352,9 @@ function resetStage(){
 cvEl.addEventListener("pointerdown",function(e){
   if(G.mode!=="play"||G.pending) return;
   var r=cvEl.getBoundingClientRect();
-  var tx=Math.floor((e.clientX-r.left)/r.width*N);
-  var ty=Math.floor((e.clientY-r.top)/r.height*N);
-  if(tx<0||ty<0||tx>=N||ty>=N) return;
+  var tx=Math.floor((e.clientX-r.left)/r.width*COLS);
+  var ty=Math.floor((e.clientY-r.top)/r.height*ROWS);
+  if(tx<0||ty<0||tx>=COLS||ty>=ROWS) return;
   if(G.fishMode){
     var ft=validFishTiles();
     for(var i=0;i<ft.length;i++){
@@ -655,17 +655,22 @@ function winPanel(p){
 /* ================= 리사이즈 ================= */
 function resize(){
   var st=$("stage");
-  var availW=st.clientWidth-6;
-  var warnH=$("warn").offsetHeight+8;
-  var availH=st.clientHeight-warnH-6;
-  var fit=Math.min(availW,availH,470);
-  fit=Math.max(fit,180);
+  /* 보드는 #stage 안에서 HUD(위)·조작부(아래) 사이의 가용 상자에 맞춰요.
+     가로를 먼저 꽉 채우고, 세로(긴 맵·큰 맵)에 걸리면 min()으로 비례 축소. */
+  var availW=st.clientWidth;
+  var chrome=($("warn").offsetHeight||0)+($("stam").offsetHeight||0)+14+6;  /* flex gap 7×2 + 여유 */
+  var availH=st.clientHeight-chrome;
+  if(availW<1) availW=1;
+  if(availH<1) availH=1;
+  var tile=Math.min(availW/COLS,availH/ROWS);
+  if(!(tile>0)) tile=1;
+  var cssW=Math.max(1,Math.floor(tile*COLS));
+  var cssH=Math.max(1,Math.floor(tile*ROWS));
   var dpr=Math.min(3,Math.max(1,window.devicePixelRatio||1));
-  /* 화면에는 1도트 = 1 CSS px로 보여주고, 백킹은 dpr만큼 키운다 */
-  var cssW=Math.min(Math.floor(fit),CV);
-  var back=Math.max(CV,Math.round(cssW*dpr));
-  cvEl.width=back; cvEl.height=back;
-  cvEl.style.width=cssW+"px"; cvEl.style.height=cssW+"px";
+  /* 화면 도트(dpr) 기준으로 백킹을 키워 1도트가 뭉개지지 않게 */
+  var s=Math.max(1,(cssW*dpr)/CVW);
+  cvEl.width=Math.round(CVW*s); cvEl.height=Math.round(CVH*s);
+  cvEl.style.width=cssW+"px"; cvEl.style.height=cssH+"px";
   dctx.imageSmoothingEnabled=false;
 }
 

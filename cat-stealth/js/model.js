@@ -16,10 +16,16 @@ function makeCat(def,id){
 }
 function loadStage(idx){
   var s=STAGES[idx], grid=[], player=null, goal=null;
-  for(var y=0;y<N;y++){
+  /* 스테이지마다 맵 크기가 다를 수 있어요 — 줄 수/칸 수를 세어 보드 크기를 맞춰요 */
+  var rows=s.map.length, cols=1;
+  for(var ry=0;ry<rows;ry++){ if(s.map[ry].length>cols) cols=s.map[ry].length; }
+  setBoardSize(rows,cols);
+  if(typeof sizeBoardCanvases==="function") sizeBoardCanvases();
+  for(var y=0;y<ROWS;y++){
     var row=[];
-    for(var x=0;x<N;x++){
+    for(var x=0;x<COLS;x++){
       var ch=s.map[y].charAt(x);
+      if(!ch) ch="#";                 /* 모자란 칸은 벽으로 막아 둬요 */
       if(ch==="P"){ player={x:x,y:y}; ch="."; }
       else if(ch==="G"){ goal={x:x,y:y}; ch="."; }
       row.push(ch);
@@ -40,6 +46,8 @@ function loadStage(idx){
   if(G.panelTimer){ clearTimeout(G.panelTimer); G.panelTimer=null; }
   bakeBoard(G.st);
   updateHUD(); computeDanger();
+  /* 스테이지 크기가 바뀌었으니 표시 크기도 다시 맞춰요 */
+  if(typeof resize==="function") resize();
 }
 function cloneState(st){ return JSON.parse(JSON.stringify(st)); }
 
@@ -69,7 +77,7 @@ function canPlayerMoveTo(st,x,y){
 
 /* ---------------------------- 시뮬레이션 (프리뷰/실행 공용) ---------------------------- */
 function tileAt(st,x,y){
-  if(x<0||y<0||x>=N||y>=N) return "#";
+  if(x<0||y<0||x>=COLS||y>=ROWS) return "#";
   return st.grid[y][x];
 }
 var DECOR={"~":1};
@@ -145,7 +153,7 @@ function bfsNext(st,from,target,ignoreCats){
     for(var i=0;i<st.cats.length;i++){ var c=st.cats[i]; if(c!==from&&c.x===x&&c.y===y) return true; }
     return false;
   };
-  var prev={}, key=function(x,y){return y*N+x;}, q=[{x:from.x,y:from.y}];
+  var prev={}, key=function(x,y){return y*COLS+x;}, q=[{x:from.x,y:from.y}];
   prev[key(from.x,from.y)]=null;
   var found=false;
   while(q.length){

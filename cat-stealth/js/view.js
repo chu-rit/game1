@@ -4,6 +4,15 @@ var cvEl=document.getElementById("cv"), dctx=cvEl.getContext("2d");
 var low=document.createElement("canvas"); low.width=CV; low.height=CV;
 var ctx=low.getContext("2d");
 var board=document.createElement("canvas"); board.width=CV; board.height=CV;
+/* 스테이지 맵 크기(ROWS×COLS)가 바뀌면 두 작업용 캔버스를 그 크기로 다시 잡아요.
+   (크기를 바꾸면 캔버스가 비워지므로 loadStage 가 곧바로 bakeBoard 로 다시 그립니다) */
+function sizeBoardCanvases(){
+  if(low.width!==CVW||low.height!==CVH){
+    low.width=CVW; low.height=CVH;
+    board.width=CVW; board.height=CVH;
+    ctx.imageSmoothingEnabled=false;
+  }
+}
 var $=function(id){ return document.getElementById(id); };
 /* 인벤토리 슬롯·아이템 카드 DOM 은 controller.js 에서 다룹니다 */
 
@@ -129,7 +138,7 @@ var GHOST={ id:"G", o:"#1b3247", body:"#4d86b8", lit:"#7fb4e0", dark:"#35618c", 
 function bakeBoard(st){
   var g=board.getContext("2d");
   g.imageSmoothingEnabled=false;
-  g.clearRect(0,0,CV,CV);
+  g.clearRect(0,0,CVW,CVH);
   paintFloor(g,st);
   paintWalls(g,st);
   paintWallShadow(g,st);
@@ -140,7 +149,7 @@ function bakeBoard(st){
   paintVignette(g,st);
   /* 바깥 프레임 */
   g.fillStyle="rgba(16,10,14,0.55)";
-  g.fillRect(0,0,CV,1); g.fillRect(0,CV-1,CV,1); g.fillRect(0,0,1,CV); g.fillRect(CV-1,0,1,CV);
+  g.fillRect(0,0,CVW,1); g.fillRect(0,CVH-1,CVW,1); g.fillRect(0,0,1,CVH); g.fillRect(CVW-1,0,1,CVH);
 }
 
 function paintFloor(g,st){
@@ -148,8 +157,8 @@ function paintFloor(g,st){
      · '~' 칸 = 크림 체크 타일 (부엌·욕실처럼 밝은 바닥)
      · 그 밖의 바닥 = 오크 마루 타일
      두 타일 모두 아트의 액자 테두리를 잘라 40×40으로 줄여, 이웃 칸과 무늬가 이어져요. */
-  pf(g,0,0,CV,CV,FLOOR.base);
-  for(var y=0;y<N;y++) for(var x=0;x<N;x++){
+  pf(g,0,0,CVW,CVH,FLOOR.base);
+  for(var y=0;y<ROWS;y++) for(var x=0;x<COLS;x++){
     var ch=st.grid[y][x];
     if(ch==="#") continue;
     var im=TILEIMG[ch==="~"?"cream":"oak"];
@@ -191,7 +200,7 @@ function drawRugTile(g,st,x,y){
 }
 
 function paintRug(g,st){
-  for(var y=0;y<N;y++) for(var x=0;x<N;x++){
+  for(var y=0;y<ROWS;y++) for(var x=0;x<COLS;x++){
     if(st.grid[y][x]==="~") drawRugTile(g,st,x,y);
   }
 }
@@ -232,13 +241,13 @@ function drawWallTilePixel(g,st,x,y){
 }
 
 function paintWalls(g,st){
-  for(var y=0;y<N;y++) for(var x=0;x<N;x++){
+  for(var y=0;y<ROWS;y++) for(var x=0;x<COLS;x++){
     if(st.grid[y][x]==="#") drawWallTile(g,st,x,y);
   }
 }
 
 function paintWallShadow(g,st){
-  for(var y=0;y<N;y++) for(var x=0;x<N;x++){
+  for(var y=0;y<ROWS;y++) for(var x=0;x<COLS;x++){
     if(st.grid[y][x]==="#") continue;
     var x0=x*CELL, y0=y*CELL;
     if(tileAt(st,x,y-1)==="#"){
@@ -260,7 +269,7 @@ function paintWallShadow(g,st){
     }
   }
   /* 벽 안쪽 턱(밝은 선) */
-  for(var y2=0;y2<N;y2++) for(var x2=0;x2<N;x2++){
+  for(var y2=0;y2<ROWS;y2++) for(var x2=0;x2<COLS;x2++){
     if(st.grid[y2][x2]!=="#") continue;
     var a=x2*CELL, b=y2*CELL;
     /* 벽 아랫면 턱 — 예전 밝은 회색 3줄은 새 벽돌 위에서 금속 띠처럼 보여서,
@@ -274,9 +283,9 @@ function paintWallShadow(g,st){
     if(tileAt(st,x2+1,y2)!=="#") pf(g,a+CELL-1,b,1,CELL,"#3a2a2e");
     /* 벽 상단·외곽 캡 */
     if(y2===0){ pf(g,a,0,CELL,3,"#6b4d4a"); pf(g,a,3,CELL,1,"#3a2a2e"); }
-    if(y2===N-1){ pf(g,a,b+CELL-1,CELL,1,"#1a1116"); }
+    if(y2===ROWS-1){ pf(g,a,b+CELL-1,CELL,1,"#1a1116"); }
     if(x2===0){ pf(g,0,b,3,CELL,"#6b4d4a"); pf(g,3,b,1,CELL,"#3a2a2e"); }
-    if(x2===N-1){ pf(g,a+CELL-1,b,1,CELL,"#1a1116"); }
+    if(x2===COLS-1){ pf(g,a+CELL-1,b,1,CELL,"#1a1116"); }
   }
 }
 
@@ -659,7 +668,7 @@ function spriteTileAt(g,key,x,y){
 
 function paintSpecial(g,st){
   var drawn=false;
-  for(var y=0;y<N;y++) for(var x=0;x<N;x++){
+  for(var y=0;y<ROWS;y++) for(var x=0;x<COLS;x++){
     var ch=st.grid[y][x];
     if(ch==="^"){ drawn=true; if(!spriteTileAt(g,"perch",x,y)) drawCatPerch(g,st,x,y); }
     else if(ch==="H"){ drawn=true; if(!spriteTileAt(g,"hole",x,y)) drawHoleTile(g,st,x,y); }
@@ -672,7 +681,7 @@ function paintFurniture(g,st){
   /* 가구·장애물(X) = 새 목재 가구/카운터 블록. 같은 모듈이 길게 이어지므로
      한 칸 걸러 좌우를 뒤집어 늘어놓아 반복이 눈에 덜 띄게 했어요. */
   var counterN=0, im=TILEIMG.furn, hasTile=!!(im&&im.width);
-  for(var y=0;y<N;y++) for(var x=0;x<N;x++){
+  for(var y=0;y<ROWS;y++) for(var x=0;x<COLS;x++){
     var ch=st.grid[y][x];
     if(ch==="X"){
       if(hasTile){
@@ -755,23 +764,23 @@ function paintGoalMat(g,st){
 
 function paintGrid(g,st){
   g.fillStyle="rgba(0,0,0,0.10)";
-  for(var x=1;x<N;x++) for(var y=1;y<N;y++){
+  for(var x=1;x<COLS;x++) for(var y=1;y<ROWS;y++){
     g.fillRect(x*CELL-1,y*CELL,1,1);
   }
 }
 
 function paintVignette(g,st){
-  var lx=CV*0.5, ly=CV*0.28;
-  var vx=CV*0.5, vy=CV*0.5;
-  for(var j=0;j<CV;j++){
-    for(var i=0;i<CV;i++){
+  var lx=CVW*0.5, ly=CVH*0.28;
+  var vx=CVW*0.5, vy=CVH*0.5;
+  for(var j=0;j<CVH;j++){
+    for(var i=0;i<CVW;i++){
       var b=BAYER[((j&3)<<2)+(i&3)]+0.5;
-      var dl=Math.sqrt(Math.pow((i-lx)/(CV*0.60),2)+Math.pow((j-ly)/(CV*0.52),2));
+      var dl=Math.sqrt(Math.pow((i-lx)/(CVW*0.60),2)+Math.pow((j-ly)/(CVH*0.52),2));
       var warm=1-dl;
       if(warm>0){
         if(b < Math.min(11,warm*10)){ g.fillStyle="rgba(255,198,122,0.09)"; g.fillRect(i,j,1,1); }
       }
-      var dx=(i-vx)/(CV*0.5), dy=(j-vy)/(CV*0.5);
+      var dx=(i-vx)/(CVW*0.5), dy=(j-vy)/(CVH*0.5);
       var d=Math.sqrt(dx*dx+dy*dy);
       var t=(d-0.70)/0.62;
       if(t>0 && b < Math.min(15,t*15)){ g.fillStyle="rgba(20,9,16,0.22)"; g.fillRect(i,j,1,1); }
@@ -1007,7 +1016,7 @@ function drawWarnMarks(g,st,now){
 function senseTilesOf(st,cat){
   var out=[];
   if(!cat.sense) return out;
-  for(var y=0;y<N;y++) for(var x=0;x<N;x++){
+  for(var y=0;y<ROWS;y++) for(var x=0;x<COLS;x++){
     if(x===cat.x&&y===cat.y) continue;
     if(Math.abs(x-cat.x)+Math.abs(y-cat.y)>cat.sense) continue;
     if(isBlocked(st,x,y)) continue;
@@ -1111,7 +1120,7 @@ function draw(){
   var now=performance.now();
   G.t=now;
   ctx.imageSmoothingEnabled=false;
-  ctx.clearRect(0,0,CV,CV);
+  ctx.clearRect(0,0,CVW,CVH);
   if(!G.st){
     dctx.imageSmoothingEnabled=false;
     dctx.clearRect(0,0,cvEl.width,cvEl.height);
@@ -1181,7 +1190,7 @@ function draw(){
     /* 발판(^)을 오르내릴 때: 논리 위치(목적지)가 발판이면 이동 시작과 함께 몸이 먼저 뜨고,
        뜬 채로 상판 위로 들어가요 — 들어간 뒤에 올라가는 게 아니라 '타고' 오르는 느낌.
        내려올 때도 먼저 몸을 숙이듯 내려오면서 빠져나가요. lift = 발 들어올림 픽셀. */
-    var onP2=(cat.x>=0&&cat.x<N&&cat.y>=0&&cat.y<N&&st.grid[cat.y][cat.x]==="^");
+    var onP2=(cat.x>=0&&cat.x<COLS&&cat.y>=0&&cat.y<ROWS&&st.grid[cat.y][cat.x]==="^");
     var liftT=onP2?(cat.y*CELL+CELL-4-perchTopPx(cat.x,cat.y)):0;
     if(cat.lift==null) cat.lift=liftT;
     cat.lift+=(liftT-cat.lift)*0.42;

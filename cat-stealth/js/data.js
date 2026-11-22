@@ -1,6 +1,15 @@
 "use strict";
 /* ===== Model-Data: 상수 · 생선 정의 · 스테이지 ===== */
 var N=9, CELL=40, CV=N*CELL;
+/* ---- 현재 스테이지 보드 크기 ----
+   N·CV 는 9×9 기준값(에디터·스프라이트 좌표계)으로 남겨 두고,
+   본게임 보드는 맵 줄 수(ROWS)·칸 수(COLS)에 맞춰 loadStage 가 갱신해요.
+   맵이 9×9 면 CVW=CVH=CV 로 예전과 똑같아요. */
+var ROWS=N, COLS=N, CVW=CV, CVH=CV;
+function setBoardSize(rows,cols){
+  ROWS=Math.max(1,rows|0); COLS=Math.max(1,cols|0);
+  CVW=COLS*CELL; CVH=ROWS*CELL;
+}
 var DIRS=[[0,-1],[1,0],[0,1],[-1,0]]; /* 0↑ 1→ 2↓ 3← */
 var SIGHT_LEN=4, FISH_RANGE=2, CHASE_LOST=3;
 /* 기척(귀) 범위는 '고양이 종류'에 붙은 고정값 — 레벨마다 바뀌지 않아요.

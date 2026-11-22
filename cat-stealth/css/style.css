@@ -16,8 +16,10 @@ body{
   width:100%;max-width:520px;margin:0 auto;
   padding-top:calc(env(safe-area-inset-top,0px) + 8px);
   padding-bottom:calc(env(safe-area-inset-bottom,0px) + 10px);
-  padding-left:calc(env(safe-area-inset-left,0px) + 10px);
-  padding-right:calc(env(safe-area-inset-right,0px) + 10px);
+  /* 보드는 화면 가로 폭을 꽉 채우도록 #app 좌우 여백을 비워 둡니다
+     (HUD·조작부는 각자 안쪽 여백으로 글자가 화면 끝에 붙지 않게 해요) */
+  padding-left:env(safe-area-inset-left,0px);
+  padding-right:env(safe-area-inset-right,0px);
   /* 본게임 배경: 숲속 길(세로 도트) — 화면에 꽉 차게 cover, 위아래 은은한 비네팅으로 HUD·조작부 가독성 확보 */
   background-color:#0d1410;
   background-image:
@@ -36,7 +38,7 @@ body{
   overflow:hidden;
   box-shadow:0 0 0 1px rgba(255,255,255,.05), 0 24px 70px rgba(0,0,0,.65);
 }
-#hud{display:flex;align-items:center;justify-content:space-between;padding:0 6px 6px;gap:8px;position:relative;z-index:3;}
+#hud{display:flex;align-items:center;justify-content:space-between;padding:0 12px 6px;gap:8px;position:relative;z-index:3;}
 .hb{display:flex;flex-direction:column;gap:3px;min-width:64px;}
 .hb.mid{align-items:center;flex:1;gap:0;}
 .hb.right{align-items:flex-end;}
@@ -78,7 +80,7 @@ body{
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.45}}
 /* 하단 조작부: 위 = 역T자 방향키 + 취소/리셋 · 아래 = 가로 꽉 찬 인벤토리 · 맨 아래 한 줄 힌트 */
 #controls{position:relative;z-index:3;display:flex;flex-direction:column;gap:7px;
-  padding:2px 4px 0;}
+  padding:2px 10px 0;}
 button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weight:800;}
 /* ---- 상단 조작 행: 왼쪽 역T자 방향키, 오른쪽 취소/리셋 2단 ---- */
 #topControls{display:flex;align-items:stretch;gap:10px;}
