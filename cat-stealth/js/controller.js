@@ -673,5 +673,6 @@ function resize(){
 window.addEventListener("resize",resize);
 initDpad();initInv();
 if(EDITOR_PLAYTEST){G.mode="test-wait";resize();playtestReady();}
-else{loadStage(0);G.mode="title";resize();showPanel(titlePanel);updateHUD();}
+else{loadStage(0);G.mode="title";resize();updateHUD();}
+/* 시작 화면(인트로)이 떠 있는 동안 보드는 그대로 뒤에 있어요. js/start.js 가 시작 버튼을 이어받아요. */
 requestAnimationFrame(loop);

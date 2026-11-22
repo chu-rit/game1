@@ -1,0 +1,302 @@
+"use strict";
+/* ================= 스타트 화면 · 인트로 시퀀스 =================
+   ① 상단 숲(큰 나무·햇살)에서 아래 수풀로 카메라 패닝
+   ② 수풀만 보이는 상태에서 고양이 A → B → C 한 마리씩 쏙
+   ③ 작은 인간 빼꼼
+   ④ 타이틀 + 시작하기 + 옵션 등장
+   인트로 중 화면을 탭/클릭(또는 Enter·Space)하면 즉시 최종 상태로 건너뛰어요. */
+(function(){
+  var elStart=document.getElementById("start");
+  if(!elStart) return;
+
+  var SW=863, SH=1822;                 /* start-bg.png 원본 크기(월드 좌표계) */
+  var cam=document.getElementById("stCam");
+  var tWrap=document.getElementById("stTitleWrap");
+  var btnBox=document.getElementById("stBtns");
+  var skipEl=document.getElementById("stSkip");
+  var optWrap=document.getElementById("stOptPanel");
+  var optGrid=document.getElementById("stGrid");
+  var optSfx=document.getElementById("stSfx");
+  var optClose=document.getElementById("stPClose");
+
+  /* 캐릭터 배치(월드 좌표) — cx 가운데, by 발밑 y, w 폭 */
+  var CHARS=[
+    {id:"chA", w:200, cx:300, by:1243, cls:"a"},
+    {id:"chB", w:190, cx:487, by:1239, cls:"b"},
+    {id:"chC", w:205, cx:668, by:1197, cls:"c"},
+    {id:"chH", w:128, cx:305, by:1367, cls:"h"}
+  ];
+
+  var VW=0, VH=0;                      /* 뷰포트 */
+  var camStart={x:0,y:0,s:1}, camEnd={x:0,y:0,s:1};
+  var state=0;                         /* 0 = 인트로 중, 1 = 최종 화면 */
+  var started=false;                   /* 배경 그림이 준비된 뒤에 인트로를 시작해요 */
+  var panT0=0, panDur=0, panDelay=0, rafId=0, timers=[];
+
+  /* ---------- 배치 ---------- */
+  function layout(){
+    VW=window.innerWidth; VH=window.innerHeight;
+    var base=Math.max(VW/SW, VH/SH);
+    /* 최종: 아래쪽(수풀·통나무)까지 보이게, 위는 살짝 잘라요 */
+    var sEnd=Math.max(base*1.04, VH/(SH*0.90));
+    /* 아주 넓은 화면(데스크톱)에서는 너무 확대되어 캐릭터가 화면 밖으로 나가니 여기까지만 */
+    var sMax=VH/(SH*0.66);
+    if(sEnd>sMax) sEnd=sMax;
+    if(VH/SH>sEnd) sEnd=VH/SH;
+    var sStart=sEnd*1.42;
+    if(sStart*SH<VH*1.02) sStart=VH*1.02/SH;
+    camEnd.s=sEnd; camEnd.x=(VW-SW*sEnd)/2; camEnd.y=Math.min(0, VH-SH*sEnd);
+    camStart.s=sStart; camStart.x=(VW-SW*sStart)/2; camStart.y=0;
+    applyCam(state? camEnd : camStart);
+  }
+  function applyCam(c){
+    cam.style.transform="translate3d("+c.x+"px,"+c.y+"px,0) scale("+c.s+")";
+  }
+  function camAt(p){
+    var e=p<.5? 4*p*p*p : 1-Math.pow(-2*p+2,3)/2;   /* easeInOutCubic */
+    applyCam({
+      x:camStart.x+(camEnd.x-camStart.x)*e,
+      y:camStart.y+(camEnd.y-camStart.y)*e,
+      s:camStart.s+(camEnd.s-camStart.s)*e
+    });
+  }
+
+  /* ---------- 캐릭터·UI ---------- */
+  function placeChars(){
+    for(var i=0;i<CHARS.length;i++){
+      var c=CHARS[i], el=document.getElementById(c.id);
+      if(!el) continue;
+      el.style.width=c.w+"px";
+      el.style.left=(c.cx-c.w/2)+"px";
+      el.style.bottom=(SH-c.by)+"px";
+    }
+  }
+  function rise(i){
+    var c=CHARS[i], el=document.getElementById(c.id);
+    if(!el) return;
+    el.classList.add("up");
+    if(i<3&&window.AC) popSound(i);
+  }
+  function popSound(i){
+    try{
+      var f=[660,780,900][i]||660;
+      beep(f,0.09,"sine",0.05,140);
+      setTimeout(function(){ beep(f*1.5,0.10,"sine",0.035,180); },70);
+    }catch(e){}
+  }
+
+  var TL=[
+    {t:2160, fn:function(){ rise(0); }},
+    {t:2620, fn:function(){ rise(1); }},
+    {t:3070, fn:function(){ rise(2); }},
+    {t:3520, fn:function(){ rise(3); }},
+    {t:3920, fn:function(){ if(tWrap) tWrap.classList.add("on"); }},
+    {t:4250, fn:function(){ if(btnBox) btnBox.classList.add("on"); }},
+    {t:4780, fn:function(){ finishIntro(); }}
+  ];
+
+  function runTimeline(){
+    if(state) return;
+    started=true;
+    if(elStart) elStart.classList.add("ready");
+    for(var i=0;i<TL.length;i++){
+      (function(it){ timers.push(setTimeout(it.fn,it.t)); })(TL[i]);
+    }
+    panDelay=160; panDur=2000;
+    panT0=performance.now();
+    rafId=requestAnimationFrame(tick);
+  }
+  function tick(){
+    rafId=0;
+    if(state) return;
+    var p=(performance.now()-panT0-panDelay)/panDur;
+    if(p<0) p=0;
+    if(p>=1){ applyCam(camEnd); return; }
+    camAt(p);
+    rafId=requestAnimationFrame(tick);
+  }
+  function clearTimers(){
+    for(var i=0;i<timers.length;i++) clearTimeout(timers[i]);
+    timers=[];
+    if(rafId){ cancelAnimationFrame(rafId); rafId=0; }
+  }
+
+  function finishIntro(fast){
+    if(state) return;
+    state=1;
+    started=true;
+    if(elStart){
+      elStart.classList.add("ready");
+      if(fast){
+        /* 탭으로 건너뛸 땐 기다리지 않고 바로 최종 화면으로 */
+        elStart.classList.add("snap");
+        setTimeout(function(){ elStart.classList.remove("snap"); },320);
+      }
+    }
+    clearTimers();
+    for(var i=0;i<CHARS.length;i++){
+      var el=document.getElementById(CHARS[i].id);
+      if(el) el.classList.add("up");
+    }
+    if(tWrap) tWrap.classList.add("on");
+    if(btnBox) btnBox.classList.add("on");
+    if(skipEl) skipEl.classList.add("gone");
+    applyCam(camEnd);
+  }
+
+  /* ---------- 시작 / 스테이지 선택 ---------- */
+  function hideStart(){
+    if(!elStart) return;
+    finishIntro(true);
+    elStart.classList.add("hidden");
+  }
+  window.startScreenHide=hideStart;
+
+  function startAtStage(i){
+    closeOptions();
+    hideStart();
+    G.stageIdx=i; G.mode="play";
+    loadStage(i);
+    setWarn("");
+    try{ beep(600,0.10,"triangle",0.05,200); }catch(e){}
+  }
+
+  /* 기존 시작 흐름(패널·Enter)도 스타트 화면을 닫고 1스테이지로 */
+  var _startGame=(typeof startGame==="function")?startGame:null;
+  window.startGame=function(){
+    hideStart();
+    if(_startGame) _startGame();
+  };
+
+  /* ---------- 옵션 ---------- */
+  function openOptions(){
+    if(!optWrap) return;
+    buildGrid();
+    syncSfx();
+    optWrap.classList.remove("hidden");
+    void optWrap.offsetWidth;
+    optWrap.classList.add("open");
+  }
+  function closeOptions(){
+    if(!optWrap) return;
+    optWrap.classList.remove("open");
+    setTimeout(function(){ if(!optWrap.classList.contains("open")) optWrap.classList.add("hidden"); },230);
+  }
+  function buildGrid(){
+    if(!optGrid||optGrid.childNodes.length) return;
+    if(typeof STAGES==="undefined") return;
+    var html="";
+    for(var i=0;i<STAGES.length;i++){
+      html+='<button type="button" data-i="'+i+'" aria-label="'+(i+1)+'스테이지 시작">'+(i+1)+'</button>';
+    }
+    optGrid.innerHTML=html;
+    optGrid.addEventListener("click",function(e){
+      var b=e.target.closest?e.target.closest("button[data-i]"):null;
+      if(!b) return;
+      startAtStage(parseInt(b.getAttribute("data-i"),10));
+    });
+  }
+  function syncSfx(){
+    if(!optSfx) return;
+    optSfx.setAttribute("aria-checked",(window.SFX_ON===false)?"false":"true");
+  }
+  function toggleSfx(){
+    var on=!(window.SFX_ON!==false);
+    window.SFX_ON=on;
+    try{ localStorage.setItem("tp_sfx",on?"1":"0"); }catch(e){}
+    syncSfx();
+    if(on){ try{ beep(760,0.08,"square",0.05,180); }catch(e){} }
+  }
+
+  /* ---------- 이벤트 ---------- */
+  elStart.addEventListener("pointerdown",function(e){
+    if(state) return;
+    /* 인트로 중에는 어디를 눌러도 건너뛰기 */
+    if(optWrap&&optWrap.classList.contains("open")) return;
+    e.preventDefault();
+    finishIntro(true);
+  },{passive:false});
+
+  document.addEventListener("keydown",function(e){
+    if(elStart.classList.contains("hidden")) return;
+    if(optWrap&&optWrap.classList.contains("open")){
+      /* 옵션 패널이 떠 있는 동안은 게임 키 입력이 새어 들어가지 않게 */
+      if(e.key==="Escape") closeOptions();
+      e.preventDefault(); e.stopPropagation();
+      return;
+    }
+    if(state) return;
+    if(e.key==="Enter"||e.key===" "||e.code==="Space"||e.key==="Escape"){
+      e.preventDefault(); e.stopPropagation();
+      finishIntro(true);
+    }
+  },true);
+
+  var startBtn=document.getElementById("stStart");
+  if(startBtn) startBtn.addEventListener("click",function(e){
+    e.preventDefault(); e.stopPropagation();
+    hideStart();
+    if(_startGame) _startGame();
+  });
+  var optBtn=document.getElementById("stOpts");
+  if(optBtn) optBtn.addEventListener("click",function(e){
+    e.preventDefault(); e.stopPropagation();
+    openOptions();
+  });
+  if(optClose) optClose.addEventListener("click",function(){ closeOptions(); });
+  if(optWrap) optWrap.addEventListener("pointerdown",function(e){
+    if(e.target===optWrap) closeOptions();
+  });
+  if(optSfx) optSfx.addEventListener("click",function(e){ e.stopPropagation(); toggleSfx(); });
+
+  /* ---------- 부유하는 빛 입자 ---------- */
+  function motes(){
+    var box=document.getElementById("stMotes");
+    if(!box) return;
+    var n=18, html="";
+    for(var i=0;i<n;i++){
+      var l=8+Math.random()*84, t=10+Math.random()*72;
+      var d=9+Math.random()*10, dl=-Math.random()*18;
+      var sz=(Math.random()<.35)?4:2;
+      html+='<i class="st-mote" style="left:'+l.toFixed(1)+'%;top:'+t.toFixed(1)+'%;'+
+            'width:'+sz+'px;height:'+sz+'px;animation-duration:'+d.toFixed(1)+'s;'+
+            'animation-delay:'+dl.toFixed(1)+'s"></i>';
+    }
+    box.innerHTML=html;
+  }
+
+  /* ---------- 시작 ---------- */
+  placeChars();
+  layout();
+  motes();
+
+  var bgImg=document.querySelector(".st-bg");
+  var began=false;
+  function begin(){
+    if(began) return;
+    began=true;
+    if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches) finishIntro();
+    else runTimeline();
+  }
+  /* 배경(2MB)이 늦게 와도 인트로를 놓치지 않게: 그림이 준비된 뒤에 시작, 최대 4초 기다림 */
+  if(bgImg&&!bgImg.complete){
+    bgImg.addEventListener("load",begin);
+    bgImg.addEventListener("error",begin);
+    setTimeout(begin,4000);
+  }else{
+    begin();
+  }
+
+  window.addEventListener("resize",function(){
+    var wasFinal=state;
+    layout();
+    if(wasFinal) applyCam(camEnd);
+  });
+  window.addEventListener("orientationchange",function(){ setTimeout(layout,180); });
+
+  /* 인트로 타이머가 백그라운드에서 멈춰도 복귀 시 이어지도록 */
+  document.addEventListener("visibilitychange",function(){
+    if(document.hidden||state||!started) return;
+    if(performance.now()-panT0>panDur+panDelay+300) finishIntro();
+  });
+})();

@@ -5,9 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#141019">
+<meta name="theme-color" content="#0a1410">
 <title>TINY &amp; PAWS · 작은 인간과 거대 고양이</title>
-<link rel="stylesheet" href="css/style.css?v=20261121f">
+<link rel="preload" as="image" href="assets/start-bg.png">
+<link rel="preload" as="image" href="assets/start-title.png">
+<link rel="stylesheet" href="css/style.css?v=20261122a">
+<link rel="stylesheet" href="css/start.css?v=20261122a">
 </head>
 <body>
 <div id="app">
@@ -58,13 +61,54 @@
   </div>
   <div id="overlay" class="hidden"><div class="panel" id="panel"></div></div>
 </div>
-<script src="js/data.js?v=20261122-level2-v2"></script>
-<script src="js/model.js?v=20261121-cat-vacate"></script>
-<script src="js/editor-model.js?v=20261121-merged2"></script>
-<script src="js/assets.js?v=20261122-perch-lift"></script>
-<script src="js/view.js?v=20261122-perch-lift"></script>
-<script src="js/audio.js?v=20261121-merged2"></script>
-<script src="js/playtest.js?v=20261121-merged2"></script>
-<script src="js/controller.js?v=20261121-cat-vacate"></script>
+
+<!-- ================= 스타트 화면 (풀스크린 인트로) ================= -->
+<div id="start" role="dialog" aria-label="TINY &amp; PAWS 시작 화면">
+  <div class="st-cam" id="stCam">
+    <div class="st-world" id="stWorld">
+      <img class="st-bg" src="assets/start-bg.png" alt="" draggable="false">
+      <div class="st-ch a" id="chA"><img src="assets/start-cat-a.png" alt="회색 고양이" draggable="false"></div>
+      <div class="st-ch b" id="chB"><img src="assets/start-cat-b.png" alt="주황 치즈태비 고양이" draggable="false"></div>
+      <div class="st-ch c" id="chC"><img src="assets/start-cat-c.png" alt="검정 턱시도 고양이" draggable="false"></div>
+      <div class="st-fg fg1"></div>
+      <div class="st-ch h" id="chH"><img src="assets/start-human.png" alt="작은 인간" draggable="false"></div>
+      <div class="st-fg fg2"></div>
+      <div class="st-light"></div>
+    </div>
+  </div>
+  <div class="st-motes" id="stMotes"></div>
+  <div class="st-ui" id="stUi">
+    <div class="st-twrap" id="stTitleWrap">
+      <img id="stTitle" src="assets/start-title.png" alt="TINY &amp; PAWS" draggable="false">
+      <div class="st-sub">— 작은 인간과 거대 고양이 —</div>
+    </div>
+    <div class="st-btns" id="stBtns">
+      <button class="st-btn" id="stStart" type="button">시작하기<span class="st-kc">Enter</span></button>
+      <button class="st-btn" id="stOpts" type="button">+ 옵션 +</button>
+    </div>
+  </div>
+  <div class="st-skip" id="stSkip">탭하면 건너뛰기</div>
+  <div class="st-panel-wrap hidden" id="stOptPanel">
+    <div class="st-panel">
+      <div class="st-ptitle">+ 옵션 +</div>
+      <div class="st-prow"><span>효과음</span>
+        <button class="st-sw" id="stSfx" type="button" role="switch" aria-checked="true" aria-label="효과음 켜기/끄기"><i></i></button>
+      </div>
+      <div class="st-plabel">스테이지</div>
+      <div class="st-grid" id="stGrid"></div>
+      <button class="st-pclose" id="stPClose" type="button">닫기</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/data.js?v=20261122a"></script>
+<script src="js/model.js?v=20261122a"></script>
+<script src="js/editor-model.js?v=20261122a"></script>
+<script src="js/assets.js?v=20261122a"></script>
+<script src="js/view.js?v=20261122a"></script>
+<script src="js/audio.js?v=20261122a"></script>
+<script src="js/playtest.js?v=20261122a"></script>
+<script src="js/controller.js?v=20261122a"></script>
+<script src="js/start.js?v=20261122a"></script>
 </body>
 </html>

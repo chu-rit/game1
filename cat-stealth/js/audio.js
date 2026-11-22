@@ -1,7 +1,11 @@
 "use strict";
 /* ================= 오디오 ================= */
 var AC=null;
+/* 효과음 켜기/끄기 — 스타트 화면 옵션 패널(+ 옵션 +)의 토글이 이 값을 바꿔요. 선택은 기기에 기억돼요. */
+var SFX_ON=true;
+try{ if(localStorage.getItem("tp_sfx")==="0") SFX_ON=false; }catch(e){}
 function beep(f,d,type,v,slide){
+  if(!SFX_ON) return;
   try{
     AC=AC||new (window.AudioContext||window.webkitAudioContext)();
     var o=AC.createOscillator(), g=AC.createGain();
