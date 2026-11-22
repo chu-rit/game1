@@ -284,26 +284,29 @@
 }
 
 /* ================= 아웃트로 (시작하기 → 게임 화면) =================
-   js/start.js 가 #start.exiting → #start.fading 순서로 클래스를 붙여요(타이밍 동일).
+   js/start.js 가 #start.exiting → #start.fading 순서로 클래스를 붙여요.
    · exiting: 타이틀·버튼은 위/아래로 흩어지며 사라지고, 고양이 3마리와 작은 인간은
-     동시에(같은 시간) 수풀 뒤로 쏙 내려가요 — 빠른 ease-in 0.38초.
-   · fading : 스타트 화면 전체가 0.37초 페이드아웃되며 뒤에 있던 게임 보드가 드러나요. */
+     동시에(같은 시간) 수풀 뒤로 슉 내려가요 — 빠른 ease-in 0.24초.
+     다 들어가면 1초 동안 빈 수풀(빛입자·햇살은 그대로)이 보여요.
+   · fading : 그 1초가 끝난 뒤 스타트 화면 전체가 0.37초 페이드아웃되며
+     뒤에 있던 게임 보드가 드러나요. */
 #start.exiting .st-twrap{
   opacity:0; transform:translateY(-12px);
-  transition:opacity .24s ease-in, transform .28s ease-in;
+  transition:opacity .2s ease-in, transform .22s ease-in;
 }
 #start.exiting .st-btn{
   opacity:0; transform:translateY(12px);
-  transition:opacity .2s ease-in, transform .24s ease-in;
+  transition:opacity .18s ease-in, transform .2s ease-in;
 }
 #start.exiting .st-ch{
   /* --down 은 인트로에서 수풀 뒤에 숨어 있던 바로 그 위치예요.
-     거기서 26px 만큼 더 밀어 넣어 '쏙' 하고 완전히 들어가게 하고,
-     0.14초 뒤부터 0.14초 동안 투명해져 잎 사이로 남는 픽셀까지 지워요
-     (끝까지 불투명하게 두면 잎 틈으로 고양이 몸 조각이 비쳐 보여요). */
+     거기서 26px 만큼 더 밀어 넣어 '슉' 하고 완전히 들어가게 하고(0.38 → 0.24초),
+     0.10초 뒤부터 0.12초 동안 투명해져 잎 사이로 남는 픽셀까지 지워요
+     (끝까지 불투명하게 두면 잎 틈으로 고양이 몸 조각이 비쳐 보여요).
+     0.24초에 다 들어간 상태가 되고, js/start.js 가 여기서 1초를 세요. */
   transform:translateY(calc(var(--down) + 26px));
   opacity:0;
-  transition:transform .38s cubic-bezier(.42,0,1,1), opacity .14s ease-in .14s;
+  transition:transform .24s cubic-bezier(.42,0,1,1), opacity .12s ease-in .10s;
 }
 #start.exiting .st-ch img{animation:none;}
 #start.fading{opacity:0; transition:opacity .37s ease-out;}
