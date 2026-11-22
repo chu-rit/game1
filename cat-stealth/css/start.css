@@ -50,7 +50,8 @@
 .st-ch{
   position:absolute; display:block; pointer-events:none; line-height:0;
   transform:translateY(var(--down,200px));
-  transition:transform .66s cubic-bezier(.22,1.28,.5,1);
+  /* 오버슈트 없는 ease-out(expo) — 한 번에 뿅 올라와 제자리에 딱 멈춰요 */
+  transition:transform .62s cubic-bezier(.16,1,.3,1);
   will-change:transform;
 }
 .st-ch.a{--down:212px;}
@@ -105,7 +106,7 @@
 }
 .st-twrap{width:100%; display:flex; flex-direction:column; align-items:center;
   opacity:0; transform:translateY(16px) scale(.965);}
-.st-twrap.on{opacity:1; transform:none; transition:opacity .8s ease-out, transform .8s cubic-bezier(.2,1.1,.4,1);}
+.st-twrap.on{opacity:1; transform:none; transition:opacity .5s ease-out, transform .62s cubic-bezier(.16,1,.3,1);}
 #stTitle{
   display:block; width:min(90vw,420px); height:auto; -webkit-user-drag:none;
   filter:drop-shadow(0 8px 16px rgba(0,0,0,.55));
@@ -122,8 +123,8 @@
   width:100%; position:relative; border:0; cursor:pointer; font-family:inherit;
   opacity:0; transform:translateY(18px);
 }
-.st-btn-in{opacity:1; transform:none; transition:opacity .5s ease-out, transform .55s cubic-bezier(.2,1.15,.4,1);}
-.st-btns.on .st-btn{opacity:1; transform:none; transition:opacity .5s ease-out, transform .55s cubic-bezier(.2,1.15,.4,1);}
+.st-btn-in{opacity:1; transform:none; transition:opacity .42s ease-out, transform .5s cubic-bezier(.16,1,.3,1);}
+.st-btns.on .st-btn{opacity:1; transform:none; transition:opacity .42s ease-out, transform .5s cubic-bezier(.16,1,.3,1);}
 .st-btns.on .st-btn+.st-btn{transition-delay:.14s;}
 
 /* 초록 픽셀 버튼 — 밝은 테두리 + 어두운 외곽선 + 아래쪽 두께 */
