@@ -144,28 +144,51 @@
     applyCam(camEnd);
   }
 
-  /* ---------- 시작 / 스테이지 선택 ---------- */
-  function hideStart(){
-    if(!elStart) return;
-    finishIntro(true);
-    elStart.classList.add("hidden");
+  /* ---------- 아웃트로: 캐릭터가 수풀 뒤로 쇽 — 게임 화면으로 ----------
+     시작하기(또는 Enter·스테이지 선택)를 누르면
+       ① 누름 색(금색)이 잠깐 보이고
+       ② 타이틀·버튼이 부드럽게 사라지면서 고양이 3마리·작은 인간이 동시에 수풀 뒤로 쏙
+       ③ 캐릭터가 들어간 타이밍에 스타트 화면 전체가 페이드아웃 → 뒤에 있던 게임 화면이 드러남
+     전체 약 0.78초. 재생 중에는 isExit 가드로 두 번 시작되지 않아요. */
+  var OUT_HOLD=80;      /* 눌림 색을 보여주는 여유 */
+  var OUT_FADE_AT=390;  /* 화면 페이드아웃 시작(누른 순간부터) */
+  var OUT_TOTAL=780;    /* 이때 스타트 화면을 display:none 으로 */
+  var isExit=false;
+
+  function playOutro(then){
+    if(isExit||!elStart) return false;
+    isExit=true;
+    if(!state) finishIntro(false);
+    elStart.classList.remove("snap");
+    if(then) then();                    /* 게임 화면은 원래 뒤에 그려져 있어요 */
+    setTimeout(function(){ elStart.classList.add("exiting"); },OUT_HOLD);
+    setTimeout(function(){ elStart.classList.add("fading"); },OUT_FADE_AT);
+    setTimeout(function(){
+      elStart.classList.add("hidden");
+      elStart.classList.remove("exiting","fading");
+      isExit=false;                     /* 스타트 화면은 이제 display:none — 상태만 되돌려 둬요 */
+    },OUT_TOTAL);
+    return true;
   }
+
+  function hideStart(){ return playOutro(); }
   window.startScreenHide=hideStart;
 
   function startAtStage(i){
-    closeOptions();
-    hideStart();
-    G.stageIdx=i; G.mode="play";
-    loadStage(i);
-    setWarn("");
-    try{ beep(600,0.10,"triangle",0.05,200); }catch(e){}
+    if(isExit) return;
+    closeOptions();                     /* 패널이 닫히면서 바로 아웃트로 */
+    playOutro(function(){
+      G.stageIdx=i; G.mode="play";
+      loadStage(i);
+      setWarn("");
+      try{ beep(600,0.10,"triangle",0.05,200); }catch(e){}
+    });
   }
 
   /* 기존 시작 흐름(패널·Enter)도 스타트 화면을 닫고 1스테이지로 */
   var _startGame=(typeof startGame==="function")?startGame:null;
   window.startGame=function(){
-    hideStart();
-    if(_startGame) _startGame();
+    playOutro(function(){ if(_startGame) _startGame(); });
   };
 
   /* ---------- 옵션 ---------- */
@@ -266,8 +289,7 @@
     startBtn.addEventListener("touchcancel",pressOff,{passive:true});
     startBtn.addEventListener("click",function(e){
       e.preventDefault(); e.stopPropagation();
-      hideStart();
-      if(_startGame) _startGame();
+      playOutro(function(){ if(_startGame) _startGame(); });
     });
   }
   var optBtn=document.getElementById("stOpts");
