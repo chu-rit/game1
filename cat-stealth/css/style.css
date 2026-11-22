@@ -114,17 +114,17 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
 #dpad .dk.aim:disabled{color:#ffd7e6;}
 /* ---- 오른쪽: 취소·리셋 — 역T자 방향키 2줄 높이에 맞춰 위아래 2단, 폭은 내용물만큼만 ---- */
 #btnrow{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;align-items:flex-end;}
-/* 인벤토리 슬롯처럼 살짝 정사각형 — 아이콘 위, 이름 아래, 좌상단 키캡 */
+/* 인벤토리 슬롯처럼 살짝 정사각형 — 글자 없이 아이콘만 가운데, 좌상단 키캡 */
 #btnrow button{position:relative;flex:1;width:52px;min-height:0;padding:3px 4px;border-radius:12px;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;line-height:1;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;
   background:var(--ctl-bg);box-shadow:inset 0 0 0 1.5px var(--ctl-line),0 2px 0 rgba(0,0,0,.35);
   transition:transform .12s ease-out,box-shadow .12s,background .12s;}
-#btnrow button .ic{font-size:19px;line-height:1;}
-#btnrow button .nm{font-size:11px;font-weight:800;letter-spacing:-.04em;color:#c7b9ab;}
+#btnrow button .ic{font-size:22px;line-height:1;display:flex;align-items:center;justify-content:center;}
+#btnrow button .ic svg{display:block;}
 #btnrow button:active{transform:translateY(1px);filter:brightness(.74) saturate(.9);}
 #btnrow button:disabled{background:rgba(8,12,10,.22);
   box-shadow:inset 0 0 0 1.5px rgba(246,236,220,.07),0 2px 0 rgba(0,0,0,.18);}
-#btnrow button:disabled .ic,#btnrow button:disabled .nm{color:rgba(230,217,200,.28);}
+#btnrow button:disabled .ic{color:rgba(230,217,200,.28);}
 /* 단축키 키캡 배지 — 어두운 배경에 맞춘 작고 은은한 표시 */
 .kc{display:inline-flex;align-items:center;justify-content:center;min-width:13px;height:14px;padding:0 3px;
   margin-left:4px;font-size:9px;font-weight:800;line-height:1;letter-spacing:.01em;font-variant-numeric:tabular-nums;

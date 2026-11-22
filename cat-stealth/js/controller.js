@@ -288,7 +288,7 @@ function finishTurn(){
     var stEl=$("stage"); stEl.classList.remove("shake"); void stEl.offsetWidth; stEl.classList.add("shake");
     G.mode="caught";
     /* 전체 화면 모달 없이 보드를 그대로 보여 주고, 결과만 짧게 안내 */
-    setWarn("😿 잡혔어요 — ↩ 취소 [U] 또는 ↻ 리셋 [R]","bad");
+    setWarn("😿 잡혔어요 — 취소 [U] 또는 리셋 [R]","bad");
     updateHUD();
     return;
   }
@@ -308,7 +308,7 @@ function finishTurn(){
   if(G.st.turn>G.st.maxTurns){
     /* 턴 초과 = 실패. 잡힌 것과 같은 처리: 마지막 수를 취소하거나 스테이지를 리셋할 수 있어요 */
     G.mode="caught";
-    setWarn("⏳ 턴이 다 됐어요 — ↩ 취소 [U] 또는 ↻ 리셋 [R]","bad");
+    setWarn("⏳ 턴이 다 됐어요 — 취소 [U] 또는 리셋 [R]","bad");
     updateHUD();
     return;
   }
@@ -373,7 +373,7 @@ cvEl.addEventListener("pointerdown",function(e){
   for(var ci=0;ci<G.st.cats.length;ci++){
     if(G.st.cats[ci].x===tx&&G.st.cats[ci].y===ty){
       if(vm.length===0){
-        setWarn("갈 수 있는 칸이 없어요 · ↩ 취소로 되돌아가세요","bad");
+        setWarn("갈 수 있는 칸이 없어요 · 취소로 되돌아가세요","bad");
       }else{
         setWarn("고양이가 길을 막고 있어요 · 생선으로 유인해 보세요","fish");
       }
@@ -381,7 +381,7 @@ cvEl.addEventListener("pointerdown",function(e){
       return;
     }
   }
-  if(vm.length===0){ setWarn("갈 수 있는 칸이 없어요 · ↩ 취소로 되돌아가세요","bad"); clearWarnSoon(1900); }
+  if(vm.length===0){ setWarn("갈 수 있는 칸이 없어요 · 취소로 되돌아가세요","bad"); clearWarnSoon(1900); }
 });
 $("bUndo").addEventListener("click",function(){ this.blur(); undo(); });
 $("bReset").addEventListener("click",function(){ this.blur(); resetStage(); });
@@ -573,7 +573,7 @@ document.addEventListener("keydown",function(e){
     return;
   }
 
-  /* ---- ↩ 취소 · ↻ 리셋 ---- */
+  /* ---- 취소(U) · 리셋(R) — 아이콘만 있는 버튼 ---- */
   if(k==="u"||k==="U"||k==="z"||k==="Z"||k==="Backspace"){ undo(); return; }
   if(k==="r"||k==="R"){ resetStage(); return; }
 
