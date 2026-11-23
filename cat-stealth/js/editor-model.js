@@ -4,7 +4,7 @@
    스테이지 JSON을 정규화·검증·내보내기 해요. */
 
 var ED_MAP_CHARS={".":1,"#":1,"~":1,"X":1,"S":1,"T":1,"B":1,"W":1,"^":1,"H":1,"U":1,"P":1,"G":1};
-for(var _ec in FOREST_TILES) ED_MAP_CHARS[_ec]=1;   /* 숲 타일 25종도 맵 문자로 허용 */
+for(var _ec in FOREST_TILES) ED_MAP_CHARS[_ec]=1;   /* 숲 타일 56종도 맵 문자로 허용 */
 var ED_THEME_VALUES={counter:1,nightstand:1,sofa:1,table:1,bed:1,wardrobe:1,rug:1};
 var ED_THEME_OPTIONS={X:["counter","nightstand"],S:["sofa"],T:["table"],B:["bed"],W:["wardrobe"],"~":["rug"]};
 var ED_THEME_NAMES={counter:"부엌 카운터",nightstand:"협탁",sofa:"소파",table:"식탁",bed:"침대",wardrobe:"선반",rug:"러그"};

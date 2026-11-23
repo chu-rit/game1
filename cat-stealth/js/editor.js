@@ -11,7 +11,7 @@ var TERRAIN_TOOLS=[
   {ch:"X",n:"카운터"},{ch:"S",n:"소파"},{ch:"T",n:"식탁"},{ch:"B",n:"침대"},{ch:"W",n:"선반"},
   {ch:"^",n:"발판"},{ch:"H",n:"구멍"},{ch:"U",n:"수풀"}
 ];
-/* 숲 타일 25종 — 이름·규칙은 FOREST_TILES(data.js) 한 곳에서 관리 */
+/* 숲 타일 56종 — 이름·규칙은 FOREST_TILES(data.js) 한 곳에서 관리 */
 for(var _ft in FOREST_TILES) TERRAIN_TOOLS.push({ch:_ft,n:FOREST_TILES[_ft].name});
 var ENTITY_TOOLS=[
   {id:"start",n:"시작"},{id:"goal",n:"골"},

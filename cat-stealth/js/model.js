@@ -95,7 +95,7 @@ var SPECIAL={
   "H":{name:"작은 구멍",   human:true,  cat:false, sight:true },
   "U":{name:"은신 수풀",   human:true,  cat:false, sight:true }
 };
-/* 숲 타일 25종 — FOREST_TILES.rule(data.js) 하나로 판정을 만들어요:
+/* 숲 타일 56종 — FOREST_TILES.rule(data.js) 하나로 판정을 만들어요:
    decor=밟는 장식(DECOR), solid=이동·시선 차단, water=이동만 차단(시선 통과) */
 for(var _ft in FOREST_TILES){
   var _fr=FOREST_TILES[_ft];

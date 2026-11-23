@@ -50,13 +50,17 @@ var FOOD_INFO={
     tip:"먹는 동안은 그 고양이의 시야·기척이 닫혀요" }
 };
 
-/* ---------------------------- 숲 타일 25종 ----------------------------
-   외부 타일셋(5×5 숲 아틀라스)에서 자른 40×40 스프라이트 — assets.js TILESPR.f_* 키와 1:1 대응.
+/* ---------------------------- 숲 타일 56종 ----------------------------
+   외부 시트 3장에서 자른 40×40 스프라이트 — assets.js TILESPR 키와 1:1 대응.
+   (1군 25종 = 5×5 시트 · 2군 21종 = 8×8 시트에서 남긴 것 · 3군 10종 = 새 13×9 시트에서 고른 것)
+   너무 비슷한 변형(잔디·흙길·돌길·덤불·버섯·꽃바닥의 거의 같은 반복)은 걷어냈어요.
    rule 규칙 하나로 모델 판정(model.js DECOR/SPECIAL)과 에디터 호환성이 자동 결정돼요:
    · decor : 사람·고양이 모두 밟을 수 있는 바닥 장식 (잔디·꽃·길·돌멩이 등)
    · solid : 사람·고양이 모두 못 지나고, 시선·기척도 차단 (나무·바위·덤불·통나무 등)
-   · water : 사람·고양이 모두 못 지나지만 시선은 통과 — 너머로 생선 투척 불가(착지 불가) */
+   · water : 사람·고양이 모두 못 지나지만 시선은 통과 — 너머로 생선 투척 불가(착지 불가)
+   ※ '.'(바닥)은 숲 타일에 쓰지 않아요 — 맵의 '.' 바닥과 겹치면 마루 대신 숲 타일이 깔려요. */
 var FOREST_TILES={
+  /* ---- 1군: 기본 숲 25종 ---- */
   g:{spr:"f_grass",     name:"잔디",       rule:"decor"},
   f:{spr:"f_flower",    name:"꽃잔디",     rule:"decor"},
   d:{spr:"f_dirt",      name:"흙길",       rule:"decor"},
@@ -82,70 +86,39 @@ var FOREST_TILES={
   s:{spr:"f_stone2",    name:"자갈길",     rule:"decor"},
   h:{spr:"f_flowerbush",name:"꽃덤불",     rule:"solid"},
   b:{spr:"f_darkbush",  name:"짙은 덤불",  rule:"solid"},
-  "0":{spr:"f2_00",name:"잔디2",rule:"decor"},
-  "1":{spr:"f2_01",name:"잔디3",rule:"decor"},
-  "2":{spr:"f2_02",name:"잔디꽃",rule:"decor"},
-  "3":{spr:"f2_03",name:"분홍꽃잔디",rule:"decor"},
-  "4":{spr:"f2_04",name:"잔디4",rule:"decor"},
-  "5":{spr:"f2_05",name:"흰꽃잔디",rule:"decor"},
-  "6":{spr:"f2_06",name:"자갈잔디2",rule:"decor"},
-  "7":{spr:"f2_07",name:"무성한 덤불",rule:"solid"},
-  "8":{spr:"f2_08",name:"흙길2",rule:"decor"},
-  "9":{spr:"f2_09",name:"흙길3",rule:"decor"},
-  "x":{spr:"f2_10",name:"흙길4",rule:"decor"},
-  "A":{spr:"f2_11",name:"흙길5",rule:"decor"},
-  "C":{spr:"f2_12",name:"흙길6",rule:"decor"},
-  "D":{spr:"f2_13",name:"흙길7",rule:"decor"},
-  "E":{spr:"f2_14",name:"흙길8",rule:"decor"},
-  "F":{spr:"f2_15",name:"흙길9",rule:"decor"},
-  "I":{spr:"f2_16",name:"돌길3",rule:"decor"},
-  "J":{spr:"f2_17",name:"돌길4",rule:"decor"},
-  "K":{spr:"f2_18",name:"돌길5",rule:"decor"},
-  "L":{spr:"f2_19",name:"돌길6",rule:"decor"},
-  "M":{spr:"f2_20",name:"물가",rule:"water"},
-  "N":{spr:"f2_21",name:"민물",rule:"water"},
-  "O":{spr:"f2_22",name:"물가 돌",rule:"water"},
-  "Q":{spr:"f2_23",name:"수련 연못",rule:"water"},
-  "R":{spr:"f2_24",name:"덤불2",rule:"solid"},
-  "V":{spr:"f2_25",name:"짙은덤불2",rule:"solid"},
-  "Y":{spr:"f2_26",name:"흰꽃덤불",rule:"solid"},
-  "Z":{spr:"f2_27",name:"분홍꽃덤불",rule:"solid"},
-  "!":{spr:"f2_28",name:"고사리2",rule:"decor"},
-  "@":{spr:"f2_29",name:"키큰풀2",rule:"decor"},
-  "$":{spr:"f2_30",name:"흰들꽃",rule:"decor"},
-  "%":{spr:"f2_31",name:"분홍들꽃",rule:"decor"},
-  "&":{spr:"f2_32",name:"큰바위",rule:"solid"},
-  "*":{spr:"f2_33",name:"이끼바위2",rule:"solid"},
-  "(":{spr:"f2_34",name:"돌멩이2",rule:"decor"},
-  ")":{spr:"f2_35",name:"바위무더기",rule:"solid"},
-  "-":{spr:"f2_36",name:"속빈통나무",rule:"solid"},
-  "_":{spr:"f2_37",name:"그루터기2",rule:"solid"},
-  "=":{spr:"f2_38",name:"뿌리2",rule:"solid"},
-  "+":{spr:"f2_39",name:"옆통나무",rule:"solid"},
-  "[":{spr:"f2_40",name:"빨간버섯",rule:"decor"},
-  "]":{spr:"f2_41",name:"갈색버섯",rule:"decor"},
-  "{":{spr:"f2_42",name:"작은버섯",rule:"decor"},
-  "}":{spr:"f2_43",name:"보라버섯",rule:"decor"},
-  ";":{spr:"f2_44",name:"흰꽃",rule:"decor"},
-  ":":{spr:"f2_45",name:"파란꽃",rule:"decor"},
-  ",":{spr:"f2_46",name:"열매덤불",rule:"solid"},
-  ".":{spr:"f2_47",name:"푸른잎",rule:"decor"},
-  "<":{spr:"f2_48",name:"나무2",rule:"solid"},
-  ">":{spr:"f2_49",name:"나무3",rule:"solid"},
-  "?":{spr:"f2_50",name:"침엽수",rule:"solid"},
-  "|":{spr:"f2_51",name:"나무4",rule:"solid"},
-  "`":{spr:"f2_52",name:"큰나무·좌",rule:"solid"},
-  "ㄱ":{spr:"f2_53",name:"큰나무·중",rule:"solid"},
-  "ㄴ":{spr:"f2_54",name:"큰나무·우",rule:"solid"},
-  "ㄷ":{spr:"f2_55",name:"짙은나무",rule:"solid"},
-  "ㄹ":{spr:"f2_56",name:"덤불흙길",rule:"decor"},
-  "ㅁ":{spr:"f2_57",name:"낙엽흙길2",rule:"decor"},
-  "ㅂ":{spr:"f2_58",name:"돌무더기2",rule:"decor"},
-  "ㅅ":{spr:"f2_59",name:"흰꽃잔디3",rule:"decor"},
-  "ㅇ":{spr:"f2_60",name:"분홍꽃잔디3",rule:"decor"},
-  "ㅈ":{spr:"f2_61",name:"자갈풀",rule:"decor"},
-  "ㅊ":{spr:"f2_62",name:"어린덤불",rule:"decor"},
-  "ㅋ":{spr:"f2_63",name:"짙은잎덤불",rule:"solid"}
+  /* ---- 2군: 8×8 시트에서 남긴 길·물·나무 21종 (같은 모양 반복 변형은 제거) ---- */
+  "8":{spr:"f2_08",name:"흙길·가로",   rule:"decor"},
+  "x":{spr:"f2_10",name:"흙길·세로",   rule:"decor"},
+  "A":{spr:"f2_11",name:"흙길·교차",   rule:"decor"},
+  "C":{spr:"f2_12",name:"흙길·삼거리", rule:"decor"},
+  "D":{spr:"f2_13",name:"흙길·모퉁이", rule:"decor"},
+  "L":{spr:"f2_19",name:"돌길·세로",  rule:"decor"},
+  "N":{spr:"f2_21",name:"민물",        rule:"water"},
+  "Y":{spr:"f2_26",name:"흰꽃덤불",    rule:"solid"},
+  "&":{spr:"f2_32",name:"큰바위",      rule:"solid"},
+  ")":{spr:"f2_35",name:"바위무더기",  rule:"solid"},
+  "+":{spr:"f2_39",name:"통나무·단면", rule:"solid"},
+  "]":{spr:"f2_41",name:"갈색버섯",    rule:"decor"},
+  "}":{spr:"f2_43",name:"보라버섯",    rule:"decor"},
+  ":":{spr:"f2_45",name:"파란꽃",      rule:"decor"},
+  ",":{spr:"f2_46",name:"열매덤불",    rule:"solid"},
+  "<":{spr:"f2_48",name:"나무·둥근",   rule:"solid"},
+  "?":{spr:"f2_50",name:"침엽수",      rule:"solid"},
+  "`":{spr:"f2_52",name:"큰나무·좌",   rule:"solid"},
+  "ㄱ":{spr:"f2_53",name:"큰나무·중",  rule:"solid"},
+  "ㄴ":{spr:"f2_54",name:"큰나무·우",  rule:"solid"},
+  "ㄷ":{spr:"f2_55",name:"짙은나무",   rule:"solid"},
+  /* ---- 3군: 새 13×9 시트에서 고른 10종 (기존과 겹치지 않는 것만) ---- */
+  "ㅌ":{spr:"f3_waterfall",  name:"폭포",      rule:"solid"},
+  "ㅍ":{spr:"f3_shore",      name:"물가",      rule:"water"},
+  "ㅎ":{spr:"f3_lilypond",   name:"수련 못",   rule:"water"},
+  "O":{spr:"f3_island",     name:"물가 섬",   rule:"water"},
+  "E":{spr:"f3_dirtstone",  name:"돌 흙길",   rule:"decor"},
+  "R":{spr:"f3_rootmass",   name:"뿌리 덩굴", rule:"solid"},
+  "V":{spr:"f3_mushblue",   name:"회청 버섯", rule:"decor"},
+  "Z":{spr:"f3_pinkflower", name:"분홍꽃",    rule:"decor"},
+  "M":{spr:"f3_clover",     name:"클로버",    rule:"decor"},
+  "Q":{spr:"f3_bigleaf",    name:"큰 잎 포기",rule:"decor"}
 };
 
 /* ---------------------------- 스테이지 데이터 ---------------------------- */
