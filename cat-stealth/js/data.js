@@ -50,81 +50,65 @@ var FOOD_INFO={
     tip:"먹는 동안은 그 고양이의 시야·기척이 닫혀요" }
 };
 
-/* ---------------------------- 숲 타일 56종 ----------------------------
-   외부 시트 3장에서 자른 40×40 스프라이트 — assets.js TILESPR 키와 1:1 대응.
-   (1군 25종 = 5×5 시트 · 2군 21종 = 8×8 시트에서 남긴 것 · 3군 10종 = 새 13×9 시트에서 고른 것)
-   너무 비슷한 변형(잔디·흙길·돌길·덤불·버섯·꽃바닥의 거의 같은 반복)은 걷어냈어요.
-   rule 규칙 하나로 모델 판정(model.js DECOR/SPECIAL)과 에디터 호환성이 자동 결정돼요:
-   · decor : 사람·고양이 모두 밟을 수 있는 바닥 장식 (잔디·꽃·길·돌멩이 등)
-   · solid : 사람·고양이 모두 못 지나고, 시선·기척도 차단 (나무·바위·덤불·통나무 등)
-   · water : 사람·고양이 모두 못 지나지만 시선은 통과 — 너머로 생선 투척 불가(착지 불가)
-   ※ '.'(바닥)은 숲 타일에 쓰지 않아요 — 맵의 '.' 바닥과 겹치면 마루 대신 숲 타일이 깔려요. */
+/* ---------------------------- 숲 타일 29종 ----------------------------
+   1단계 승인 그림(games/screenshots/hq-fullmap-aligned-art.png, 1254×1254 · 9×9 정합본)을
+   칸 단위로 잘라 만든 개별 타일 — assets.js TILESPR 키와 1:1 대응이에요.
+   모두 같은 그림에서 뽑아 화풍이 한 벌로 맞고, 에디터 팔레트·다른 숲 스테이지에 그대로 써요.
+   rule 하나로 모델 판정(model.js DECOR/SPECIAL)과 에디터 호환성이 자동 결정돼요:
+   · decor : 사람·고양이 모두 밟는 바닥 (잔디·꽃잔디·흙길)
+   · solid : 못 지나가고 시선·기척도 차단 (숲·나무·바위·통나무·폭포)
+   · water : 못 지나가지만 시선은 통과 (연못·물가) — 너머로 생선 투척 불가
+   ※ '.'(바닥)·실내 가구 문자(S T B W X ^ H U ~ #)는 숲 타일에 쓰지 않아요. */
 var FOREST_TILES={
-  /* ---- 1군: 기본 숲 25종 ---- */
-  g:{spr:"f_grass",     name:"잔디",       rule:"decor"},
-  f:{spr:"f_flower",    name:"꽃잔디",     rule:"decor"},
-  d:{spr:"f_dirt",      name:"흙길",       rule:"decor"},
-  p:{spr:"f_stone",     name:"돌길",       rule:"decor"},
-  q:{spr:"f_bush",      name:"덤불",       rule:"solid"},
-  v:{spr:"f_bramble",   name:"가시덤불",   rule:"solid"},
-  e:{spr:"f_fern",      name:"고사리",     rule:"decor"},
-  r:{spr:"f_tall",      name:"키 큰 풀",   rule:"decor"},
-  o:{spr:"f_rock",      name:"이끼 바위",  rule:"solid"},
-  i:{spr:"f_stones",    name:"돌멩이",     rule:"decor"},
-  m:{spr:"f_stump",     name:"그루터기",   rule:"solid"},
-  l:{spr:"f_log",       name:"통나무",     rule:"solid"},
-  n:{spr:"f_roots",     name:"나무 뿌리",  rule:"solid"},
-  w:{spr:"f_pond",      name:"연못",       rule:"water"},
-  z:{spr:"f_stream",    name:"시냇물",     rule:"water"},
-  j:{spr:"f_bridge",    name:"나무 다리",  rule:"decor"},
-  k:{spr:"f_crate",     name:"나무 상자",  rule:"solid"},
-  u:{spr:"f_mush",      name:"버섯",       rule:"decor"},
-  y:{spr:"f_sign",      name:"돌 표지판",  rule:"solid"},
-  t:{spr:"f_tree",      name:"나무",       rule:"solid"},
-  a:{spr:"f_grit",      name:"자갈 잔디",  rule:"decor"},
-  c:{spr:"f_leafy",     name:"낙엽 흙길",  rule:"decor"},
-  s:{spr:"f_stone2",    name:"자갈길",     rule:"decor"},
-  h:{spr:"f_flowerbush",name:"꽃덤불",     rule:"solid"},
-  b:{spr:"f_darkbush",  name:"짙은 덤불",  rule:"solid"},
-  /* ---- 2군: 8×8 시트에서 남긴 길·물·나무 21종 (같은 모양 반복 변형은 제거) ---- */
-  "8":{spr:"f2_08",name:"흙길·가로",   rule:"decor"},
-  "x":{spr:"f2_10",name:"흙길·세로",   rule:"decor"},
-  "A":{spr:"f2_11",name:"흙길·교차",   rule:"decor"},
-  "C":{spr:"f2_12",name:"흙길·삼거리", rule:"decor"},
-  "D":{spr:"f2_13",name:"흙길·모퉁이", rule:"decor"},
-  "L":{spr:"f2_19",name:"돌길·세로",  rule:"decor"},
-  "N":{spr:"f2_21",name:"민물",        rule:"water"},
-  "Y":{spr:"f2_26",name:"흰꽃덤불",    rule:"solid"},
-  "&":{spr:"f2_32",name:"큰바위",      rule:"solid"},
-  ")":{spr:"f2_35",name:"바위무더기",  rule:"solid"},
-  "+":{spr:"f2_39",name:"통나무·단면", rule:"solid"},
-  "]":{spr:"f2_41",name:"갈색버섯",    rule:"decor"},
-  "}":{spr:"f2_43",name:"보라버섯",    rule:"decor"},
-  ":":{spr:"f2_45",name:"파란꽃",      rule:"decor"},
-  ",":{spr:"f2_46",name:"열매덤불",    rule:"solid"},
-  "<":{spr:"f2_48",name:"나무·둥근",   rule:"solid"},
-  "?":{spr:"f2_50",name:"침엽수",      rule:"solid"},
-  "`":{spr:"f2_52",name:"큰나무·좌",   rule:"solid"},
-  "ㄱ":{spr:"f2_53",name:"큰나무·중",  rule:"solid"},
-  "ㄴ":{spr:"f2_54",name:"큰나무·우",  rule:"solid"},
-  "ㄷ":{spr:"f2_55",name:"짙은나무",   rule:"solid"},
-  /* ---- 3군: 새 13×9 시트에서 고른 10종 (기존과 겹치지 않는 것만) ---- */
-  "ㅌ":{spr:"f3_waterfall",  name:"폭포",      rule:"solid"},
-  "ㅍ":{spr:"f3_shore",      name:"물가",      rule:"water"},
-  "ㅎ":{spr:"f3_lilypond",   name:"수련 못",   rule:"water"},
-  "O":{spr:"f3_island",     name:"물가 섬",   rule:"water"},
-  "E":{spr:"f3_dirtstone",  name:"돌 흙길",   rule:"decor"},
-  "R":{spr:"f3_rootmass",   name:"뿌리 덩굴", rule:"solid"},
-  "V":{spr:"f3_mushblue",   name:"회청 버섯", rule:"decor"},
-  "Z":{spr:"f3_pinkflower", name:"분홍꽃",    rule:"decor"},
-  "M":{spr:"f3_clover",     name:"클로버",    rule:"decor"},
-  "Q":{spr:"f3_bigleaf",    name:"큰 잎 포기",rule:"decor"}
+  /* ---- 통행 가능 — 잔디 · 흙길 ---- */
+  g:{spr:"f_grass", name:"잔디", rule:"decor"},
+  f:{spr:"f_flower", name:"꽃잔디", rule:"decor"},
+  x:{spr:"f_dirt_v", name:"흙길·세로", rule:"decor"},
+  y:{spr:"f_dirt_v2", name:"흙길·세로·반전", rule:"decor"},
+  8:{spr:"f_dirt_h", name:"흙길·가로", rule:"decor"},
+  c:{spr:"f_dirt_h2", name:"흙길·가로·반전", rule:"decor"},
+  D:{spr:"f_dirt_nw", name:"흙길·모퉁이·좌상", rule:"decor"},
+  E:{spr:"f_dirt_ne", name:"흙길·모퉁이·우상", rule:"decor"},
+  R:{spr:"f_dirt_se", name:"흙길·모퉁이·우하", rule:"decor"},
+  V:{spr:"f_dirt_sw", name:"흙길·모퉁이·좌하", rule:"decor"},
+  /* ---- 통행 불가 — 숲 벽 · 폭포 ---- */
+  n:{spr:"f_tree", name:"숲·나무", rule:"solid"},
+  N:{spr:"f_tree_b", name:"숲·나무·밝음", rule:"solid"},
+  Y:{spr:"f_tree2", name:"숲·큰나무", rule:"solid"},
+  Z:{spr:"f_tree2_b", name:"숲·큰나무·줄기", rule:"solid"},
+  t:{spr:"f_deep", name:"숲·짙은", rule:"solid"},
+  z:{spr:"f_deep_b", name:"숲·짙은·어두움", rule:"solid"},
+  b:{spr:"f_bush", name:"숲·수풀", rule:"solid"},
+  p:{spr:"f_bush_b", name:"숲·수풀·어두움", rule:"solid"},
+  o:{spr:"f_rock", name:"이끼 바위", rule:"solid"},
+  O:{spr:"f_rock_b", name:"이끼 바위·큼", rule:"solid"},
+  l:{spr:"f_log", name:"통나무", rule:"solid"},
+  L:{spr:"f_log_b", name:"통나무·반대", rule:"solid"},
+  m:{spr:"f_stump", name:"그루터기", rule:"solid"},
+  k:{spr:"f_rocks", name:"바위무더기", rule:"solid"},
+  "ㅌ":{spr:"f_fall", name:"폭포", rule:"solid"},
+  /* ---- 물 — 못 지나가고 시선만 통과 ---- */
+  "ㅊ":{spr:"f_splash", name:"물보라", rule:"water"},
+  "ㅍ":{spr:"f_shore", name:"물가", rule:"water"},
+  w:{spr:"f_pond", name:"연못", rule:"water"},
+  "ㅎ":{spr:"f_lily", name:"수련 못", rule:"water"}
 };
 
 /* ---------------------------- 스테이지 데이터 ---------------------------- */
 var STAGES=[
- { name:"고양이 사이로", bg:"assets/stage1-forest-bg.webp", theme:{S:"sofa","~":"rug",X:"counter"},
-   map:["#########","###~...##","###.~~.##","###.~~.##","###.~~.##","###.~~.##","###.~~.##","###....##","#########"],
+ { /* 1단계 숲 공터 — 승인된 숲 그림을 개별 타일로 쪼개 칸마다 찍은 맵.
+      가운데(4~5열·2~6행)가 잔디 공터, 테두리 한 칸이 흙길 고리(모퉁이 D·E·R·V + 세로 x·y / 가로 8·c),
+      바깥 53칸은 숲·나무·바위·통나무·폭포·연못이에요. 이동 판정은 예전 맵과 똑같아요(이동 28칸·막힘 53칸). */
+   name:"고양이 사이로", theme:{},
+   map:["YnYtztYNn",
+        "tYpD88Eln",
+        "NZbxfgyLn",
+        "ntpxfgylN",
+        "YoOxgfyLn",
+        "nOlxgfy"+"\u314d"+"Y",
+        "ZYmxggy"+"\u314c"+"O",
+        "NYmVccR"+"\u314a"+"w",
+        "tkkbp"+"lL"+"\u314e\u314e"],
    start:[6,7], goalPos:[3,1], maxTurns:20,
    cats:[{type:"A",x:3,y:6,dir:0},{type:"A",x:6,y:2,dir:3}],
    pickups:[], hint:"" },

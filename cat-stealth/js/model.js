@@ -36,7 +36,7 @@ function loadStage(idx){
   if(s.goalPos) goal={x:s.goalPos[0],y:s.goalPos[1]};
   var inv={small:0,big:0,catnip:0};
   var pickups=(s.pickups||[]).map(function(p){ return {x:p.x,y:p.y,kind:p.kind}; });
-  G.st={ idx:idx, grid:grid, theme:s.theme, name:s.name, bg:s.bg,   /* bg = 통배경 이미지 경로(1단계 숲) */
+  G.st={ idx:idx, grid:grid, theme:s.theme, name:s.name,
          player:player, goal:goal, inv:inv, pickups:pickups, fishes:[], turn:1,
          maxTurns:(s.maxTurns||20), stam:STAM_MAX,
          cats:s.cats.map(makeCat) };
@@ -95,7 +95,7 @@ var SPECIAL={
   "H":{name:"작은 구멍",   human:true,  cat:false, sight:true },
   "U":{name:"은신 수풀",   human:true,  cat:false, sight:true }
 };
-/* 숲 타일 56종 — FOREST_TILES.rule(data.js) 하나로 판정을 만들어요:
+/* 숲 타일(FOREST_TILES) — rule(data.js) 하나로 판정을 만들어요:
    decor=밟는 장식(DECOR), solid=이동·시선 차단, water=이동만 차단(시선 통과) */
 for(var _ft in FOREST_TILES){
   var _fr=FOREST_TILES[_ft];
