@@ -8,6 +8,8 @@
 (function(){
   var elStart=document.getElementById("start");
   if(!elStart) return;
+  /* 에디터 테스트 플레이(iframe)에서는 인트로를 띄우지 않아요 */
+  if(typeof EDITOR_PLAYTEST!=="undefined"&&EDITOR_PLAYTEST){ elStart.classList.add("hidden"); return; }
 
   var SW=863, SH=1822;                 /* start-bg.png 원본 크기(월드 좌표계) */
   var cam=document.getElementById("stCam");

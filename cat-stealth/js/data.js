@@ -50,6 +50,104 @@ var FOOD_INFO={
     tip:"먹는 동안은 그 고양이의 시야·기척이 닫혀요" }
 };
 
+/* ---------------------------- 숲 타일 25종 ----------------------------
+   외부 타일셋(5×5 숲 아틀라스)에서 자른 40×40 스프라이트 — assets.js TILESPR.f_* 키와 1:1 대응.
+   rule 규칙 하나로 모델 판정(model.js DECOR/SPECIAL)과 에디터 호환성이 자동 결정돼요:
+   · decor : 사람·고양이 모두 밟을 수 있는 바닥 장식 (잔디·꽃·길·돌멩이 등)
+   · solid : 사람·고양이 모두 못 지나고, 시선·기척도 차단 (나무·바위·덤불·통나무 등)
+   · water : 사람·고양이 모두 못 지나지만 시선은 통과 — 너머로 생선 투척 불가(착지 불가) */
+var FOREST_TILES={
+  g:{spr:"f_grass",     name:"잔디",       rule:"decor"},
+  f:{spr:"f_flower",    name:"꽃잔디",     rule:"decor"},
+  d:{spr:"f_dirt",      name:"흙길",       rule:"decor"},
+  p:{spr:"f_stone",     name:"돌길",       rule:"decor"},
+  q:{spr:"f_bush",      name:"덤불",       rule:"solid"},
+  v:{spr:"f_bramble",   name:"가시덤불",   rule:"solid"},
+  e:{spr:"f_fern",      name:"고사리",     rule:"decor"},
+  r:{spr:"f_tall",      name:"키 큰 풀",   rule:"decor"},
+  o:{spr:"f_rock",      name:"이끼 바위",  rule:"solid"},
+  i:{spr:"f_stones",    name:"돌멩이",     rule:"decor"},
+  m:{spr:"f_stump",     name:"그루터기",   rule:"solid"},
+  l:{spr:"f_log",       name:"통나무",     rule:"solid"},
+  n:{spr:"f_roots",     name:"나무 뿌리",  rule:"solid"},
+  w:{spr:"f_pond",      name:"연못",       rule:"water"},
+  z:{spr:"f_stream",    name:"시냇물",     rule:"water"},
+  j:{spr:"f_bridge",    name:"나무 다리",  rule:"decor"},
+  k:{spr:"f_crate",     name:"나무 상자",  rule:"solid"},
+  u:{spr:"f_mush",      name:"버섯",       rule:"decor"},
+  y:{spr:"f_sign",      name:"돌 표지판",  rule:"solid"},
+  t:{spr:"f_tree",      name:"나무",       rule:"solid"},
+  a:{spr:"f_grit",      name:"자갈 잔디",  rule:"decor"},
+  c:{spr:"f_leafy",     name:"낙엽 흙길",  rule:"decor"},
+  s:{spr:"f_stone2",    name:"자갈길",     rule:"decor"},
+  h:{spr:"f_flowerbush",name:"꽃덤불",     rule:"solid"},
+  b:{spr:"f_darkbush",  name:"짙은 덤불",  rule:"solid"},
+  "0":{spr:"f2_00",name:"잔디2",rule:"decor"},
+  "1":{spr:"f2_01",name:"잔디3",rule:"decor"},
+  "2":{spr:"f2_02",name:"잔디꽃",rule:"decor"},
+  "3":{spr:"f2_03",name:"분홍꽃잔디",rule:"decor"},
+  "4":{spr:"f2_04",name:"잔디4",rule:"decor"},
+  "5":{spr:"f2_05",name:"흰꽃잔디",rule:"decor"},
+  "6":{spr:"f2_06",name:"자갈잔디2",rule:"decor"},
+  "7":{spr:"f2_07",name:"무성한 덤불",rule:"solid"},
+  "8":{spr:"f2_08",name:"흙길2",rule:"decor"},
+  "9":{spr:"f2_09",name:"흙길3",rule:"decor"},
+  "x":{spr:"f2_10",name:"흙길4",rule:"decor"},
+  "A":{spr:"f2_11",name:"흙길5",rule:"decor"},
+  "C":{spr:"f2_12",name:"흙길6",rule:"decor"},
+  "D":{spr:"f2_13",name:"흙길7",rule:"decor"},
+  "E":{spr:"f2_14",name:"흙길8",rule:"decor"},
+  "F":{spr:"f2_15",name:"흙길9",rule:"decor"},
+  "I":{spr:"f2_16",name:"돌길3",rule:"decor"},
+  "J":{spr:"f2_17",name:"돌길4",rule:"decor"},
+  "K":{spr:"f2_18",name:"돌길5",rule:"decor"},
+  "L":{spr:"f2_19",name:"돌길6",rule:"decor"},
+  "M":{spr:"f2_20",name:"물가",rule:"water"},
+  "N":{spr:"f2_21",name:"민물",rule:"water"},
+  "O":{spr:"f2_22",name:"물가 돌",rule:"water"},
+  "Q":{spr:"f2_23",name:"수련 연못",rule:"water"},
+  "R":{spr:"f2_24",name:"덤불2",rule:"solid"},
+  "V":{spr:"f2_25",name:"짙은덤불2",rule:"solid"},
+  "Y":{spr:"f2_26",name:"흰꽃덤불",rule:"solid"},
+  "Z":{spr:"f2_27",name:"분홍꽃덤불",rule:"solid"},
+  "!":{spr:"f2_28",name:"고사리2",rule:"decor"},
+  "@":{spr:"f2_29",name:"키큰풀2",rule:"decor"},
+  "$":{spr:"f2_30",name:"흰들꽃",rule:"decor"},
+  "%":{spr:"f2_31",name:"분홍들꽃",rule:"decor"},
+  "&":{spr:"f2_32",name:"큰바위",rule:"solid"},
+  "*":{spr:"f2_33",name:"이끼바위2",rule:"solid"},
+  "(":{spr:"f2_34",name:"돌멩이2",rule:"decor"},
+  ")":{spr:"f2_35",name:"바위무더기",rule:"solid"},
+  "-":{spr:"f2_36",name:"속빈통나무",rule:"solid"},
+  "_":{spr:"f2_37",name:"그루터기2",rule:"solid"},
+  "=":{spr:"f2_38",name:"뿌리2",rule:"solid"},
+  "+":{spr:"f2_39",name:"옆통나무",rule:"solid"},
+  "[":{spr:"f2_40",name:"빨간버섯",rule:"decor"},
+  "]":{spr:"f2_41",name:"갈색버섯",rule:"decor"},
+  "{":{spr:"f2_42",name:"작은버섯",rule:"decor"},
+  "}":{spr:"f2_43",name:"보라버섯",rule:"decor"},
+  ";":{spr:"f2_44",name:"흰꽃",rule:"decor"},
+  ":":{spr:"f2_45",name:"파란꽃",rule:"decor"},
+  ",":{spr:"f2_46",name:"열매덤불",rule:"solid"},
+  ".":{spr:"f2_47",name:"푸른잎",rule:"decor"},
+  "<":{spr:"f2_48",name:"나무2",rule:"solid"},
+  ">":{spr:"f2_49",name:"나무3",rule:"solid"},
+  "?":{spr:"f2_50",name:"침엽수",rule:"solid"},
+  "|":{spr:"f2_51",name:"나무4",rule:"solid"},
+  "`":{spr:"f2_52",name:"큰나무·좌",rule:"solid"},
+  "ㄱ":{spr:"f2_53",name:"큰나무·중",rule:"solid"},
+  "ㄴ":{spr:"f2_54",name:"큰나무·우",rule:"solid"},
+  "ㄷ":{spr:"f2_55",name:"짙은나무",rule:"solid"},
+  "ㄹ":{spr:"f2_56",name:"덤불흙길",rule:"decor"},
+  "ㅁ":{spr:"f2_57",name:"낙엽흙길2",rule:"decor"},
+  "ㅂ":{spr:"f2_58",name:"돌무더기2",rule:"decor"},
+  "ㅅ":{spr:"f2_59",name:"흰꽃잔디3",rule:"decor"},
+  "ㅇ":{spr:"f2_60",name:"분홍꽃잔디3",rule:"decor"},
+  "ㅈ":{spr:"f2_61",name:"자갈풀",rule:"decor"},
+  "ㅊ":{spr:"f2_62",name:"어린덤불",rule:"decor"},
+  "ㅋ":{spr:"f2_63",name:"짙은잎덤불",rule:"solid"}
+};
+
 /* ---------------------------- 스테이지 데이터 ---------------------------- */
 var STAGES=[
  { name:"고양이 사이로", theme:{S:"sofa","~":"rug",X:"counter"},
@@ -62,24 +160,11 @@ var STAGES=[
    start:[1,7], goalPos:[6,1], maxTurns:20,
    cats:[{type:"A",x:6,y:5,dir:2}],
    pickups:[{x:2,y:7,kind:"small"}], hint:"" },
- { name:"9자 부엌", theme:{X:"counter","~":"rug"},
-   /* 3단계: '6'을 좌우로 뒤집은 '9'자 부엌. 윗줄이 9자의 윗획(가로획, x=2~5),
-      그 오른쪽 한 줄이 목(세로획, x=5), 그 아래가 9자의 배 — 폭 4칸짜리 닫힌 고리 회랑(x=2~5).
-      가운데는 카운터 섬(x=3~4). 시작은 배의 왼쪽 아래(2,7), EXIT는 윗획의 왼쪽 끝(2,1).
-      고양이는 목과 배가 만나는 교차점(5,4)에 앉아 왼쪽(<)을 지켜봐요 — 몸으로 목 입구를
-      점유하고 시선은 배 윗획 전체((2,4)~(4,4))를 덮어요. 올라가는 길은 x=5 목뿐이라
-      고양이를 그 자리에서 치우지 않으면 절대 통과 못 해요.
-      C(순회)라서 기척(귀)이 2칸 — 자리 주변((5,5)·(5,6)·(4,4) 근처)에 다가가는 것조차 들통나요.
-      같은 좌표를 두 번 순찰하는 '제자리 초소'라 평소엔 꼼짝하지 않고,
-      생선 냄새를 맡으면 그쪽으로 걸어가 길을 비켜 줘요.
-      배 바닥(3,7)의 큰 통생선을 주워 고리 왼쪽(예: (2,4)나 (2,7))으로 던지면
-      고양이가 왼쪽 끝까지 건너가 영원히 먹어요 — 목과 배 윗획이 전부 빕니다.
-      일부러 들켜서 유인하는 몸빵은 안 통해요: 도망치다 지구력이 떨어져
-      제자리에서 쉬는 순간 꼬리에 붙은 고양이한테 잡혀요. 정공법은 통생선. */
-   map:["#########","##~~~~###","#####~###","#####~###","##~~~~###","##~##~###","##~##~###","##~~~~###","#########"],
-   start:[2,7], goalPos:[2,1],
+ { name:"연쇄 먹이", theme:{X:"counter","~":"rug",S:"sofa",W:"wardrobe"},
+   map:["#########","##~~~~###","##WWW~###","##WWW~###","##~~~~###","##~XX~###","##~SS~###","##~~~~###","#########"],
+   start:[2,7], goalPos:[2,1], maxTurns:20,
    cats:[{type:"C",x:5,y:4,dir:3,patrol:[[5,4],[5,4]]}],
-   pickups:[{x:3,y:7,kind:"big"}] },
+   pickups:[{x:3,y:7,kind:"small"},{x:4,y:7,kind:"small"}], hint:"" },
  {
    /* 4단계 복도 순찰 — 동서로 오가는 순찰 고양이(C). 순찰 복도는 1칸 폭이라 몸으로 길을 막아요.
       순찰이 서쪽 끝에 있을 때를 노려 (6,5)를 건너고, 출구 계단의 문지기(A)는 큰 통생선으로 부른다. */

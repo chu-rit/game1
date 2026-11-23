@@ -99,6 +99,13 @@ function hideItemTip(){
   TIP.open=false;
   $("itemTip").classList.add("hidden");
 }
+/* 게임에서 한 번이라도 주워 본 아이템 종류 — 첫 습득 때 자동으로 정보창을 띄워요 */
+function itemSeenSet(){
+  try{ return JSON.parse(localStorage.getItem("cat-seen-items")||"{}"); }catch(e){ return {}; }
+}
+function markItemSeen(kind){
+  try{ var s=itemSeenSet(); s[kind]=1; localStorage.setItem("cat-seen-items",JSON.stringify(s)); }catch(e){}
+}
 function sBeepTip(){ if(typeof beep==="function") beep(720,0.06,"sine",0.035,0); }
 
 /* ================= HUD ================= */
@@ -141,16 +148,7 @@ function updateHUD(){
   bw.classList.toggle("aimed",!!(G.fishMode&&G.fishAim));
   /* 잡혔을 때는 패널 없이 보드를 본 채로, 취소 버튼에만 은은한 강조 */
   $("bUndo").classList.toggle("hot",G.mode==="caught");
-  /* 지구력 게이지: 추격 중에만 표시 — 칸당 1칸, 다 쓰면 빨간 점멸 */
-  var sm=$("stam");
-  if(anyChasing()&&G.mode==="play"){
-    var dots="";
-    for(var si=0;si<STAM_MAX;si++) dots+='<i class="'+(si<G.st.stam?'f':'e')+'"></i>';
-    sm.innerHTML='<span class="lb">💨</span>'+dots;
-    sm.className=(G.st.stam<=0)?"out":"on";
-  }else{
-    sm.className="hidden"; sm.innerHTML="";
-  }
+  /* 지구력 게이지는 보드 위 플레이어 머리 위에 도트로 그려요 (drawStamGauge — view.js) */
 }
 function setWarn(msg,cls){
   var w=$("warn");
@@ -241,7 +239,7 @@ function beginTurn(action){
     c.chaseSteps=nc.chaseSteps; c.pi=nc.pi; c.psign=nc.psign;
   }
 
-  var arc=null;
+  var arc=null, firstPickupKind=null;
   setWarn("");   /* 이번 턴 안내 문구를 먼저 지우고, 사건(줍기·연쇄)이 있으면 그걸 띄워요 */
   for(var e=0;e<ev.length;e++){
     var v=ev[e];
@@ -251,6 +249,7 @@ function beginTurn(action){
       G.fx.push({kind:v.kind,x:v.x,y:v.y,t0:performance.now()});
       G.gainPend=v.kind;
       sPickup();
+      if(!itemSeenSet()[v.kind]){ markItemSeen(v.kind); firstPickupKind=v.kind; }
       setWarn(KIND[v.kind].label+"을(를) 주웠어요! 아래 슬롯을 눌러 던지기 · 길게 누르면 설명","fish");
       clearWarnSoon(2000);
     }
@@ -273,6 +272,12 @@ function beginTurn(action){
   G.mode="anim"; G.fishMode=false; G.fishKind=null; G.fishAim=null;
   if(action.t==="move") sTap();
   updateHUD();
+  /* 처음 주운 아이템이면 주운 즉시 상세 정보창을 띄워요 (인벤토리 슬롯이 갱신된 뒤라 인덱스를 찾을 수 있어요) */
+  if(firstPickupKind){
+    for(var fi=0;fi<INV.length;fi++){
+      if(INV[fi].kind===firstPickupKind){ showItemTip(fi); break; }
+    }
+  }
 }
 function finishTurn(){
   var p=G.pending;
@@ -510,23 +515,41 @@ function fishAimOptions(d){
   }
   return out;
 }
-/* 방향키/WASD로 조준: 처음엔 1칸, 같은 방향을 한 번 더 누르면 2칸으로 토글 */
+/* 방향키/WASD로 조준: 현재 표시된 칸을 커서로 움직여요 — 누른 방향 반평면에서 가장 가까운
+   던질 칸으로 이동(같은 가로/세로축 우선). 그쪽 끝까지 가면 그 방향 광선의 안쪽 끝으로 돌아와요. */
 function aimFishDir(d){
-  var opts=fishAimOptions(d);
-  if(!opts.length){
+  var p=G.st.player, a=G.fishAim, pick=null;
+  if(a){
+    var ft=validFishTiles(), cand=[];
+    for(var i=0;i<ft.length;i++){
+      var t=ft[i];
+      if(d===0&&t.y>=a.y) continue;
+      if(d===2&&t.y<=a.y) continue;
+      if(d===1&&t.x<=a.x) continue;
+      if(d===3&&t.x>=a.x) continue;
+      var ax=(d<2)?(t.x===a.x):(t.y===a.y);   /* 누른 방향 축과 같은 선상 우선 */
+      cand.push({t:t,dist:Math.abs(t.x-a.x)+Math.abs(t.y-a.y),ax:ax?0:1});
+    }
+    cand.sort(function(u,v){ return u.ax-v.ax||u.dist-v.dist; });
+    if(cand.length) pick=cand[0].t;
+    else{
+      var ray=fishAimOptions(d);
+      if(ray.length) pick=ray[0];           /* 그 방향 끝이면 안쪽 끝으로 순환 */
+    }
+  }else{
+    var opts=fishAimOptions(d);
+    if(opts.length) pick=opts[0];
+  }
+  if(!pick){
     setWarn("그 방향에는 던질 칸이 없어요 (상하좌우 직선 "+fishRange()+"칸 · 장애물 불가)","fish");
     clearWarnSoon(1700);
     return false;
   }
-  var pick=opts[0], prev=G.fishAim;
-  if(prev&&prev.dir===d){
-    /* 같은 방향 재입력: 현재 칸 다음 칸으로 순환 (1→2→3→1… 사거리만큼) */
-    var idx=0;
-    for(var i=0;i<opts.length;i++){ if(opts[i].step===prev.step){ idx=i; break; } }
-    pick=opts[(idx+1)%opts.length];
-  }
-  G.fishAim={x:pick.x,y:pick.y,dir:pick.dir,step:pick.step};
-  setWarn("🎯 "+KIND[G.fishKind].label+" 조준 "+pick.step+"칸 · 오른쪽 위 🎯 버튼(Enter)으로 투척","fish");
+  var dx=pick.x-p.x, dy=pick.y-p.y;
+  var rd=dx>0?1:(dx<0?3:(dy>0?2:0));
+  var stp=Math.abs(dx)+Math.abs(dy);
+  G.fishAim={x:pick.x,y:pick.y,dir:rd,step:stp};
+  setWarn("🎯 "+KIND[G.fishKind].label+" 조준 "+stp+"칸 · 오른쪽 위 🎯 버튼(Enter)으로 투척","fish");
   updateHUD();
   return true;
 }

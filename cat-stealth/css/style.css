@@ -87,11 +87,11 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
 /* ---- 상단 조작 행: 왼쪽 역T자 방향키, 오른쪽 취소/리셋 2단 ---- */
 #topControls{display:flex;align-items:stretch;gap:10px;}
 /* 역T자 방향키 (3열×2행: ▲ / ◀ ▼ ▶, 오른쪽 위 칸은 먹이 조준 중에만 🎯 투척) */
-#dpad{--dk:52px;flex:none;display:grid;grid-template-columns:repeat(3,var(--dk));grid-template-rows:repeat(2,var(--dk));gap:5px;}
+#dpad{--dk:58px;flex:none;display:grid;grid-template-columns:repeat(3,var(--dk));grid-template-rows:repeat(2,var(--dk));gap:5px;}
 #dpad button{border-radius:14px;display:flex;align-items:center;justify-content:center;padding:0;
   background:var(--ctl-bg);box-shadow:inset 0 0 0 1.5px var(--ctl-line),0 2px 0 rgba(0,0,0,.35);
   transition:transform .1s ease-out,box-shadow .12s,background .12s;}
-#dpad .dk{font-size:19px;color:#e6d9c8;line-height:1;}
+#dpad .dk{font-size:22px;color:#e6d9c8;line-height:1;}
 #dpad .up{grid-area:1/2;}
 #dpad .left{grid-area:2/1;}
 #dpad .down{grid-area:2/2;}
@@ -100,8 +100,8 @@ button{font-family:inherit;border:0;cursor:pointer;color:var(--cream);font-weigh
 #bWait{grid-area:1/3;flex-direction:column;gap:1px;line-height:1;
   background:var(--ctl-bg);box-shadow:inset 0 0 0 1.5px var(--ctl-line),0 2px 0 rgba(0,0,0,.35);}
 #bWait.hidden{display:none;}
-#bWait .ic{font-size:18px;line-height:1;}
-#bWait .tx{font-size:9.5px;font-weight:800;letter-spacing:-.02em;color:#cbbfae;}
+#bWait .ic{font-size:20px;line-height:1;}
+#bWait .tx{font-size:10px;font-weight:800;letter-spacing:-.02em;color:#cbbfae;}
 #bWait.aimed{background:rgba(52,24,36,.58);
   box-shadow:inset 0 0 0 2px var(--pink),0 0 16px rgba(255,143,179,.42);}
 #bWait.aimed .tx{color:#ffd7e6;}

@@ -161,6 +161,14 @@ function paintFloor(g,st){
   for(var y=0;y<ROWS;y++) for(var x=0;x<COLS;x++){
     var ch=st.grid[y][x];
     if(ch==="#") continue;
+    /* 숲 타일(FOREST_TILES)은 배경이 구워진 40×40 아트라 그대로 칸을 덮어요 —
+       장식·장애물 모두 바닥 패스에서 그려도 어차피 개체보다 아래 깔려요 */
+    var ft=FOREST_TILES[ch];
+    if(ft){
+      var fim=TILEIMG[ft.spr];
+      if(fim&&fim.width) g.drawImage(fim,x*CELL,y*CELL,CELL,CELL);
+      continue;
+    }
     var im=TILEIMG[ch==="~"?"cream":"oak"];
     if(im&&im.width){
       if(ch!=="~"&&x%2){            /* 마루는 한 칸 걸러 좌우를 뒤집어 널 이음선이 세로로 줄 서지 않게 */
@@ -1204,6 +1212,7 @@ function draw(){
     drawIntent(ctx,st,now);
     if(!G.fishMode) drawWarnMarks(ctx,st,now);
   }
+  if((G.mode==="play"||G.mode==="anim")&&anyChasing()) drawStamGauge(ctx,st,now);
 
   blit();
 }
@@ -1220,6 +1229,48 @@ function drawPlayerNow(st,now,plDir){
   if(Math.abs(pl.ry-pl.y)<0.01) pl.ry=pl.y;
   var moving=Math.abs(pl.rx-pl.x)>0.02||Math.abs(pl.ry-pl.y)>0.02;
   drawHuman(ctx,{rx:pl.rx,ry:pl.ry},now,plDir,moving);
+}
+
+/* ---------- 추격 지구력 게이지: 플레이어 머리 위 도트 스타일 ----------
+   번개 아이콘 + 에너지 핍 3개. 다 쓰면 빨간 점멸 — 이번 턴 못 움직인다는 신호 */
+function drawStamGauge(g,st,now){
+  var pl=st.player;
+  var cx=Math.round(pl.rx*CELL+CELL/2);
+  var headY=Math.round(pl.ry*CELL+CELL-3-25);      /* 인간 스프라이트 머리 꼭대기 */
+  var pw=34, ph=12, x0=cx-(pw>>1), y0=headY-15;
+  var out=(st.stam||0)<=0;
+  fillRR(g,x0,y0,pw,ph,3,"rgba(9,7,14,0.80)");
+  pf(g,x0+1,y0, pw-2,1,"rgba(255,255,255,0.10)");
+  if(out){
+    var a=(0.55+0.45*Math.sin(now/140)).toFixed(3);
+    pf(g,x0,y0,pw,1,"rgba(255,80,95,"+a+")"); pf(g,x0,y0+ph-1,pw,1,"rgba(255,80,95,"+a+")");
+    pf(g,x0,y0,1,ph,"rgba(255,80,95,"+a+")"); pf(g,x0+pw-1,y0,1,ph,"rgba(255,80,95,"+a+")");
+  }
+  /* 번개 아이콘: 1px 도트 + 진한 외곽선 */
+  var BM=["..##.",".##..",".##..","####.","..##.","##...","#...."];
+  var bx=x0+4, by=y0+3, bw=BM[0].length, bh=BM.length;
+  for(var oy=-1;oy<=1;oy++)for(var ox=-1;ox<=1;ox++){
+    if(!ox&&!oy) continue;
+    g.fillStyle="#241505";
+    for(var r1=0;r1<bh;r1++)for(var i1=0;i1<bw;i1++)
+      if(BM[r1][i1]==="#") g.fillRect(bx+i1+ox,by+r1+oy,1,1);
+  }
+  g.fillStyle="#ffd45e";
+  for(var r2=0;r2<bh;r2++)for(var i2=0;i2<bw;i2++)
+    if(BM[r2][i2]==="#") g.fillRect(bx+i2,by+r2,1,1);
+  /* 에너지 핍 3개: 채움 = 초록(마지막 1칸은 호박 경고), 빈 칸 = 어두운 속 빈 슬롯 */
+  for(var i=0;i<STAM_MAX;i++){
+    var px0=x0+12+i*7, py0=y0+2, full=i<(st.stam||0);
+    fillRR(g,px0,py0,5,8,1,full?"#0c2417":"#101a15");
+    if(full){
+      var warn1=(st.stam===1);
+      pf(g,px0+1,py0+1,3,6,warn1?"#ffb347":"#5fe08d");
+      pf(g,px0+1,py0+1,3,1,warn1?"#ffe3ad":"#d6ffe6");
+    }else{
+      pf(g,px0+1,py0+1,3,6,"#2a3b32");
+      pf(g,px0+1,py0+6,3,1,"#172019");
+    }
+  }
 }
 
 function loop(){ draw(); requestAnimationFrame(loop); }

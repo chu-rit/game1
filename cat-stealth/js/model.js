@@ -95,6 +95,13 @@ var SPECIAL={
   "H":{name:"작은 구멍",   human:true,  cat:false, sight:true },
   "U":{name:"은신 수풀",   human:true,  cat:false, sight:true }
 };
+/* 숲 타일 25종 — FOREST_TILES.rule(data.js) 하나로 판정을 만들어요:
+   decor=밟는 장식(DECOR), solid=이동·시선 차단, water=이동만 차단(시선 통과) */
+for(var _ft in FOREST_TILES){
+  var _fr=FOREST_TILES[_ft];
+  if(_fr.rule==="decor") DECOR[_ft]=1;
+  else SPECIAL[_ft]={name:_fr.name, human:false, cat:false, sight:_fr.rule==="solid"};
+}
 function specialAt(st,x,y){ return SPECIAL[tileAt(st,x,y)]||null; }
 /* 은신 수풀 칸인가 — 여기 서 있으면 눈에도 귀에도 안 잡혀요 */
 function isHideTile(st,x,y){ return tileAt(st,x,y)==="U"; }
@@ -190,13 +197,17 @@ function noticeRange(f,cat){
   var lr=lureRange(f), sr=(cat.sense||0);
   return lr>sr?lr:sr;
 }
-/* 지금 서 있는 자리에서 알아챌 수 있는 가장 가까운 먹이(없으면 null) */
-function nearestFish(st,cat){
+/* 지금 서 있는 자리에서 알아챌 수 있는 가장 가까운 먹이(없으면 null).
+   clear=true면 기척처럼 사이에 벽·가구가 끼어 있으면 냄새를 못 맡아요 —
+   '처음 눈치채는 순간'에만 쓰고, 이미 유인돼 걷는 중에는 위치를 기억하고 있으니
+   clear 없이 계속 따라가요(걷다가 시선이 가려졌다고 유인이 풀리면 안 되니까요). */
+function nearestFish(st,cat,clear,onlyKind){
   if(!st.fishes||!st.fishes.length) return null;
   var best=null,bd=1e9;
   for(var i=0;i<st.fishes.length;i++){
     var f=st.fishes[i], d=man(cat,f);
-    if(d<=noticeRange(f,cat)&&d<bd){ bd=d; best=f; }
+    if(onlyKind&&f.kind!==onlyKind) continue;
+    if(d<=noticeRange(f,cat)&&d<bd&&(!clear||lineClear(st,cat,f))){ bd=d; best=f; }
   }
   return best;
 }
@@ -290,7 +301,7 @@ function catStep(st,cat,events){
         events.push({k:"ate",id:cat.id,kind:ef.kind,x:cat.x,y:cat.y});
         /* 연쇄 반응: 다 먹은 바로 그 자리에서 또 다른 먹이가 냄새나면
            제자리로 돌아가지 않고 곧장 다음 먹이로 걸어가요 */
-        var nxf=nearestFish(st,cat);
+        var nxf=nearestFish(st,cat,true);
         if(nxf){
           cat.state="lured"; cat.chaseSteps=0;
           events.push({k:"chain",id:cat.id,kind:nxf.kind});
@@ -309,6 +320,9 @@ function catStep(st,cat,events){
       events.push({k:"calm",id:cat.id});
     }else if(cat.x===nf.x&&cat.y===nf.y){
       startEat(st,cat,nf,events);
+    }else if(cat.lureWait){
+      /* '?' 반응 턴: 냄새를 맡은 그 턴은 먹이 쪽을 바라만 보고, 다음 턴부터 걸어가요 */
+      cat.lureWait=0; faceToward(cat,nf);
     }else{
       var f=bfsNext(st,cat,nf);
       /* 작은 인간의 칸은 밟지 않아요(그 턴은 그 자리에서 기다림) */
@@ -376,13 +390,15 @@ function simStep(st,action,events){
      생선은 아무도 먹지 않으면 판이 끝날 때까지 바닥에 그대로 있습니다. */
   for(var i=0;i<st.cats.length;i++){
     var c=st.cats[i];
-    if(c.state!=="idle"&&c.state!=="lured"&&c.state!=="return") continue;
-    var lf=nearestFish(st,c);
+    if(c.state!=="idle"&&c.state!=="lured"&&c.state!=="return"&&c.state!=="chase") continue;
+    /* 아직 유인되지 않은 고양이만 냄새가 '새로' 닿는지 봐요 — 벽·가구에 막히면 모른 채로 있어요.
+       추격(chase) 중엔 일반 생선엔 눈도 안 돌리지만 캣닢만은 못 참아요 — 탈출용 비상 아이템. */
+    var lf=(c.state==="chase")?nearestFish(st,c,true,"catnip"):nearestFish(st,c,c.state!=="lured");
     if(lf){
       if(c.state!=="lured"){
         /* 먹이를 다 먹고 돌아가던 길에 또 먹이가 코앞에 있으면 → 연쇄 반응으로 바로 다음 먹이로! */
         events.push({k:(c.state==="return")?"chain":"lure",id:c.id,kind:lf.kind});
-        c.state="lured"; c.chaseSteps=0;
+        c.state="lured"; c.chaseSteps=0; c.lureWait=1;
       }
       faceToward(c,lf);
     }else if(c.state==="lured"){

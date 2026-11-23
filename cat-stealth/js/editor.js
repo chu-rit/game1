@@ -11,6 +11,8 @@ var TERRAIN_TOOLS=[
   {ch:"X",n:"카운터"},{ch:"S",n:"소파"},{ch:"T",n:"식탁"},{ch:"B",n:"침대"},{ch:"W",n:"선반"},
   {ch:"^",n:"발판"},{ch:"H",n:"구멍"},{ch:"U",n:"수풀"}
 ];
+/* 숲 타일 25종 — 이름·규칙은 FOREST_TILES(data.js) 한 곳에서 관리 */
+for(var _ft in FOREST_TILES) TERRAIN_TOOLS.push({ch:_ft,n:FOREST_TILES[_ft].name});
 var ENTITY_TOOLS=[
   {id:"start",n:"시작"},{id:"goal",n:"골"},
   {id:"catA",n:"고정 감시"},{id:"catB",n:"교대 감시"},{id:"catC",n:"순찰"},
@@ -18,6 +20,7 @@ var ENTITY_TOOLS=[
   {id:"erase",g:"✕",n:"개체 지우기"},{id:"select",g:"☝",n:"선택"}
 ];
 var TILE_KO={".":"바닥","#":"벽","~":"러그","X":"카운터","S":"소파","T":"식탁","B":"침대","W":"선반","^":"발판","H":"구멍","U":"수풀"};
+for(var _fk in FOREST_TILES) TILE_KO[_fk]=FOREST_TILES[_fk].name;
 var CAT_ROLE={A:"고정 감시",B:"교대 감시",C:"순찰"};
 var DIR_GLYPH=["↑","→","↓","←"], DIR_NAME=["위","오른쪽","아래","왼쪽"];
 var TERRAIN_CLASS={".":"t-dot","#":"t-wall","~":"t-rug","X":"t-X","S":"t-S","T":"t-T","B":"t-B","W":"t-W","^":"t-care","H":"t-H","U":"t-U"};
@@ -591,12 +594,16 @@ function closePlaytest(){
   if(dlg.open) dlg.close();
   $("edPlayTest").focus();
 }
+/* file:// 로 열면 iframe 메시지 origin이 "null" — source(우리 iframe) 고정이라 그 경우도 허용 */
+function edMsgOriginOK(e){ return e.origin===location.origin||(e.origin==="null"&&location.protocol==="file:"); }
+/* file:// 에서는 상대 origin이 "null" 이라 구체 origin으론 못 받아요 → "*" 사용 */
+function edMsgTargetOrigin(){ return (location.origin==="null"||location.protocol==="file:")?"*":location.origin; }
 window.addEventListener("message",function(e){
-  if(!playIframe||e.source!==playIframe.contentWindow||e.origin!==location.origin||!e.data) return;
+  if(!playIframe||e.source!==playIframe.contentWindow||!edMsgOriginOK(e)||!e.data) return;
   var t=e.data.type;
   if(t==="cat-editor:ready"){
     playIframe.contentWindow.postMessage({type:"cat-editor:load",stage:playSnapshot},
-      location.origin==="null"?"*":location.origin);
+      edMsgTargetOrigin());
   }else if(t==="cat-editor:started"){
     clearTimeout(playTimer);
     $("edPlayLoading").style.display="none";
@@ -662,7 +669,7 @@ function init(){
     $("edPlayLoading").style.display="";
     $("edPlayRestart").disabled=true;
     playIframe.contentWindow.postMessage({type:"cat-editor:load",stage:playSnapshot},
-      location.origin==="null"?"*":location.origin);
+      edMsgTargetOrigin());
   });
   $("edPlayDialog").addEventListener("close",function(){
     /* Escape(cancel)·버튼 어디로 닫혀도 iframe·타이머 정리, 포커스는 버튼으로 */
