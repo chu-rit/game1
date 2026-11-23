@@ -50,65 +50,130 @@ var FOOD_INFO={
     tip:"먹는 동안은 그 고양이의 시야·기척이 닫혀요" }
 };
 
-/* ---------------------------- 숲 타일 29종 ----------------------------
+/* ---------------------------- 숲 타일 81칸 ----------------------------
    1단계 승인 그림(games/screenshots/hq-fullmap-aligned-art.png, 1254×1254 · 9×9 정합본)을
-   칸 단위로 잘라 만든 개별 타일 — assets.js TILESPR 키와 1:1 대응이에요.
-   모두 같은 그림에서 뽑아 화풍이 한 벌로 맞고, 에디터 팔레트·다른 숲 스테이지에 그대로 써요.
-   rule 하나로 모델 판정(model.js DECOR/SPECIAL)과 에디터 호환성이 자동 결정돼요:
+   360×360 으로 줄여 40×40 칸 81개로 자른 '그 자리 그대로' 조각이에요 — assets.js TILESPR
+   (f_열_행)와 1:1, 칸마다 코드가 하나씩이라 9×9 맵에 그대로 얹으면 원본 그림과 픽셀 단위로 같아요.
+   나무·통나무·바위가 2~3칸에 걸쳐 있어도 잘리지 않고, 흙길·폭포·연못 경계도 이어져요.
+   rule 은 직전 맵(ec272e1)의 칸별 판정을 그대로 물려받았어요(게임 수치 불변):
    · decor : 사람·고양이 모두 밟는 바닥 (잔디·꽃잔디·흙길)
    · solid : 못 지나가고 시선·기척도 차단 (숲·나무·바위·통나무·폭포)
    · water : 못 지나가지만 시선은 통과 (연못·물가) — 너머로 생선 투척 불가
-   ※ '.'(바닥)·실내 가구 문자(S T B W X ^ H U ~ #)는 숲 타일에 쓰지 않아요. */
+   이름 뒤 숫자는 원본 그림에서의 칸 위치(열,행)예요. */
 var FOREST_TILES={
-  /* ---- 통행 가능 — 잔디 · 흙길 ---- */
-  g:{spr:"f_grass", name:"잔디", rule:"decor"},
-  f:{spr:"f_flower", name:"꽃잔디", rule:"decor"},
-  x:{spr:"f_dirt_v", name:"흙길·세로", rule:"decor"},
-  y:{spr:"f_dirt_v2", name:"흙길·세로·반전", rule:"decor"},
-  8:{spr:"f_dirt_h", name:"흙길·가로", rule:"decor"},
-  c:{spr:"f_dirt_h2", name:"흙길·가로·반전", rule:"decor"},
-  D:{spr:"f_dirt_nw", name:"흙길·모퉁이·좌상", rule:"decor"},
-  E:{spr:"f_dirt_ne", name:"흙길·모퉁이·우상", rule:"decor"},
-  R:{spr:"f_dirt_se", name:"흙길·모퉁이·우하", rule:"decor"},
-  V:{spr:"f_dirt_sw", name:"흙길·모퉁이·좌하", rule:"decor"},
-  /* ---- 통행 불가 — 숲 벽 · 폭포 ---- */
-  n:{spr:"f_tree", name:"숲·나무", rule:"solid"},
-  N:{spr:"f_tree_b", name:"숲·나무·밝음", rule:"solid"},
-  Y:{spr:"f_tree2", name:"숲·큰나무", rule:"solid"},
-  Z:{spr:"f_tree2_b", name:"숲·큰나무·줄기", rule:"solid"},
-  t:{spr:"f_deep", name:"숲·짙은", rule:"solid"},
-  z:{spr:"f_deep_b", name:"숲·짙은·어두움", rule:"solid"},
-  b:{spr:"f_bush", name:"숲·수풀", rule:"solid"},
-  p:{spr:"f_bush_b", name:"숲·수풀·어두움", rule:"solid"},
-  o:{spr:"f_rock", name:"이끼 바위", rule:"solid"},
-  O:{spr:"f_rock_b", name:"이끼 바위·큼", rule:"solid"},
-  l:{spr:"f_log", name:"통나무", rule:"solid"},
-  L:{spr:"f_log_b", name:"통나무·반대", rule:"solid"},
-  m:{spr:"f_stump", name:"그루터기", rule:"solid"},
-  k:{spr:"f_rocks", name:"바위무더기", rule:"solid"},
-  "ㅌ":{spr:"f_fall", name:"폭포", rule:"solid"},
-  /* ---- 물 — 못 지나가고 시선만 통과 ---- */
-  "ㅊ":{spr:"f_splash", name:"물보라", rule:"water"},
-  "ㅍ":{spr:"f_shore", name:"물가", rule:"water"},
-  w:{spr:"f_pond", name:"연못", rule:"water"},
-  "ㅎ":{spr:"f_lily", name:"수련 못", rule:"water"}
+  "가":{spr:"f_0_0", name:"큰나무 0,0", rule:"solid"},
+  "각":{spr:"f_1_0", name:"나무 1,0", rule:"solid"},
+  "갂":{spr:"f_2_0", name:"큰나무 2,0", rule:"solid"},
+  "갃":{spr:"f_3_0", name:"짙은숲 3,0", rule:"solid"},
+  "간":{spr:"f_4_0", name:"짙은숲 4,0", rule:"solid"},
+  "갅":{spr:"f_5_0", name:"짙은숲 5,0", rule:"solid"},
+  "갆":{spr:"f_6_0", name:"큰나무 6,0", rule:"solid"},
+  "갇":{spr:"f_7_0", name:"나무 7,0", rule:"solid"},
+  "갈":{spr:"f_8_0", name:"나무 8,0", rule:"solid"},
+  "갉":{spr:"f_0_1", name:"짙은숲 0,1", rule:"solid"},
+  "갊":{spr:"f_1_1", name:"큰나무 1,1", rule:"solid"},
+  "갋":{spr:"f_2_1", name:"수풀 2,1", rule:"solid"},
+  "갌":{spr:"f_3_1", name:"흙길모퉁이 3,1", rule:"decor"},
+  "갍":{spr:"f_4_1", name:"흙길 4,1", rule:"decor"},
+  "갎":{spr:"f_5_1", name:"흙길 5,1", rule:"decor"},
+  "갏":{spr:"f_6_1", name:"흙길모퉁이 6,1", rule:"decor"},
+  "감":{spr:"f_7_1", name:"통나무 7,1", rule:"solid"},
+  "갑":{spr:"f_8_1", name:"나무 8,1", rule:"solid"},
+  "값":{spr:"f_0_2", name:"나무 0,2", rule:"solid"},
+  "갓":{spr:"f_1_2", name:"큰나무 1,2", rule:"solid"},
+  "갔":{spr:"f_2_2", name:"수풀 2,2", rule:"solid"},
+  "강":{spr:"f_3_2", name:"흙길 3,2", rule:"decor"},
+  "갖":{spr:"f_4_2", name:"꽃잔디 4,2", rule:"decor"},
+  "갗":{spr:"f_5_2", name:"잔디 5,2", rule:"decor"},
+  "갘":{spr:"f_6_2", name:"흙길 6,2", rule:"decor"},
+  "같":{spr:"f_7_2", name:"통나무 7,2", rule:"solid"},
+  "갚":{spr:"f_8_2", name:"나무 8,2", rule:"solid"},
+  "갛":{spr:"f_0_3", name:"나무 0,3", rule:"solid"},
+  "개":{spr:"f_1_3", name:"짙은숲 1,3", rule:"solid"},
+  "객":{spr:"f_2_3", name:"수풀 2,3", rule:"solid"},
+  "갞":{spr:"f_3_3", name:"흙길 3,3", rule:"decor"},
+  "갟":{spr:"f_4_3", name:"꽃잔디 4,3", rule:"decor"},
+  "갠":{spr:"f_5_3", name:"잔디 5,3", rule:"decor"},
+  "갡":{spr:"f_6_3", name:"흙길 6,3", rule:"decor"},
+  "갢":{spr:"f_7_3", name:"통나무 7,3", rule:"solid"},
+  "갣":{spr:"f_8_3", name:"나무 8,3", rule:"solid"},
+  "갤":{spr:"f_0_4", name:"큰나무 0,4", rule:"solid"},
+  "갥":{spr:"f_1_4", name:"이끼바위 1,4", rule:"solid"},
+  "갦":{spr:"f_2_4", name:"이끼바위 2,4", rule:"solid"},
+  "갧":{spr:"f_3_4", name:"흙길 3,4", rule:"decor"},
+  "갨":{spr:"f_4_4", name:"잔디 4,4", rule:"decor"},
+  "갩":{spr:"f_5_4", name:"꽃잔디 5,4", rule:"decor"},
+  "갪":{spr:"f_6_4", name:"흙길 6,4", rule:"decor"},
+  "갫":{spr:"f_7_4", name:"통나무 7,4", rule:"solid"},
+  "갬":{spr:"f_8_4", name:"나무 8,4", rule:"solid"},
+  "갭":{spr:"f_0_5", name:"나무 0,5", rule:"solid"},
+  "갮":{spr:"f_1_5", name:"이끼바위 1,5", rule:"solid"},
+  "갯":{spr:"f_2_5", name:"통나무 2,5", rule:"solid"},
+  "갰":{spr:"f_3_5", name:"흙길 3,5", rule:"decor"},
+  "갱":{spr:"f_4_5", name:"잔디 4,5", rule:"decor"},
+  "갲":{spr:"f_5_5", name:"꽃잔디 5,5", rule:"decor"},
+  "갳":{spr:"f_6_5", name:"흙길 6,5", rule:"decor"},
+  "갴":{spr:"f_7_5", name:"물가 7,5", rule:"water"},
+  "갵":{spr:"f_8_5", name:"큰나무 8,5", rule:"solid"},
+  "갶":{spr:"f_0_6", name:"큰나무 0,6", rule:"solid"},
+  "갷":{spr:"f_1_6", name:"큰나무 1,6", rule:"solid"},
+  "갸":{spr:"f_2_6", name:"그루터기 2,6", rule:"solid"},
+  "갹":{spr:"f_3_6", name:"흙길 3,6", rule:"decor"},
+  "갺":{spr:"f_4_6", name:"잔디 4,6", rule:"decor"},
+  "갻":{spr:"f_5_6", name:"잔디 5,6", rule:"decor"},
+  "갼":{spr:"f_6_6", name:"흙길 6,6", rule:"decor"},
+  "갽":{spr:"f_7_6", name:"폭포 7,6", rule:"solid"},
+  "갾":{spr:"f_8_6", name:"이끼바위 8,6", rule:"solid"},
+  "갿":{spr:"f_0_7", name:"나무 0,7", rule:"solid"},
+  "걀":{spr:"f_1_7", name:"큰나무 1,7", rule:"solid"},
+  "걁":{spr:"f_2_7", name:"그루터기 2,7", rule:"solid"},
+  "걂":{spr:"f_3_7", name:"흙길모퉁이 3,7", rule:"decor"},
+  "걃":{spr:"f_4_7", name:"흙길 4,7", rule:"decor"},
+  "걄":{spr:"f_5_7", name:"흙길 5,7", rule:"decor"},
+  "걅":{spr:"f_6_7", name:"흙길모퉁이 6,7", rule:"decor"},
+  "걆":{spr:"f_7_7", name:"물보라 7,7", rule:"water"},
+  "걇":{spr:"f_8_7", name:"연못 8,7", rule:"water"},
+  "걈":{spr:"f_0_8", name:"짙은숲 0,8", rule:"solid"},
+  "걉":{spr:"f_1_8", name:"바위무더기 1,8", rule:"solid"},
+  "걊":{spr:"f_2_8", name:"바위무더기 2,8", rule:"solid"},
+  "걋":{spr:"f_3_8", name:"수풀 3,8", rule:"solid"},
+  "걌":{spr:"f_4_8", name:"수풀 4,8", rule:"solid"},
+  "걍":{spr:"f_5_8", name:"통나무 5,8", rule:"solid"},
+  "걎":{spr:"f_6_8", name:"통나무 6,8", rule:"solid"},
+  "걏":{spr:"f_7_8", name:"수련 7,8", rule:"water"},
+  "걐":{spr:"f_8_8", name:"수련 8,8", rule:"water"},
 };
+
+/* 1단계 숲 공터 — 81칸 전부 원본 그림의 같은 좌표 조각(위 FOREST_TILES)이라
+   보드가 승인 그림과 픽셀 단위로 같아요. 판정은 예전과 똑같아요(이동 28칸·막힘 53칸).
+   아래 주석의 그림은 칸별 규칙이에요 — · 통행 / ■ 막힘 / ≈ 물(시선 통과).
+   row0 ■■■■■■■■■
+   row1 ■■■····■■
+   row2 ■■■····■■
+   row3 ■■■····■■
+   row4 ■■■····■■
+   row5 ■■■····≈■
+   row6 ■■■····■■
+   row7 ■■■····≈≈
+   row8 ■■■■■■■≈≈
+*/
 
 /* ---------------------------- 스테이지 데이터 ---------------------------- */
 var STAGES=[
- { /* 1단계 숲 공터 — 승인된 숲 그림을 개별 타일로 쪼개 칸마다 찍은 맵.
-      가운데(4~5열·2~6행)가 잔디 공터, 테두리 한 칸이 흙길 고리(모퉁이 D·E·R·V + 세로 x·y / 가로 8·c),
-      바깥 53칸은 숲·나무·바위·통나무·폭포·연못이에요. 이동 판정은 예전 맵과 똑같아요(이동 28칸·막힘 53칸). */
+ { /* 1단계 숲 공터 — 승인된 그림(hq-fullmap-aligned-art.png) 9×9 를 그대로 잘라
+      81칸 전부 '그 자리 조각'(FOREST_TILES)으로 얹은 맵. 브라우저에서 이어 붙이면 승인 그림과
+      픽셀 단위로 같아요. 코드는 U+AC00 + y*9 + x 순서라 (0,0)=가 … (8,8)=걐 이에요.
+      판정은 직전 맵과 똑같아요(이동 28칸·막힘 53칸, 그중 물 5칸). */
    name:"고양이 사이로", theme:{},
-   map:["YnYtztYNn",
-        "tYpD88Eln",
-        "NZbxfgyLn",
-        "ntpxfgylN",
-        "YoOxgfyLn",
-        "nOlxgfy"+"\u314d"+"Y",
-        "ZYmxggy"+"\u314c"+"O",
-        "NYmVccR"+"\u314a"+"w",
-        "tkkbp"+"lL"+"\u314e\u314e"],
+   map:["가각갂갃간갅갆갇갈",
+        "갉갊갋갌갍갎갏감갑",
+        "값갓갔강갖갗갘같갚",
+        "갛개객갞갟갠갡갢갣",
+        "갤갥갦갧갨갩갪갫갬",
+        "갭갮갯갰갱갲갳갴갵",
+        "갶갷갸갹갺갻갼갽갾",
+        "갿걀걁걂걃걄걅걆걇",
+        "걈걉걊걋걌걍걎걏걐"],
    start:[6,7], goalPos:[3,1], maxTurns:20,
    cats:[{type:"A",x:3,y:6,dir:0},{type:"A",x:6,y:2,dir:3}],
    pickups:[], hint:"" },
