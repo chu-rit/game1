@@ -123,7 +123,7 @@ var FOREST_TILES={
 
 /* ---------------------------- 스테이지 데이터 ---------------------------- */
 var STAGES=[
- { name:"고양이 사이로", theme:{S:"sofa","~":"rug",X:"counter"},
+ { name:"고양이 사이로", bg:"assets/stage1-forest-bg.webp", theme:{S:"sofa","~":"rug",X:"counter"},
    map:["#########","###~...##","###.~~.##","###.~~.##","###.~~.##","###.~~.##","###.~~.##","###....##","#########"],
    start:[6,7], goalPos:[3,1], maxTurns:20,
    cats:[{type:"A",x:3,y:6,dir:0},{type:"A",x:6,y:2,dir:3}],

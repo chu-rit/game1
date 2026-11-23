@@ -90,9 +90,19 @@ function buildGrid(){
 function renderBoardArt(){
   var st=editorState(draft), g=dctx;
   g.imageSmoothingEnabled=false; g.clearRect(0,0,CV,CV);
-  paintFloor(g,st); paintWalls(g,st); paintWallShadow(g,st); paintGrid(g,st);
-  paintFurniture(g,st); paintSpecial(g,st);
-  if(st.goal) paintGoalMat(g,st);
+  if(st.bg){                       /* 통배경 스테이지 — 게임과 같은 한 장 위에 매트·특수 타일만 */
+    if(!stageBgPaint(g,st)){
+      pf(g,0,0,CV,CV,"#16241a");
+      stageBgWhenReady(st.bg,function(){ renderBoardArt(); });
+    }
+    paintSpecial(g,st);
+    if(st.goal) paintGoalMat(g,st);
+  }
+  else{
+    paintFloor(g,st); paintWalls(g,st); paintWallShadow(g,st); paintGrid(g,st);
+    paintFurniture(g,st); paintSpecial(g,st);
+    if(st.goal) paintGoalMat(g,st);
+  }
   drawPickupEntity(g,st,0);
   var entities=st.cats.map(function(c){return {y:c.y,x:c.x,cat:c};});
   if(st.player) entities.push({y:st.player.y,x:st.player.x,player:true});
@@ -506,16 +516,18 @@ function loadBuiltin(i){
 
 /* ---------- 내보내기/가져오기 ---------- */
 function stageOut(){
-  var o={name:draft.name,theme:draft.theme,map:draft.map.slice(),
-    start:draft.start,goalPos:draft.goalPos,maxTurns:draft.maxTurns,
-    cats:draft.cats.map(function(c){
+  var o={name:draft.name,theme:draft.theme};
+  if(draft.bg) o.bg=draft.bg;                 /* 통배경 경로도 그대로 넘겨요 */
+  o.map=draft.map.slice();
+  o.start=draft.start; o.goalPos=draft.goalPos; o.maxTurns=draft.maxTurns;
+  o.cats=draft.cats.map(function(c){
       var n={type:c.type,x:c.x,y:c.y,dir:c.dir};
       if(c.type==="B") n.dirs=c.dirs.slice();
       if(c.type==="C") n.patrol=c.patrol.map(function(w){return w.slice();});
       return n;
-    }),
-    pickups:draft.pickups.map(function(p){ return {x:p.x,y:p.y,kind:p.kind}; }),
-    hint:draft.hint};
+    });
+  o.pickups=draft.pickups.map(function(p){ return {x:p.x,y:p.y,kind:p.kind}; });
+  o.hint=draft.hint;
   return o;
 }
 function doExport(){

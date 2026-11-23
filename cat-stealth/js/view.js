@@ -134,11 +134,62 @@ var GHOST={ id:"G", o:"#1b3247", body:"#4d86b8", lit:"#7fb4e0", dark:"#35618c", 
       belly:"#8fc0e6", paw:"#8fc0e6", inner:"#5f93c0", nose:"#5f93c0", eye:"#bfe4ff", eyeD:"#1b3247",
       blush:"#5f93c0", whisk:"#cfe8ff", tag:"#8fc0e6" };
 
+/* ================= 스테이지 통배경 (1단계 숲) =================
+   STAGES[i].bg 에 이미지 경로가 있으면 바닥·벽·가구·격자·비네트 대신 그 그림 한 장을
+   보드 전체에 깔고, EXIT 매트·특수 타일만 위에 얹어요. 고양이·플레이어·시야·기척·
+   이동 화살표는 draw() 가 평소처럼 그 위에 그려요. bg 가 없는 실내 스테이지는
+   예전 베이크 경로를 그대로 타요. */
+var STAGEBG={};
+function stageBgEntry(url){
+  var e=STAGEBG[url];
+  if(e) return e;
+  e={img:new Image(),ready:false,failed:false,cbs:[]};
+  function done(ok){
+    e.ready=ok; e.failed=!ok;
+    if(ok&&typeof G!=="undefined"&&G.st){        /* 본게임: 보드를 다시 굽고 한 프레임 그려요 */
+      bakeBoard(G.st);
+      if(typeof draw==="function"){ try{ draw(); }catch(_e){} }
+    }
+    var cbs=e.cbs; e.cbs=[];
+    for(var i=0;i<cbs.length;i++){ try{ cbs[i](ok); }catch(_e2){} }
+  }
+  e.img.onload=function(){ done(true); };
+  e.img.onerror=function(){ done(false); };
+  e.img.src=url;
+  STAGEBG[url]=e;
+  return e;
+}
+/* 통배경을 보드에 그려요 — 아직 안 왔으면 false (부르는 쪽이 대체 색을 깔아요) */
+function stageBgPaint(g,st){
+  if(!st||!st.bg) return false;
+  var e=stageBgEntry(st.bg);
+  if(!e.ready) return false;
+  g.imageSmoothingEnabled=true;      /* 고해상 일러스트를 보드 크기로 줄여 그려요 */
+  if("imageSmoothingQuality" in g) g.imageSmoothingQuality="high";
+  g.drawImage(e.img,0,0,CVW,CVH);
+  g.imageSmoothingEnabled=false;
+  return true;
+}
+/* 그림이 아직 안 왔을 때 다시 그릴 함수를 걸어 둬요 (bakeBoard 를 안 쓰는 화면용) */
+function stageBgWhenReady(url,cb){
+  var e=stageBgEntry(url);
+  if(e.ready||e.failed) cb(e.ready);
+  else e.cbs.push(cb);
+}
+
 /* ================= 배경 베이크 ================= */
 function bakeBoard(st){
   var g=board.getContext("2d");
   g.imageSmoothingEnabled=false;
   g.clearRect(0,0,CVW,CVH);
+  if(st.bg){                                  /* 통배경 스테이지 — 실내 타일 패스 대신 그림 한 장 */
+    cvEl.classList.toggle("forest",true);
+    if(!stageBgPaint(g,st)) pf(g,0,0,CVW,CVH,"#16241a");   /* 그림이 오기 전엔 숲색 한 장 */
+    paintSpecial(g,st);
+    paintGoalMat(g,st);
+    return;
+  }
+  cvEl.classList.toggle("forest",false);
   paintFloor(g,st);
   paintWalls(g,st);
   paintWallShadow(g,st);

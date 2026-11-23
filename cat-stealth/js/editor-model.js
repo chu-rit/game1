@@ -9,7 +9,7 @@ var ED_THEME_VALUES={counter:1,nightstand:1,sofa:1,table:1,bed:1,wardrobe:1,rug:
 var ED_THEME_OPTIONS={X:["counter","nightstand"],S:["sofa"],T:["table"],B:["bed"],W:["wardrobe"],"~":["rug"]};
 var ED_THEME_NAMES={counter:"부엌 카운터",nightstand:"협탁",sofa:"소파",table:"식탁",bed:"침대",wardrobe:"선반",rug:"러그"};
 var ED_DEFAULT_THEME=function(){ return {X:"counter",S:"sofa",T:"table",B:"bed",W:"wardrobe","~":"rug"}; };
-var ED_STAGE_KEYS={name:1,theme:1,map:1,start:1,goalPos:1,cats:1,pickups:1,maxTurns:1,hint:1};
+var ED_STAGE_KEYS={name:1,theme:1,bg:1,map:1,start:1,goalPos:1,cats:1,pickups:1,maxTurns:1,hint:1};
 var ED_CAT_KEYS={type:1,x:1,y:1,dir:1,dirs:1,patrol:1};
 var ED_PICKUP_KEYS={x:1,y:1,kind:1};
 
@@ -124,8 +124,15 @@ function editorNormalize(src){
   if(typeof name!=="string") throw edErr("name은 문자열이어야 해요");
   var hint=(src.hint==null?"":src.hint);
   if(typeof hint!=="string") throw edErr("hint는 문자열이어야 해요");
+  /* 통배경(1단계 숲 그림) — assets/ 안의 이미지 경로만 허용해요. 없으면 실내 타일로 그려요. */
+  var bg=null;
+  if(src.bg!=null){
+    if(typeof src.bg!=="string"||!/^assets\/[\w./-]+\.(png|webp|jpe?g)$/i.test(src.bg))
+      throw edErr("bg는 assets/ 안의 이미지 경로(.png/.webp/.jpg)여야 해요");
+    bg=src.bg;
+  }
 
-  return {name:name,theme:theme,map:map,start:start,goalPos:goal,
+  return {name:name,theme:theme,bg:bg,map:map,start:start,goalPos:goal,
           cats:cats,pickups:pickups,maxTurns:maxTurns,hint:hint};
 }
 
@@ -139,7 +146,7 @@ function editorParseImport(text){
 
 /* 오버레이용 런타임 상태 — beamTiles/senseHit/walkable 이 요구하는 최소 형태 */
 function editorState(stage) {
-  return {grid:stage.map.map(function(r){return r.split('');}),theme:stage.theme,
+  return {grid:stage.map.map(function(r){return r.split('');}),theme:stage.theme,bg:stage.bg,
     player:stage.start?{x:stage.start[0],y:stage.start[1]}:null,
     goal:stage.goalPos?{x:stage.goalPos[0],y:stage.goalPos[1]}:null,
     cats:stage.cats.map(makeCat),pickups:stage.pickups||[],fishes:[]};

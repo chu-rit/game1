@@ -36,7 +36,7 @@ function loadStage(idx){
   if(s.goalPos) goal={x:s.goalPos[0],y:s.goalPos[1]};
   var inv={small:0,big:0,catnip:0};
   var pickups=(s.pickups||[]).map(function(p){ return {x:p.x,y:p.y,kind:p.kind}; });
-  G.st={ idx:idx, grid:grid, theme:s.theme, name:s.name,
+  G.st={ idx:idx, grid:grid, theme:s.theme, name:s.name, bg:s.bg,   /* bg = 통배경 이미지 경로(1단계 숲) */
          player:player, goal:goal, inv:inv, pickups:pickups, fishes:[], turn:1,
          maxTurns:(s.maxTurns||20), stam:STAM_MAX,
          cats:s.cats.map(makeCat) };
