@@ -126,7 +126,7 @@ function editorNormalize(src){
       if(!p||typeof p!=="object"||Array.isArray(p)) throw edErr("먹이 "+(ki+1)+"이 객체가 아니에요");
       edCheckKeys(p,ED_PICKUP_KEYS,"먹이 "+(ki+1));
       if(!edInt(p.x)||!edInt(p.y)||p.x<0||p.y<0||p.x>=N||p.y>=N) throw edErr("먹이 "+(ki+1)+" 좌표가 올바르지 않아요");
-      if(typeof p.kind!=="string"||!edOwn(KIND,p.kind)) throw edErr("먹이 "+(ki+1)+" 종류가 올바르지 않아요(small/big/catnip)");
+      if(typeof p.kind!=="string"||!edOwn(KIND,p.kind)) throw edErr("먹이 "+(ki+1)+" 종류가 올바르지 않아요(small/big/catnip/choco)");
       pickups.push({x:p.x,y:p.y,kind:p.kind});
     }
   }

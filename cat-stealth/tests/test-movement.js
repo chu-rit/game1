@@ -170,4 +170,67 @@ ok("8) 판정이 실제 simStep 결과와 일치 + 픽업·원본 불변",()=>{
   assert.strictEqual(JSON.stringify(r2),"[false,true]");
 });
 
+ok("9) 🍫 초콜릿: 밟아 줍기 → 먹고 1턴 대기(고양이 1스텝) → 취소 스냅샷으로 수량·위치 원복",()=>{
+  /* 밟아 줍기 — 먹이 픽업과 같은 경로(pickups→inv), 이벤트도 pickup */
+  const picked=E(`(function(){
+    var st=mk([]); st.pickups=[{x:3,y:4,kind:"choco"}];
+    var ev=[]; simStep(st,{t:"move",x:3,y:4},ev);
+    return [st.inv.choco,st.pickups.length,ev.map(function(e){return e.k}).join(","),st.player.x,st.player.y];
+  })()`);
+  assert.strictEqual(picked[0],1,"inv.choco +1");
+  assert.strictEqual(picked[1],0,"바닥에서 사라짐");
+  assert.strictEqual(picked[2],"pickup","픽업 이벤트");
+  assert.strictEqual(picked[3]+","+picked[4],"3,4");
+
+  /* 먹기 = action.t "wait" + kind choco — 수량 1 차감, 조준 없음, 고양이는 한 스텝 순찰 */
+  const ate=E(`(function(){
+    var st=mk([{type:"C",x:1,y:1,dir:1,patrol:[[1,1],[7,1]]}]);
+    st.player.x=3; st.player.y=4; st.inv.choco=1;
+    var before=cloneState(st);
+    var ev=[]; simStep(st,{t:"wait",kind:"choco"},ev);
+    var out={inv:st.inv.choco,ev:ev.map(function(e){return e.k}).join(","),
+             cat:[st.cats[0].x,st.cats[0].y],player:[st.player.x,st.player.y],
+             beforeInv:before.inv.choco,beforeCat:[before.cats[0].x,before.cats[0].y],
+             catState:st.cats[0].state};
+    /* 취소(Undo)는 컨트롤러가 action 전에 cloneState 로 떠 둔 스냅샷으로 되돌려요 */
+    st=before;
+    out.undone=[st.inv.choco,st.cats[0].x,st.cats[0].y];
+    return out;
+  })()`);
+  assert.strictEqual(ate.inv,0,"사용 시 1 차감");
+  assert.strictEqual(ate.ev,"choco","choco 이벤트(rest 아님)");
+  assert.strictEqual(JSON.stringify(ate.cat),"[2,1]","고양이 순찰 1스텝 진행");
+  assert.strictEqual(JSON.stringify(ate.player),"[3,4]","사람은 제자리");
+  assert.strictEqual(ate.catState,"idle");
+  assert.strictEqual(JSON.stringify(ate.undone),"[1,1,1]","취소 시 수량·고양이 위치 원복");
+
+  /* 보유 0이면 아무 일도 없이 지구력만 회복하는 평범한 대기 (던지기·유인 없음) */
+  const none=E(`(function(){
+    var st=mk([],{stam:1}); st.inv.choco=0;
+    var ev=[]; simStep(st,{t:"wait",kind:"choco"},ev);
+    return [st.inv.choco,ev.map(function(e){return e.k}).join(","),st.stam,st.fishes.length];
+  })()`);
+  assert.strictEqual(JSON.stringify(none),"[0,\"rest\",3,0]","수량 0 → rest · 생선 투척 없음");
+
+  /* 추경 중에도 평범한 '대기' 한 턴과 똑같이 지구력이 완충되고 초콜릿만 줄어들어요 */
+  const stam=E(`(function(){
+    var st=mk([{type:"A",x:5,y:4,dir:3,state:"chase"}],{stam:1});
+    st.inv.choco=1;
+    var ev=[]; simStep(st,{t:"wait",kind:"choco"},ev);
+    return [st.inv.choco,st.stam,ev.map(function(e){return e.k}).join(",")];
+  })()`);
+  assert.strictEqual(stam[0],0,"먹은 만큼 1 차감");
+  assert.strictEqual(stam[1],3,"대기와 같은 지구력 완충");
+  assert.strictEqual(stam[2],"choco");
+
+  /* 고양이 먹이가 아님: 생선 목록(fishes)에 들어가지 않고, 바닥 초콜릿은 고양이를 유인하지 않아요 */
+  const notLure=E(`(function(){
+    var st=mk([{type:"A",x:5,y:4,dir:3}],{fishes:[]});
+    return [nearestFish(st,st.cats[0],true), KIND.choco.use, KIND.choco.lure];
+  })()`);
+  assert.strictEqual(notLure[0],null,"유인 대상 없음");
+  assert.strictEqual(notLure[1],"wait","use:wait 표시");
+  assert.strictEqual(notLure[2],0,"유인 사거리 0");
+});
+
 console.log(`\n${passed} tests passed`);

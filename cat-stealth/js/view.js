@@ -1722,6 +1722,7 @@ function draw(){
   if(!pDrawn) drawPlayerNow(st,now,G.playerDir);
   drawBushFront(ctx,st);
   drawCanopyFront(ctx,st);
+  drawBiteFx(ctx,now);              /* 🍫 초콜릿 한 입 부스러기 */
   drawExitPop(ctx,now);            /* '뽕' 이펙트는 나뭇잎 위에 얹어 보이게 */
 
   if(G.mode==="play"){
@@ -1736,6 +1737,28 @@ function draw(){
 function blit(){
   dctx.imageSmoothingEnabled=false;
   dctx.drawImage(low,0,0,cvEl.width,cvEl.height);
+}
+
+/* ---------- 🍫 초콜릿 한 입: 머리 위로 부스러기가 톡 터져 사라져요 ----------
+   수명·상태는 controller 가 G.bites 에 남기고 다 그린 항목은 여기서 지워요 (520ms). */
+var BITE_DIRS=[[-1,-1],[0,-1],[1,-1],[-1,1],[1,1],[0,1]];
+function drawBiteFx(g,now){
+  if(!G.bites||!G.bites.length) return;
+  for(var i=G.bites.length-1;i>=0;i--){
+    var b=G.bites[i], k=(now-b.t0)/520;
+    if(k>=1){ G.bites.splice(i,1); continue; }
+    var cx=Math.round(b.x*CELL+CELL/2), cy=Math.round(b.y*CELL+CELL-8-25)+4;
+    var a=1-k;
+    for(var j=0;j<BITE_DIRS.length;j++){
+      var d=BITE_DIRS[j], sp=2+(j%3)+k*11;
+      var px=Math.round(cx+d[0]*sp-1), py=Math.round(cy+d[1]*sp+6*k*k);
+      /* 진한 초콜릿 + 밝은 부스러기 테두리 — 흙바닥·잔디 어디서나 눈에 들어오게 */
+      pf(g,px+1,py+1,2,2,"rgba(48,26,10,"+(a*0.55).toFixed(3)+")");
+      pf(g,px,py,2,2,
+         (j%2?"rgba(246,206,140,":"rgba(138,86,42,")+a.toFixed(3)+")");
+      if(j%3===0) pf(g,px,py,1,1,"rgba(255,240,205,"+(a*0.9).toFixed(3)+")");
+    }
+  }
 }
 
 function drawPlayerNow(st,now,plDir){

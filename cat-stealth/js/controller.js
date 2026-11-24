@@ -90,7 +90,8 @@ function showItemTip(idx){
   $("tipQty").textContent="보유 "+n+"개";
   $("tipQty").style.display="";
   $("tipBody").innerHTML=rows+(info.tip?'<div class="tnote">'+info.tip+'</div>':"")+
-    (typeof FOOD_TIP==="string"?'<div class="tnote trule">'+FOOD_TIP+'</div>':"");
+    (info.rule?'<div class="tnote trule">'+info.rule+'</div>'
+              :(typeof FOOD_TIP==="string"?'<div class="tnote trule">'+FOOD_TIP+'</div>':""));
   $("itemTip").classList.remove("hidden");
   TIP.open=true; TIP.t0=performance.now();
   sBeepTip();
@@ -307,7 +308,8 @@ function beginTurn(action){
       G.gainPend=v.kind;
       sPickup();
       if(!itemSeenSet()[v.kind]){ markItemSeen(v.kind); firstPickupKind=v.kind; }
-      setWarn(KIND[v.kind].label+"을(를) 주웠어요! 아래 슬롯을 눌러 던지기 · 길게 누르면 설명","fish");
+      setWarn(KIND[v.kind].label+"을(를) 주웠어요! 아래 슬롯을 눌러 "+
+        ((KIND[v.kind]&&KIND[v.kind].use==="wait")?"먹기 · 길게 누르면 설명":"던지기 · 길게 누르면 설명"),"fish");
       clearWarnSoon(2000);
     }
     else if(v.k==="bite"){ sBite(); }
@@ -324,6 +326,14 @@ function beginTurn(action){
       clearWarnSoon(2200);
     }
     else if(v.k==="rest"){ setWarn("😮‍💨 제자리에서 숨을 골라요…","fish"); clearWarnSoon(1500); }
+    else if(v.k==="choco"){
+      sChoco();
+      /* 플레이어 위에서 부스러기가 톡 터지듯 (view.js drawBiteFx) — 먹은 자리는 이동 전 좌표 */
+      var eatPos=snap.st.player;
+      G.bites.push({x:eatPos.x,y:eatPos.y,t0:performance.now()});
+      setWarn("🍫 초콜릿을 먹고 한 턴을 보냈어요","fish");
+      clearWarnSoon(1600);
+    }
   }
 
   G.pending={next:next,ev:ev,t0:performance.now(),arc:arc};
@@ -551,7 +561,7 @@ function initInv(){
           clearWarnSoon(1900);
           return;
         }
-        toggleFishMode(s.kind);
+        useItem(s.kind);
       });
       el.addEventListener("contextmenu",function(e){
         e.preventDefault();
@@ -567,6 +577,19 @@ function initInv(){
   });
   $("tipCard").addEventListener("pointerdown",function(e){ e.stopPropagation(); });
   $("tipX").addEventListener("click",function(e){ e.stopPropagation(); hideItemTip(); });
+}
+/* 인벤토리 슬롯 사용 라우팅 — 생선·캣닢은 투척 조준 모드, 🍫 초콜릿은 조준 없이 바로 먹고 1턴 대기.
+   슬롯 짧게 누르기와 키보드 1~5 가 모두 이 함수를 거칩니다. */
+function useItem(kind){
+  if(G.mode!=="play"||G.pending) return;
+  if((G.st.inv[kind]||0)<=0){
+    setWarn(KIND[kind].label+"이(가) 아직 없어요 · 바닥의 아이템을 밟아서 주우세요","fish");
+    clearWarnSoon(2100);
+    return;
+  }
+  var kd=KIND[kind];
+  if(kd&&kd.use==="wait"){ beginTurn({t:"wait",kind:kind}); return; }
+  toggleFishMode(kind);
 }
 function toggleFishMode(kind){
   if(G.mode!=="play"||G.pending) return;
@@ -691,7 +714,7 @@ document.addEventListener("keydown",function(e){
   /* ---- 인벤토리 슬롯 선택 (1~5 = 지금 그 칸에 있는 아이템, 누를 때마다 조준 초기화) ---- */
   if(k>="1"&&k<="5"&&k.length===1){
     var si=parseInt(k,10)-1, sslot=INV[si];
-    if(sslot&&sslot.kind){ toggleFishMode(sslot.kind); }
+    if(sslot&&sslot.kind){ useItem(sslot.kind); }
     else{ setWarn("빈 슬롯이에요 · 바닥의 먹이를 밟으면 이 자리에 들어와요","fish"); clearWarnSoon(1900); }
     return;
   }

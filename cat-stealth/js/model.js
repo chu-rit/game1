@@ -3,7 +3,7 @@
 var G={ mode:"title", stageIdx:0, st:null, fishMode:false, fishKind:null,
         fishAim:null,
         undoStack:[], moveTiles:[], dangerTiles:[], pending:null, playerDir:2,
-        panelTimer:null, warnT:0, t:0, fx:[],
+        panelTimer:null, warnT:0, t:0, fx:[], bites:[],
         tT0:0, clearMs:null };   /* tT0 = 이 방을 시작한 시각(performance.now), clearMs = 출구 도착까지 걸린 시간 */
 
 function makeCat(def,id){
@@ -39,7 +39,7 @@ function loadStage(idx){
   }
   if(s.start) player={x:s.start[0],y:s.start[1]};
   if(s.goalPos) goal={x:s.goalPos[0],y:s.goalPos[1]};
-  var inv={small:0,big:0,catnip:0};
+  var inv={small:0,big:0,catnip:0,choco:0};
   var pickups=(s.pickups||[]).map(function(p){ return {x:p.x,y:p.y,kind:p.kind}; });
   G.st={ idx:idx, grid:grid, theme:s.theme, name:s.name,
          player:player, goal:goal, inv:inv, pickups:pickups, fishes:[], turn:1,
@@ -47,7 +47,7 @@ function loadStage(idx){
          cats:s.cats.map(makeCat) };
   G.st.player.rx=player.x; G.st.player.ry=player.y;
   G.fishMode=false; G.fishKind=null; G.fishAim=null; G.pending=null; G.undoStack=[]; G.playerDir=2;
-  G.moveTiles=[]; G.dangerTiles=[]; G.fx=[]; G.bushShake=null;
+  G.moveTiles=[]; G.dangerTiles=[]; G.fx=[]; G.bites=[]; G.bushShake=null;
   if(G.panelTimer){ clearTimeout(G.panelTimer); G.panelTimer=null; }
   bakeBoard(G.st);
   updateHUD(); computeDanger();
@@ -519,9 +519,18 @@ function simStep(st,action,events){
       }
     }
     else if(action.t==="wait"){
-      /* 지침: 제자리에서 한 턴 숨을 고르고 지구력 완충 (고양이는 그대로 움직여요) */
-      st.stam=STAM_MAX;
-      events.push({k:"rest"});
+      /* 지침: 제자리에서 한 턴 숨을 고르고 지구력 완충 (고양이는 그대로 움직여요).
+         🍫 초콜릿(action.kind="choco"): 하나를 먹고 같은 'wait' 턴을 보내요 —
+         숨 고르기와 똑같이 지구력도 완충되고, 초콜릿만 1개 줄어요.
+         보유 수량이 0이면 아무 일도 없이 평범한 대기(컨트롤러가 막지만 이중 확인). */
+      if(action.kind&&KIND[action.kind]&&KIND[action.kind].use==="wait"&&(st.inv[action.kind]||0)>0){
+        st.inv[action.kind]--;
+        st.stam=STAM_MAX;
+        events.push({k:"choco",kind:action.kind});
+      }else{
+        st.stam=STAM_MAX;
+        events.push({k:"rest"});
+      }
     }
   }
   var hidCats=[];

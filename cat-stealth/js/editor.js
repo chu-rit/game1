@@ -36,7 +36,7 @@ TERRAIN_GROUPS.forEach(function(g){
 var ENTITY_TOOLS=[
   {id:"start",n:"시작"},{id:"goal",n:"골"},
   {id:"catA",n:"고정 감시"},{id:"catB",n:"교대 감시"},{id:"catC",n:"순찰"},
-  {id:"small",n:"작은 생선"},{id:"big",n:"큰 통생선"},{id:"catnip",n:"캣닢"},
+  {id:"small",n:"작은 생선"},{id:"big",n:"큰 통생선"},{id:"catnip",n:"캣닢"},{id:"choco",n:"초콜릿"},
   {id:"erase",g:"✕",n:"개체 지우기"},{id:"select",g:"☝",n:"선택"}
 ];
 var CAT_ROLE={A:"고정 감시",B:"교대 감시",C:"순찰"};
@@ -214,7 +214,7 @@ function paintToolIcon(cv,terrainCh,entityId){
     drawCatAt(g,0,0,COATS[type],2,type,0,{pose:"idle",noEmote:true,noShadow:true});
     g.restore();
   }
-  else if(entityId==="small"||entityId==="big"||entityId==="catnip"){
+  else if(entityId==="small"||entityId==="big"||entityId==="catnip"||entityId==="choco"){
     drawFishKind(g,24,25,entityId,0,{scale:0.7});
   }
 }

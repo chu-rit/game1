@@ -210,4 +210,25 @@ ok("내보내기 JSON은 map 행이 한 줄 배열",()=>{
   assert.ok(!/\[\s*\n\s*100,\s*\n/.test(json),"원소 펼침 없음");
 });
 
+ok("🍫 초콜릿 픽업: 에디터 팔레트·정규화·검증·내보내기 왕복",()=>{
+  const r=E(`(function(){
+    var d=editorNewDraft(); d.start=[1,7]; d.goalPos=[6,1];
+    d.pickups=[{x:3,y:7,kind:"choco"},{x:2,y:7,kind:"small"}];
+    var n=editorNormalize(JSON.parse(JSON.stringify(d)));
+    var v=editorValidate(n);
+    var back=editorParseImport(editorExport(n));
+    return {kind:n.pickups[0].kind, errors:v.errors.join("|"),
+            round:JSON.stringify(back.pickups), label:KIND.choco.label,
+            use:KIND.choco.use, order:FISH_ORDER.indexOf("choco")};
+  })()`);
+  assert.strictEqual(r.kind,"choco","정규화 후 종류 보존");
+  assert.strictEqual(r.errors,"","검증 오류 없음");
+  assert.strictEqual(r.round,"[{\"x\":3,\"y\":7,\"kind\":\"choco\"},{\"x\":2,\"y\":7,\"kind\":\"small\"}]","내보내기·재임포트 왕복");
+  assert.strictEqual(r.label,"초콜릿");
+  assert.strictEqual(r.use,"wait");
+  assert.strictEqual(r.order,3,"FISH_ORDER 끝에 추가(기존 3종 순서 불변)");
+  /* 생선 3종 순서는 그대로 */
+  assert.strictEqual(E(`FISH_ORDER.slice(0,3).join(",")`),"small,big,catnip");
+});
+
 console.log(`\n${passed} tests passed`);

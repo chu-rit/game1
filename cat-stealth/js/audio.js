@@ -29,7 +29,9 @@ function sBite(){ beep(300,0.09,"triangle",0.06,-80); }
 function sAte(){ beep(520,0.09,"sine",0.05,160); }
 function sChain(){ beep(600,0.08,"square",0.05,220); setTimeout(function(){ beep(820,0.10,"square",0.05,160); },90); }
 function sHide(){ beep(240,0.09,"triangle",0.05,130); setTimeout(function(){ beep(180,0.12,"triangle",0.04,-40); },70); }
+/* 🍫 초콜릿 한 입 — 짧게 '냠·바식' (높은 톡 → 낮은 톡 → 바스러지는 작은 톤) */
+function sChoco(){ beep(380,0.05,"square",0.045,-90); setTimeout(function(){ beep(250,0.06,"square",0.04,-70); },55); setTimeout(function(){ beep(310,0.04,"triangle",0.03,140); },115); }
 /* 출구 연출 — 톡 튀어 오르는 소리와 구멍에 빠지는 '뽕'(피치 업 팝) */
 function sExitHop(){ beep(320,0.10,"triangle",0.05,280); }
 function sExitPop(){ beep(420,0.13,"sine",0.06,620); setTimeout(function(){ beep(880,0.07,"square",0.04,180); },55); }
-
+
