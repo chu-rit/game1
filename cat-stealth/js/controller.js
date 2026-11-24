@@ -357,6 +357,9 @@ function finishTurn(){
   }
   G.st.turn++;
   if(goal){
+    /* 클리어 타임: 출구로 들어선 순간(이번 턴을 시작한 시각)에 멈춰요.
+       턴 애니메이션과 아래 출구 점프 0.7초 연출은 시간에 들어가지 않아요. */
+    G.clearMs=Math.max(0, p.t0-G.tT0);
     /* 바로 클리어 창을 띄우지 않고, 점프 → 구멍 속으로 '뽕' 연출을 먼저 재생해요.
        (연출이 끝난 뒤 startExitAnim 이 클리어/완탈출 창을 띄웁니다) */
     updateHUD();
@@ -407,7 +410,7 @@ function startExitAnim(finalMode){
     if(!G.exit||G.mode!=="exit") return;
     G.mode=finalMode;
     sGoal();
-    showPanel(finalMode==="win"?winPanel:clearPanel);
+    showPanel(finalMode==="win"?winPanel:clearPanel, finalMode);
     updateHUD();
   },EXIT_PANEL_MS));
   updateHUD();
@@ -717,8 +720,20 @@ document.addEventListener("keydown",function(e){
 });
 
 /* ================= 패널 ================= */
-function showPanel(fn){ hideItemTip(); var ov=$("overlay"), p=$("panel"); p.innerHTML=""; fn(p); ov.classList.remove("hidden"); }
-function hidePanel(){ $("overlay").classList.add("hidden"); }
+function showPanel(fn,kind){
+  hideItemTip();
+  var ov=$("overlay"), p=$("panel");
+  p.innerHTML=""; fn(p);
+  var cw=(kind==="clear"||kind==="win")&&!EDITOR_PLAYTEST;
+  ov.classList.toggle("cw",cw);
+  ov.classList.remove("hidden");
+  if(cw) startClearFx(kind);          /* 배경 암전 + 도트 색종이 (js/clearwin.js) */
+}
+function hidePanel(){
+  var ov=$("overlay");
+  ov.classList.add("hidden"); ov.classList.remove("cw");
+  if(typeof stopClearFx==="function") stopClearFx();
+}
 /* 패널 버튼 동작 — 터치/클릭과 키보드(Enter·Space·u·z·r)가 같은 함수를 씁니다 */
 function startGame(){ cancelExitAnim(); hidePanel(); G.mode="play"; G.stageIdx=0; loadStage(0); setWarn(""); beep(600,0.1,"triangle",0.05,200); }
 function nextStage(){ if(G.stageIdx>=STAGES.length-1) return; cancelExitAnim(); hidePanel(); G.stageIdx++; G.mode="play"; loadStage(G.stageIdx); setWarn(""); }
@@ -746,18 +761,14 @@ function titlePanel(p){
   paintTitleArt();
   $("pStart").addEventListener("click",startGame);
 }
-function clearPanel(p){
-  p.innerHTML='<div class="big">🎉</div><h2>탈출 성공!</h2><p>'+(G.stageIdx+1)+'번째 방을 무사히 빠져나왔어요.<br>다음 방에는 더 예민한 고양이가 있어요…</p><button id="pNext">다음 방으로 →<span class="kc">Enter</span></button>';
-  $("pNext").addEventListener("click",nextStage);
-}
+function clearPanel(p){ buildClearPanel(p,"clear"); }   /* 도트 나무 액자 클리어 창 — js/clearwin.js */
 function winPanel(p){
   if(EDITOR_PLAYTEST){
     p.innerHTML='<div class="big">🎉</div><h2>테스트 클리어!</h2><p>만든 스테이지를 탈출했어요.</p><button id="pAgain">다시 테스트 <span class="kc">Enter</span></button><button id="pEdit">편집으로 돌아가기</button>';
     $('pAgain').addEventListener('click',restartFromStart);
     $('pEdit').addEventListener('click',playtestReturn);return;
   }
-  p.innerHTML='<div class="big">🏆</div><h2>완탈출!</h2><p>10개의 방을 모두 통과했어요.<br>당신은 최고의 잠입가… 고양이는 아직 모릅니다.</p><button id="pAgain">처음부터 다시 🐾<span class="kc">Enter</span></button>';
-  $("pAgain").addEventListener("click",restartFromStart);
+  buildClearPanel(p,"win");   /* 마지막 방도 같은 톤 — 왕관 메달 */
 }
 
 /* ================= 리사이즈 ================= */

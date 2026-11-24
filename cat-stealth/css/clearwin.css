@@ -1,0 +1,152 @@
+/* ================= 클리어 · 완탈출 창 (도트 나무 액자) =================
+   구조: #overlay.cw > canvas#cfx(도트 색종이) + .panel > .cw-card(액자) > 메달·글자·버튼
+   · 액자 = assets/clear-frame.png (170×216 도트) 를 340×432 로 2배 표시 (pixelated)
+   · 안쪽 글자 영역 = 액자 여백 8 + 밴드 10 = 가장자리에서 36px
+   · 글자는 Galmuri11 Bold (start.css 의 @font-face 공유), 픽셀이 떨어지는 12의 배수 크기만 사용 */
+
+#overlay.cw{
+  background:
+    radial-gradient(72% 48% at 50% 40%, rgba(12,26,17,.62) 0%, rgba(5,10,7,.90) 68%, rgba(3,7,5,.94) 100%);
+  -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px);
+  animation:cwFade .20s ease-out both;
+}
+@keyframes cwFade{from{opacity:0}to{opacity:1}}
+#cfx{position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:0; display:none;}
+#overlay.cw #cfx{display:block;}
+/* 패널 껍데기는 비우고 액자 하나만 */
+#overlay.cw .panel{
+  position:relative; z-index:1; width:auto; max-width:none; padding:0;
+  background:none; border-radius:0; box-shadow:none; text-align:center; overflow:visible;
+}
+
+/* ---- 액자 ---- */
+.cw-card{
+  position:relative; width:340px; height:432px;
+  padding:36px 36px 36px;
+  display:flex; flex-direction:column; align-items:center;
+  background:url("../assets/clear-frame.png") center / 100% 100% no-repeat;
+  image-rendering:pixelated; image-rendering:crisp-edges;
+  font-family:"Galmuri11Bold", "Apple SD Gothic Neo", "Pretendard", sans-serif;
+  font-synthesis:none; -webkit-font-smoothing:none;
+  /* 위에서 살짝 내려와 제자리에 쓱 — 오버슈트 없이 */
+  transform-origin:50% 24%;
+  animation:cwCardIn .5s cubic-bezier(.18,.9,.28,1) both;
+}
+@keyframes cwCardIn{
+  0%{opacity:0; transform:translateY(-30px) scale(.955);}
+  45%{opacity:1;}
+  100%{opacity:1; transform:none;}
+}
+
+/* ---- 메달 (액자 위쪽 테두리에 걸친 형태) ---- */
+.cw-badge{
+  position:absolute; left:50%; top:-44px; width:88px; height:88px;
+  transform:translateX(-50%);
+  image-rendering:pixelated; image-rendering:crisp-edges; -webkit-user-drag:none;
+  filter:drop-shadow(0 6px 8px rgba(0,0,0,.5));
+  animation:cwBadgeIn .5s cubic-bezier(.2,.9,.3,1) .13s both;
+}
+@keyframes cwBadgeIn{
+  0%{opacity:0; transform:translateX(-50%) translateY(12px) scale(.62);}
+  100%{opacity:1; transform:translateX(-50%) translateY(0) scale(1);}
+}
+
+/* ---- 글자 ---- */
+.cw-kicker{
+  margin-top:28px; font-size:12px; line-height:1; letter-spacing:2px;
+  color:#a8c469; text-shadow:0 2px 0 rgba(0,0,0,.55);
+  animation:cwRise .38s ease-out .06s both;
+}
+.cw-title{
+  margin-top:12px; font-size:36px; line-height:1; letter-spacing:1px; color:#ffeec4;
+  text-shadow:
+    2px 0 0 #2a1808, -2px 0 0 #2a1808, 0 2px 0 #2a1808, 0 -2px 0 #2a1808,
+    2px 2px 0 #2a1808, -2px 2px 0 #2a1808, 2px -2px 0 #2a1808, -2px -2px 0 #2a1808,
+    0 6px 0 rgba(12,6,2,.45);
+  animation:cwRise .42s ease-out .11s both;
+}
+.cw-name{
+  margin-top:8px; font-size:12px; line-height:1; letter-spacing:1px; color:#cbb894;
+  text-shadow:0 2px 0 rgba(0,0,0,.5);
+  animation:cwRise .42s ease-out .16s both;
+}
+@keyframes cwRise{
+  0%{opacity:0; transform:translateY(6px);}
+  100%{opacity:1; transform:none;}
+}
+
+/* ---- 스테이지 · 턴 수 ---- */
+.cw-stats{
+  margin-top:16px; display:flex; gap:10px; width:236px;
+  animation:cwRise .42s ease-out .22s both;
+}
+.cw-cell{
+  flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;
+  padding:7px 4px 6px;
+  background:rgba(70,46,22,.30);
+  box-shadow:inset 0 0 0 2px rgba(58,33,8,.85), inset 0 2px 0 rgba(188,130,66,.16);
+}
+.cw-k{font-size:12px; line-height:1; letter-spacing:1px; color:#96a862; text-shadow:0 2px 0 rgba(0,0,0,.5);}
+.cw-v{
+  font-size:24px; line-height:1; color:#ffeec4; letter-spacing:1px;
+  text-shadow:0 2px 0 #2a1808, 0 -2px 0 #2a1808, 2px 0 0 #2a1808, -2px 0 0 #2a1808;
+}
+
+/* ---- 클리어 타임 (두 칸 통계 아래 한 줄) ---- */
+.cw-time{
+  margin-top:8px; width:236px; height:44px; flex:none;
+  display:flex; align-items:center; justify-content:space-between; padding:0 14px;
+  background:rgba(70,46,22,.30);
+  box-shadow:inset 0 0 0 2px rgba(58,33,8,.85), inset 0 2px 0 rgba(188,130,66,.16);
+  animation:cwRise .42s ease-out .26s both;
+}
+.cw-tv{
+  font-size:24px; line-height:1; letter-spacing:1px; color:#ffd24c;
+  text-shadow:0 2px 0 #2a1808, 0 -2px 0 #2a1808, 2px 0 0 #2a1808, -2px 0 0 #2a1808;
+}
+
+/* ---- 한 줄 안내 ---- */
+.cw-line{
+  margin-top:12px; width:236px; font-size:12px; line-height:1.55; color:#b9aa8e;
+  word-break:keep-all; text-shadow:0 2px 0 rgba(0,0,0,.45);
+  animation:cwRise .42s ease-out .28s both;
+}
+
+/* ---- 버튼: 스타트 화면과 같은 도트 나무판때기 ---- */
+#overlay.cw .cw-btn{
+  position:relative; margin-top:12px; width:220px; height:60px; flex:none;
+  border-radius:0; box-shadow:none; -webkit-appearance:none; appearance:none;
+  display:flex; align-items:center; justify-content:center; padding:0 0 4px 2px; border:0; cursor:pointer;
+  font-family:"Galmuri11Bold", "Apple SD Gothic Neo", sans-serif;
+  font-synthesis:none; font-size:24px; font-weight:400; letter-spacing:1px; line-height:1;
+  color:#ffeec4;
+  text-shadow:
+    2px 0 0 #2a1808, -2px 0 0 #2a1808, 0 2px 0 #2a1808, 0 -2px 0 #2a1808,
+    2px 2px 0 #2a1808, -2px 2px 0 #2a1808, 2px -2px 0 #2a1808, -2px -2px 0 #2a1808,
+    0 5px 0 rgba(20,10,2,.5);
+  background-color:transparent;
+  background-image:url("../assets/start-btn-wood.png");
+  background-size:100% 100%; background-repeat:no-repeat;
+  image-rendering:pixelated; image-rendering:crisp-edges;
+  filter:drop-shadow(0 6px 7px rgba(4,14,9,.42));
+  transition:transform .1s ease-out, filter .1s ease-out, color .1s ease-out;
+  animation:cwRise .42s ease-out .34s both;
+}
+#overlay.cw .cw-btn:active, #overlay.cw .cw-btn.pressed{
+  transform:translateY(2px);
+  filter:drop-shadow(0 2px 4px rgba(4,14,9,.42)) brightness(.93);
+  color:#ffd24c;
+}
+#overlay.cw .cw-btn:focus-visible{outline:2px solid #ffd24c; outline-offset:3px;}
+/* [Enter] 키캡 — 데스크톱(마우스·키보드)에서만 */
+.cw-kc{display:none;}
+@media (hover:hover) and (pointer:fine){
+  .cw-kc{
+    display:inline-flex; align-items:center; justify-content:center; margin-left:8px;
+    min-width:40px; height:20px; padding:0 6px;
+    font-size:12px; font-weight:400; letter-spacing:1px; color:#5b4218;
+    background:linear-gradient(180deg,#fff8e2,#e9d3a0);
+    box-shadow:inset 0 0 0 1.5px #8a6a30, inset 0 0 0 3px rgba(255,255,255,.55);
+    text-shadow:none;
+  }
+}
