@@ -171,4 +171,43 @@ ok("W 골 위치 오류 + 인간 연결에서 W는 막힘",()=>{
   assert.ok(v.errors.some(e=>e.indexOf("골 지점")>=0),"골");
 });
 
+ok("숲 타일 81개 코드 ↔ 문자 ↔ spr 좌표 1:1 대응",()=>{
+  const r=E(`(function(){var bad=[];for(var c=100;c<=180;c++){
+    var ch=tileCodeToCh(c);
+    var x=(c-100)%9, y=Math.floor((c-100)/9);
+    if(!ch||!FOREST_TILES[ch]||FOREST_TILES[ch].spr!=="f_"+x+"_"+y) bad.push(c);
+    if(tileChToCode(ch)!==c) bad.push(-c);
+  }return bad;})()`);
+  assert.strictEqual(JSON.stringify(r),"[]");
+});
+ok("숫자 배열 맵 임포트 → 내보내기 → 재임포트 왕복 동일",()=>{
+  const rows=[];for(let y=0;y<9;y++){const r=[];for(let x=0;x<9;x++)r.push(100+y*9+x);rows.push(r);}
+  const obj={name:"왕복",theme:{},map:rows,start:[1,7],goalPos:[7,1],cats:[],pickups:[],maxTurns:20,hint:""};
+  const d=E(`editorParseImport(${JSON.stringify(JSON.stringify(obj))})`);
+  const d2=E(`editorParseImport(editorExport(${JSON.stringify(d)}))`);
+  assert.strictEqual(JSON.stringify(d2),JSON.stringify(d));
+});
+ok("배열 행의 잘못된 코드(99·300·\"Q\")는 거부",()=>{
+  const mk=c=>{const rows=[];for(let y=0;y<9;y++){const r=[];for(let x=0;x<9;x++)r.push(100+y*9+x);rows.push(r);}rows[4][4]=c;return JSON.stringify({map:rows});};
+  for(const c of [99,300,"Q"]){
+    assert.throws(()=>E(`editorParseImport(${JSON.stringify(mk(c))})`),null,"code "+c);
+  }
+});
+ok("배열 행 안의 레거시 한 글자(\"^\")는 허용",()=>{
+  const d=E(`(function(){var rows=[];for(var y=0;y<9;y++){var r=[];for(var x=0;x<9;x++)r.push(100+y*9+x);rows.push(r);}
+    rows[7][3]="^"; return editorParseImport(JSON.stringify({map:rows,start:[1,7],goalPos:[7,1]}));})()`);
+  assert.strictEqual(d.map[7].charAt(3),"^");
+});
+ok("1단계 맵은 정규화 후 mapRowToCodes로 원본 2xx 코드 왕복",()=>{
+  const rows=E(`(function(){var st=editorNormalize(JSON.parse(JSON.stringify(STAGES[0])));
+    return {rows:st.map.map(mapRowToCodes), src:STAGES[0].map};})()`);
+  assert.strictEqual(rows.rows.length,9);
+  for(let y=0;y<9;y++)for(let x=0;x<9;x++)assert.strictEqual(rows.rows[y][x],rows.src[y][x],`y${y}x${x}`);
+});
+ok("내보내기 JSON은 map 행이 한 줄 배열",()=>{
+  const json=E(`editorExport({name:"t",theme:{},map:[[100,101,"^"]],start:null,goalPos:null,cats:[],pickups:[],maxTurns:1,hint:""})`);
+  assert.ok(json.indexOf("[100,101,\"^\"]")>=0,"행 한 줄");
+  assert.ok(!/\[\s*\n\s*100,\s*\n/.test(json),"원소 펼침 없음");
+});
+
 console.log(`\n${passed} tests passed`);

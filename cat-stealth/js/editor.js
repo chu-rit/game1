@@ -6,27 +6,42 @@
 (function(){
 var $=function(id){ return document.getElementById(id); };
 
-var TERRAIN_TOOLS=[
-  {ch:".",n:"바닥"},{ch:"#",n:"벽"},{ch:"~",n:"러그"},
-  {ch:"X",n:"카운터"},{ch:"S",n:"소파"},{ch:"T",n:"식탁"},{ch:"B",n:"침대"},{ch:"W",n:"선반"},
-  {ch:"^",n:"발판"},{ch:"H",n:"구멍"},{ch:"U",n:"수풀"}
+var TILE_KO={".":"바닥","#":"벽","~":"러그","X":"카운터","S":"소파","T":"식탁","B":"침대","W":"선반","^":"발판","H":"구멍","U":"수풀"};
+for(var _fk in FOREST_TILES) TILE_KO[_fk]=FOREST_TILES[_fk].name;
+/* 지형 도구를 규칙별 그룹으로 — 기본 / 바닥·장식 / 물 / 장애물.
+   숲 타일은 FOREST_TILES.rule 로 자동 분류, 그룹 안은 이름순 */
+/* 실내(.#~XSTBW)·특수(^HU) 타일은 도구에서 숨김 — 기존 맵에 있으면 그대로 그려지고 판정도 같아요 */
+/* 레이어 도구 — 바닥(지형)과 구조물을 따로 칠해요.
+   바닥 칠하기는 구조물을, 구조물 칠하기는 바닥을 그대로 둬요 */
+var GROUND_TOOLS=["grass","dirt","floor","water"];
+var FEAT_TOOLS=LAYER_FEAT.slice(1);   /* null 제외 14종 */
+/* 원본 시트에서 자른 '그림 타일' — 규칙별 그룹, 한 장짜리 타일이라 칸이 통째로 바뀌어요 */
+var TERRAIN_GROUPS=[
+  {n:"그림 · 바닥·장식",  tools:[]},
+  {n:"그림 · 물 (못 지나감·시선 통과)", tools:[]},
+  {n:"그림 · 장애물 (이동·시선 차단)",  tools:[]}
 ];
-/* 숲 타일 — 이름·규칙은 FOREST_TILES(data.js) 한 곳에서 관리 */
-for(var _ft in FOREST_TILES) TERRAIN_TOOLS.push({ch:_ft,n:FOREST_TILES[_ft].name});
+for(var _ft in FOREST_TILES){
+  var _d=FOREST_TILES[_ft];
+  if(!_d.spr) continue;              /* 2레이어 타일은 레이어 도구로 칠해요 */
+  var _r=_d.rule;
+  TERRAIN_GROUPS[_r==="decor"?0:_r==="water"?1:2].tools.push(_ft);
+}
+TERRAIN_GROUPS.forEach(function(g){
+  g.tools.sort(function(a,b){ return tileChToCode(a)-tileChToCode(b); });
+});
 var ENTITY_TOOLS=[
   {id:"start",n:"시작"},{id:"goal",n:"골"},
   {id:"catA",n:"고정 감시"},{id:"catB",n:"교대 감시"},{id:"catC",n:"순찰"},
   {id:"small",n:"작은 생선"},{id:"big",n:"큰 통생선"},{id:"catnip",n:"캣닢"},
   {id:"erase",g:"✕",n:"개체 지우기"},{id:"select",g:"☝",n:"선택"}
 ];
-var TILE_KO={".":"바닥","#":"벽","~":"러그","X":"카운터","S":"소파","T":"식탁","B":"침대","W":"선반","^":"발판","H":"구멍","U":"수풀"};
-for(var _fk in FOREST_TILES) TILE_KO[_fk]=FOREST_TILES[_fk].name;
 var CAT_ROLE={A:"고정 감시",B:"교대 감시",C:"순찰"};
 var DIR_GLYPH=["↑","→","↓","←"], DIR_NAME=["위","오른쪽","아래","왼쪽"];
 var TERRAIN_CLASS={".":"t-dot","#":"t-wall","~":"t-rug","X":"t-X","S":"t-S","T":"t-T","B":"t-B","W":"t-W","^":"t-care","H":"t-H","U":"t-U"};
 var SAVE_KEY="catStealthEditorDraft";
 
-var draft=null, tool={kind:"terrain",ch:"."}, sel=null, patrolMode=false;
+var draft=null, tool={kind:"ground",t:"grass"}, sel=null, patrolMode=false;
 var undoStack=[], redoStack=[], dirty=false, painting=false, paintSnap=null;
 
 /* ---------- 상태/유틸 ---------- */
@@ -71,6 +86,12 @@ function buildGrid(){
   }
   g.addEventListener("pointerdown",onCellDown);
   g.addEventListener("pointermove",onCellMove);
+  /* 세트 도구: 칸 위를 지날 때 찍힐 범위를 미리 보여 줘요 */
+  g.addEventListener("pointerover",function(e){
+    var cell=e.target.closest?e.target.closest(".cell"):null;
+    if(cell) setGhostCells(+cell.dataset.x,+cell.dataset.y);
+  });
+  g.addEventListener("pointerleave",clearSetGhost);
   window.addEventListener("pointerup",onPointerUp);
   window.addEventListener("pointercancel",onPointerUp);
   /* 키보드 활성화(Enter/Space) — detail 0 클릭만, 포인터 클릭과 이중 실행 방지 */
@@ -80,18 +101,23 @@ function buildGrid(){
     if(patrolMode&&sel&&sel.kind==="cat"&&draft.cats[sel.i]&&draft.cats[sel.i].type==="C"){
       addPatrolPoint(c.x,c.y); return;
     }
-    if(tool.kind==="terrain"){ pushUndo(); paintTerrain(c.x,c.y); markDirty(); renderAll(); }
+    if(tool.kind==="terrain"||tool.kind==="ground"||tool.kind==="feat"){ pushUndo(); paintTerrain(c.x,c.y); markDirty(); renderAll(); }
+    else if(tool.kind==="set"){ pushUndo(); paintSet(c.x,c.y); markDirty(); renderAll(); }
+    else if(tool.kind==="refpaste"){ pushUndo(); paintRefPaste(c.x,c.y); markDirty(); renderAll(); }
     else applyEntity(c.x,c.y);
   });
   g.addEventListener("contextmenu",function(e){ e.preventDefault(); });
 }
 
 /* 실제 게임 렌더러로 보드를 그려요 (low/board 프리베이크 없이 표시 컨텍스트에 직접) */
-function renderBoardArt(){
-  var st=editorState(draft), g=dctx;
+function renderBoardArt(){ drawBoardArt(draft,dctx); }
+function drawBoardArt(d,g){
+  var st=editorState(d);
   g.imageSmoothingEnabled=false; g.clearRect(0,0,CV,CV);
   paintFloor(g,st); paintWalls(g,st); paintWallShadow(g,st); paintGrid(g,st);
   paintFurniture(g,st); paintSpecial(g,st);
+  if(stageHasForest(st)) blendForestSeams(g,st);
+  paintTerrainEdges(g,st); paintFeatures(g,st);
   if(st.goal) paintGoalMat(g,st);
   drawPickupEntity(g,st,0);
   var entities=st.cats.map(function(c){return {y:c.y,x:c.x,cat:c};});
@@ -105,6 +131,7 @@ function renderBoardArt(){
     }
   });
   if(st.player){st.player.rx=st.player.x;st.player.ry=st.player.y;drawBushFront(g,st);}
+  drawCanopyFront(g,st);
 }
 
 function renderGrid(){
@@ -156,9 +183,16 @@ function paintToolIcon(cv,terrainCh,entityId){
   var st=editorState(d);
   if(terrainCh!=null){
     if(terrainCh!==".") st.grid[4][4]=terrainCh;
+    /* 2레이어 타일 아이콘: 주변을 같은 지형으로 채워 전이 가장자리까지 보여줘요 */
+    var nft=FOREST_TILES[terrainCh];
+    if(nft&&nft.terrain){
+      var bc=terrainBaseChar(nft.terrain);
+      if(bc) for(var by=0;by<N;by++) st.grid[by]=st.grid[by].map(function(){return bc;});
+    }
     g.save();
     g.translate(-156,-156);   /* (4,4) 칸(160,160,40,40) → 썸네일 (4,4)에 4px 여백 */
     paintFloor(g,st); paintWalls(g,st); paintFurniture(g,st); paintSpecial(g,st);
+    paintTerrainEdges(g,st); paintFeatures(g,st,true);
     g.restore();
     return;
   }
@@ -182,18 +216,82 @@ function paintToolIcon(cv,terrainCh,entityId){
   }
 }
 function repaintToolIcons(){
-  toolIcons.forEach(function(ic){ paintToolIcon(ic.cv,ic.terrainCh,ic.entityId); });
+  toolIcons.forEach(function(ic){
+    if(ic.setI!=null) paintSetIcon(ic.cv,TILE_SETS[ic.setI]);
+    else if(ic.featErase) paintFeatEraseIcon(ic.cv);
+    else if(ic.featId) paintFeatIcon(ic.cv,ic.featId);
+    else paintToolIcon(ic.cv,ic.terrainCh,ic.entityId);
+  });
 }
 
+/* 세트 버튼 미리보기 — 스프라이트를 칸 20px로 나란히 */
+function paintSetIcon(cv,set){
+  var g=cv.getContext("2d");
+  g.imageSmoothingEnabled=false; g.clearRect(0,0,cv.width,cv.height);
+  tileSetCells(set).forEach(function(t){
+    var ft=FOREST_TILES[t.ch]; if(!ft) return;
+    if(ft.terrain){
+      var tc=terrainCanvas(ft.terrain);
+      if(tc) g.drawImage(tc,0,0,40,40,t.dx*20,t.dy*20,20,20);
+    }else{
+      var im=TILEIMG[ft.spr];
+      if(im&&im.width) g.drawImage(im,t.dx*20,t.dy*20,20,20);
+    }
+    if(ft.feat){ var fm=TILEIMG[ft.feat]; if(fm&&fm.width) g.drawImage(fm,t.dx*20,t.dy*20,20,20); }
+  });
+}
+
+/* 구조물 아이콘 — 바닥 없이 개체만 크게 (도구는 개체만 칠하니까) */
+function paintFeatIcon(cv,fk){
+  var g=cv.getContext("2d");
+  g.imageSmoothingEnabled=false; g.clearRect(0,0,cv.width,cv.height);
+  g.fillStyle="#232b20"; g.fillRect(0,0,cv.width,cv.height);
+  var im=TILEIMG[(FEAT_DRAW[fk]&&FEAT_DRAW[fk].im)||fk];
+  if(im&&im.width) g.drawImage(im,4,4,cv.width-8,cv.height-8);
+}
+/* 구조물 지우기 아이콘 — 어두운 배경에 빨간 ✕ (바닥 그림 없음) */
+function paintFeatEraseIcon(cv){
+  var g=cv.getContext("2d");
+  g.imageSmoothingEnabled=false; g.clearRect(0,0,cv.width,cv.height);
+  g.fillStyle="#232b20"; g.fillRect(0,0,cv.width,cv.height);
+  g.strokeStyle="#e5484d"; g.lineWidth=4; g.lineCap="round";
+  g.beginPath(); g.moveTo(12,12); g.lineTo(36,36); g.moveTo(36,12); g.lineTo(12,36); g.stroke();
+}
 function buildTools(){
   var t=$("edTerrainTools"); t.textContent=""; toolIcons=[];
-  TERRAIN_TOOLS.forEach(function(tt){
-    var b=document.createElement("button"); b.className="tool"; b.dataset.tch=tt.ch;
+  /* 바닥 — 지형 레이어만 칠해요 (구조물은 그대로) */
+  var lbg=document.createElement("div"); lbg.className="tglabel"; lbg.textContent="바닥";
+  t.appendChild(lbg);
+  GROUND_TOOLS.forEach(function(tt){
+    var ch=tileForLayers(tt,null);
+    var b=document.createElement("button"); b.className="tool terr"; b.dataset.gt=tt;
+    b.title="바닥 · "+TERR_NAME[tt]+" — 구조물은 그대로";
     var cv=document.createElement("canvas"); cv.width=48; cv.height=48;
-    paintToolIcon(cv,tt.ch,null); toolIcons.push({cv:cv,terrainCh:tt.ch,entityId:null});
+    paintToolIcon(cv,ch,null); toolIcons.push({cv:cv,terrainCh:ch,entityId:null});
     b.appendChild(cv);
-    b.appendChild(document.createTextNode(tt.n));
-    b.addEventListener("click",function(){ setTool({kind:"terrain",ch:tt.ch}); });
+    b.addEventListener("click",function(){ setTool({kind:"ground",t:tt}); });
+    t.appendChild(b);
+  });
+  /* 구조물 — 피처 레이어만 칠해요 */
+  var lbf=document.createElement("div"); lbf.className="tglabel"; lbf.textContent="구조물";
+  t.appendChild(lbf);
+  var be=document.createElement("button"); be.className="tool terr"; be.dataset.ft="";
+  be.title="구조물 지우기 — 바닥만 남겨요";
+  var cve=document.createElement("canvas"); cve.width=48; cve.height=48;
+  paintFeatEraseIcon(cve); toolIcons.push({cv:cve,featErase:true});
+  be.appendChild(cve);
+  be.addEventListener("click",function(){ setTool({kind:"feat",f:null}); });
+  t.appendChild(be);
+  FEAT_TOOLS.forEach(function(fk){
+    var b=document.createElement("button"); b.className="tool terr"; b.dataset.ft=fk;
+    var code=tileChToCode(tileForLayers(FEAT_TERR[fk],fk));
+    b.title="구조물 · "+FEAT_NAME[fk]+" — 코드 "+code;
+    var cv=document.createElement("canvas"); cv.width=48; cv.height=48;
+    paintFeatIcon(cv,fk); toolIcons.push({cv:cv,featId:fk});
+    b.appendChild(cv);
+    var cd=document.createElement("span"); cd.className="tcode"; cd.textContent=code;
+    b.appendChild(cd);
+    b.addEventListener("click",function(){ setTool({kind:"feat",f:fk}); });
     t.appendChild(b);
   });
   var e=$("edEntityTools"); e.textContent="";
@@ -211,9 +309,12 @@ function buildTools(){
     e.appendChild(b);
   });
 }
-function setTool(t2){ tool=t2; patrolMode=false;
+function setTool(t2){ tool=t2; patrolMode=false; clearSetGhost();
   document.querySelectorAll("#edTerrainTools .tool").forEach(function(b){
-    b.classList.toggle("on",tool.kind==="terrain"&&b.dataset.tch===tool.ch); });
+    b.classList.toggle("on",(tool.kind==="terrain"&&b.dataset.tch===tool.ch)||
+                            (tool.kind==="set"&&+b.dataset.si===tool.si)||
+                            (tool.kind==="ground"&&b.dataset.gt===tool.t)||
+                            (tool.kind==="feat"&&b.dataset.ft===String(tool.f||""))); });
   document.querySelectorAll("#edEntityTools .tool").forEach(function(b){
     b.classList.toggle("on",tool.kind==="entity"&&b.dataset.tid===tool.id); });
   renderSelPanel();
@@ -225,6 +326,31 @@ function cellFromEvent(e){
   if(!t) return null;
   return {x:+t.dataset.x,y:+t.dataset.y};
 }
+/* 세트 도구 유령 미리보기 — 칠해질 칸에 윤곽을 띄워요 */
+function clearSetGhost(){
+  for(var y=0;y<cellEls.length;y++) for(var x=0;x<cellEls[y].length;x++)
+    cellEls[y][x].classList.remove("setghost");
+}
+function setGhostCells(x,y){
+  clearSetGhost();
+  var cells=null;
+  if(tool.kind==="set"&&TILE_SETS[tool.si]) cells=tileSetCells(TILE_SETS[tool.si]);
+  else if(tool.kind==="refpaste"&&tool.cells) cells=tool.cells;
+  else if(tool.kind==="terrain"||tool.kind==="ground") cells=[{dx:0,dy:0}];
+  else if(tool.kind==="feat"){
+    /* 2칸짜리 구조물은 덮이는 칸까지 같이 표시해요 */
+    var cfg=FEAT_DRAW[tool.f];
+    cells=cfg&&cfg.a==="span2"?[{dx:0,dy:0},{dx:1,dy:0}]
+        :cfg&&cfg.a==="block2"?[{dx:0,dy:0},{dx:1,dy:0},{dx:0,dy:1},{dx:1,dy:1}]
+        :[{dx:0,dy:0}];
+  }
+  if(!cells) return;
+  cells.forEach(function(t){
+    var tx=x+t.dx, ty=y+t.dy;
+    if(tx>=0&&ty>=0&&tx<N&&ty<N) cellEls[ty][tx].classList.add("setghost");
+  });
+}
+
 function onCellDown(e){
   if(e.button!==0) return;
   var c=cellFromEvent(e); if(!c) return;
@@ -232,15 +358,17 @@ function onCellDown(e){
   if(patrolMode&&sel&&sel.kind==="cat"&&draft.cats[sel.i]&&draft.cats[sel.i].type==="C"){
     addPatrolPoint(c.x,c.y); return;
   }
-  if(tool.kind==="terrain"){
+  if(tool.kind==="terrain"||tool.kind==="ground"||tool.kind==="feat"||tool.kind==="set"||tool.kind==="refpaste"){
     painting=true; paintSnap=snap();
-    paintTerrain(c.x,c.y);
+    if(tool.kind==="set") paintSet(c.x,c.y);
+    else if(tool.kind==="refpaste") paintRefPaste(c.x,c.y);
+    else paintTerrain(c.x,c.y);
   }else{
     applyEntity(c.x,c.y);
   }
 }
 function onCellMove(e){
-  if(!painting) return;
+  if(!painting||(tool.kind!=="terrain"&&tool.kind!=="ground"&&tool.kind!=="feat")) return;   /* 세트·붙여넣기는 드래그로 여러 번 찍지 않아요 */
   /* 모바일은 pointerover가 안 오므로 좌표로 칸을 찾아요 */
   var t=document.elementFromPoint(e.clientX,e.clientY);
   var cell=t&&t.closest?t.closest(".cell"):null;
@@ -248,6 +376,7 @@ function onCellMove(e){
   paintTerrain(+cell.dataset.x,+cell.dataset.y);
 }
 function onPointerUp(){
+  if(refDrag) finishRefDrag();
   if(painting){
     painting=false;
     if(paintSnap!==snap()){ undoStack.push(paintSnap); if(undoStack.length>80) undoStack.shift(); redoStack=[]; markDirty(); }
@@ -256,9 +385,56 @@ function onPointerUp(){
   }
 }
 
-/* 지형 칠하기 — 개체와 비호환이면 거부 */
+/* 칠하기 — 바닥은 구조물을, 구조물은 바닥을 그대로 두고 한 층만 바꿔요.
+   레거시(그림) 타일을 칠할 때는 칸이 통째로 바뀌어요. 개체와 비호환이면 거부 */
 function paintTerrain(x,y){
-  var ch=tool.ch;
+  var ch=cellChar(x,y), ft=FOREST_TILES[ch];
+  if(tool.kind==="ground"){
+    var nc=tileForLayers(tool.t,(ft&&ft.feat)||null);
+    if(nc) paintCellChar(x,y,nc);
+    return;
+  }
+  if(tool.kind==="feat"){
+    var terr=(ft&&ft.terrain)?ft.terrain:(tool.f?(FEAT_TERR[tool.f]||"floor"):"grass");
+    var nc2=tileForLayers(terr,tool.f);
+    if(nc2){
+      paintCellChar(x,y,nc2);
+      /* span2·block2는 덮이는 칸의 구조물도 지워요 — 안 보이는데 이동만 막는 장애물이 안 남게 */
+      var cfg=FEAT_DRAW[tool.f];
+      var offs=cfg&&cfg.a==="span2"?[[1,0]]:cfg&&cfg.a==="block2"?[[1,0],[0,1],[1,1]]:null;
+      if(offs) offs.forEach(function(o){
+        var cf=FOREST_TILES[cellChar(x+o[0],y+o[1])];
+        if(cf&&cf.feat){ var cc=tileForLayers(cf.terrain,null); if(cc) paintCellChar(x+o[0],y+o[1],cc); }
+      });
+    }
+    return;
+  }
+  paintCellChar(x,y,tool.ch);
+}
+/* 타일 세트 스탬프 — 클릭한 칸이 세트의 왼쪽 위 */
+function paintSet(x,y){
+  var set=TILE_SETS[tool.si]; if(!set) return;
+  paintBlockCells(x,y,tileSetCells(set));
+}
+/* 참고 맵에서 복사한 영역 붙여넣기 */
+function paintRefPaste(x,y){ if(tool.cells) paintBlockCells(x,y,tool.cells); }
+/* 여러 칸 스탬프 공통 — 경계 밖·개체 비호환 칸은 건너뛰어요 */
+function paintBlockCells(x,y,cells){
+  var skipped=0;
+  cells.forEach(function(t){
+    var tx=x+t.dx, ty=y+t.dy;
+    if(tx<0||ty<0||tx>=N||ty>=N) return;
+    var ent=entityAt(tx,ty);
+    if(ent){
+      var ok=ent.kind==="cat"?editorCatTile(draft.theme,t.ch):editorHumanTile(draft.theme,t.ch);
+      if(!ok){ skipped++; return; }
+    }
+    paintCellChar(tx,ty,t.ch);
+  });
+  if(skipped) status(skipped+"칸은 개체가 있어 건너뛰었어요");
+}
+function paintCellChar(x,y,ch){
+  if(x<0||y<0||x>=N||y>=N) return;
   if(cellChar(x,y)===ch) return;
   /* 테마가 없는 가구 타일을 칠할 때만 기본 테마를 등록 — 로드/임포트는 건드리지 않아요 */
   var theme=draft.theme;
@@ -277,6 +453,82 @@ function paintTerrain(x,y){
   setCell(x,y,ch);
   renderCellSoon(x,y);
 }
+/* ---------- 참고용 맵 (읽기 전용 + 영역 선택 붙여넣기) ---------- */
+var refDraft=null, refDrag=null, refRect=null;
+var REFCELL=40;   /* 캔버스상 칸 크기(게임 CELL과 같음) */
+
+function initRef(){
+  var sel=$("edRefSel"), cv=$("edRefCv");
+  STAGES.forEach(function(s,i){
+    var o=document.createElement("option"); o.value=i;
+    o.textContent=(i+1)+"단계 · "+(s.name||("스테이지 "+(i+1)));
+    sel.appendChild(o);
+  });
+  $("edRefLoad").addEventListener("click",function(){ loadRefStage(+sel.value); });
+  $("edRefClear").addEventListener("click",function(){
+    refDraft=null; refRect=null; refDrag=null;
+    cv.getContext("2d").clearRect(0,0,cv.width,cv.height);
+    $("edRefHint").textContent="스테이지를 골라 불러오세요";
+  });
+  cv.addEventListener("pointerdown",onRefDown);
+  cv.addEventListener("pointermove",onRefMove);
+  cv.addEventListener("contextmenu",function(e){ e.preventDefault(); });
+}
+
+function loadRefStage(i){
+  try{ refDraft=editorNormalize(JSON.parse(JSON.stringify(STAGES[i]))); }
+  catch(e){ status("참고 맵 로드 실패: "+e.message,true); return; }
+  refRect=null; refDrag=null;
+  drawRef();
+  $("edRefHint").textContent="드래그로 영역을 고르면 위 맵에 클릭해 붙여넣을 수 있어요";
+}
+
+function drawRef(){
+  if(!refDraft) return;
+  var g=$("edRefCv").getContext("2d");
+  drawBoardArt(refDraft,g);
+  var r=refDrag||refRect;
+  if(r){
+    var x0=Math.min(r.x0,r.x1)*REFCELL, y0=Math.min(r.y0,r.y1)*REFCELL;
+    var w=(Math.abs(r.x1-r.x0)+1)*REFCELL, h=(Math.abs(r.y1-r.y0)+1)*REFCELL;
+    g.fillStyle="rgba(255,217,166,0.18)"; g.fillRect(x0,y0,w,h);
+    g.strokeStyle="#ffd9a6"; g.lineWidth=2; g.strokeRect(x0+1,y0+1,w-2,h-2);
+  }
+}
+
+function refCellFromEvent(e){
+  var cv=$("edRefCv"), r=cv.getBoundingClientRect();
+  var ts=r.width/N;
+  var x=Math.floor((e.clientX-r.left)/ts), y=Math.floor((e.clientY-r.top)/ts);
+  return {x:Math.max(0,Math.min(N-1,x)), y:Math.max(0,Math.min(N-1,y))};
+}
+function onRefDown(e){
+  if(!refDraft||e.button!==0) return;
+  e.preventDefault();
+  var c=refCellFromEvent(e);
+  refDrag={x0:c.x,y0:c.y,x1:c.x,y1:c.y}; refRect=null;
+  drawRef();
+}
+function onRefMove(e){
+  if(!refDrag) return;
+  var c=refCellFromEvent(e);
+  refDrag.x1=c.x; refDrag.y1=c.y;
+  drawRef();
+}
+function finishRefDrag(){
+  var r=refDrag; refDrag=null; if(!r) return;
+  var x0=Math.min(r.x0,r.x1), x1=Math.max(r.x0,r.x1);
+  var y0=Math.min(r.y0,r.y1), y1=Math.max(r.y0,r.y1);
+  refRect={x0:x0,y0:y0,x1:x1,y1:y1};
+  var cells=[];
+  for(var y=y0;y<=y1;y++) for(var x=x0;x<=x1;x++)
+    cells.push({dx:x-x0,dy:y-y0,ch:refDraft.map[y].charAt(x)});
+  setTool({kind:"refpaste",cells:cells});
+  drawRef();
+  status("참고 영역 "+(x1-x0+1)+"×"+(y1-y0+1)+" 선택 — 위 맵을 클릭해 붙여넣어요 (Esc 해제)");
+  $("edRefHint").textContent="영역 선택됨 — 위 맵 클릭으로 붙여넣기 · 다시 드래그하면 새로 골라요";
+}
+
 var rafPend=false;
 function renderCellSoon(){
   if(rafPend) return; rafPend=true;
@@ -507,7 +759,7 @@ function loadBuiltin(i){
 /* ---------- 내보내기/가져오기 ---------- */
 function stageOut(){
   var o={name:draft.name,theme:draft.theme};
-  o.map=draft.map.slice();
+  o.map=draft.map.map(mapRowToCodes);   /* 내보낼 때만 숲 타일을 1xx 숫자 코드로 */
   o.start=draft.start; o.goalPos=draft.goalPos; o.maxTurns=draft.maxTurns;
   o.cats=draft.cats.map(function(c){
       var n={type:c.type,x:c.x,y:c.y,dir:c.dir};
@@ -632,7 +884,7 @@ var refreshScheduled=false;
 function scheduleVisualRefresh(){
   if(refreshScheduled) return;
   refreshScheduled=true;
-  requestAnimationFrame(function(){ refreshScheduled=false; renderGrid(); repaintToolIcons(); });
+  requestAnimationFrame(function(){ refreshScheduled=false; renderGrid(); repaintToolIcons(); drawRef(); });
 }
 function subscribeAssets(){
   var imgs=[], k;
@@ -647,7 +899,7 @@ function subscribeAssets(){
 
 /* ---------- 초기화 ---------- */
 function init(){
-  buildGrid(); buildTools(); buildStageSel(); bindMeta(); subscribeAssets();
+  buildGrid(); buildTools(); buildStageSel(); bindMeta(); subscribeAssets(); initRef();
   setTool({kind:"terrain",ch:"."});
   $("edLoad").addEventListener("click",function(){
     if(!confirmReplace()) return;
@@ -690,6 +942,7 @@ function init(){
     if(tag==="INPUT"||tag==="TEXTAREA"||tag==="SELECT"||(t&&t.isContentEditable)) return;
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){ e.preventDefault(); e.shiftKey?doRedo():doUndo(); }
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="y"){ e.preventDefault(); doRedo(); }
+    if(e.key==="Escape"&&tool.kind==="refpaste"){ setTool({kind:"entity",id:"select"}); status("붙여넣기 해제"); }
   });
 
   var d=null, saved=null;

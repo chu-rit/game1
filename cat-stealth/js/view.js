@@ -146,6 +146,398 @@ function stageHasForest(st){
   return false;
 }
 
+/* ---------- 2레이어 지형 타일 (코드 181+) ----------
+   terrain 필드가 있는 타일: 칸마다 이어지는 seamless 텍스처를 전역 좌표로 샘플링하고,
+   feat 필드가 있으면 그 위에 투명 오브젝트 스프라이트를 얹어요.
+   지형끼리 다른 칸이 붙으면 우선순위가 높은 지형이 낮은 쪽 가장자리에
+   베이어 디더로 스며들어요 — 도트 게임 표준 전이. */
+var TERRAIN_PRIO={water:0,floor:1,grass:2,dirt:3};
+var terrainBakes={};
+function stageHasTerrain(st){
+  if(!st||!st.grid) return false;
+  for(var y=0;y<ROWS;y++) for(var x=0;x<COLS;x++){
+    var ft=st.grid[y]&&FOREST_TILES[st.grid[y][x]];
+    if(ft&&ft.terrain) return true;
+  }
+  return false;
+}
+function terrainCanvas(id){
+  var c=terrainBakes[id];
+  if(c===undefined){
+    var tex=TILEIMG["tg_"+id];
+    if(!tex||!tex.width) return null;   /* 아직 로드 전 — 캐시하지 않고 다음에 재시도 */
+    c=document.createElement("canvas"); c.width=CVW; c.height=CVH;
+    var g=c.getContext("2d"); g.imageSmoothingEnabled=false;
+    g.fillStyle=g.createPattern(tex,"repeat"); g.fillRect(0,0,CVW,CVH);
+    terrainBakes[id]=c;
+  }
+  return c;
+}
+function terrainAt(st,x,y,useNew){
+  var ch=tileAt(st,x,y); var ft=FOREST_TILES[ch];
+  if(ft) return ft.terrain||null;
+  if(ch==="#") return null;
+  /* 지형 타일 스테이지에서 바닥·특수 칸(^·H·U 등) 밑은 잔디 텍스처 */
+  return useNew?"grass":null;
+}
+function drawTerrainCell(g,st,x,y){
+  var tc=terrainCanvas(terrainAt(st,x,y,true)); if(!tc) return;
+  g.drawImage(tc,x*CELL,y*CELL,CELL,CELL,x*CELL,y*CELL,CELL,CELL);
+}
+var terrBand=null;
+/* 우선순위 높은 지형 텍스처를 경계 안쪽으로 굴곡진 물결선으로 넣어요 —
+   디더 얼룩 없이 경계가 ±2~3px 왔다갔다 하는 딱딱한 선이에요.
+   rev=false: 경계가 밴드의 끝쪽, rev=true: 경계가 밴드의 시작쪽 */
+function wavyTerrBand(g,tb,px,py,w,h,horiz,rev){
+  var phase=px*0.317+py*0.731;
+  if(horiz){ /* 세로 스트립: 경계는 좌(rev)·우(!rev) */
+    for(var t=0;t<h;t++){
+      var dw=Math.round(2.5+Math.sin(t*0.55+phase)*1.7+Math.sin(t*0.21+phase*1.9)*1.6);
+      if(dw<=0)continue; if(dw>w)dw=w;
+      var sx=rev?px:px+w-dw;
+      g.drawImage(tb,sx,py+t,dw,1, sx,py+t,dw,1);
+    }
+  }else{     /* 가로 스트립: 경계는 위(rev)·아래(!rev) */
+    for(var t2=0;t2<w;t2++){
+      var dh=Math.round(2.5+Math.sin(t2*0.55+phase)*1.7+Math.sin(t2*0.21+phase*1.9)*1.6);
+      if(dh<=0)continue; if(dh>h)dh=h;
+      var sy=rev?py:py+h-dh;
+      g.drawImage(tb,px+t2,sy,1,dh, px+t2,sy,1,dh);
+    }
+  }
+}
+/* 물가 오토타일 — 연못 사진에서 잘라낸 혼합 타일:
+   sh_e1·e2 = 엣지(위 잔디·아래 물, 경계선이 타일 안을 물결로 지나감)
+   sh_c     = 볼록 모퉁이(물이 오른쪽+아래 — 육지가 뾰족하게 들어간 곳)
+   sh_i     = 오목 모퉁이(왼쪽+아래 대각에만 물이 파고든 노치)
+   육지 칸에 물쪽 방향으로 돌려 얹어요. 물 칸은 순수 물결 그대로예요 */
+var SHORE_N=3;
+var shoreBake={}, shoreSrcC={};
+/* 타일의 물 픽셀은 투명 처리 — 물 자리엔 칸 좌표로 샘플링한 전역 물결을 깔아서
+   타일 물과 베이크 물 사이에 이음선이 안 생겨요 */
+/* 타일의 물 픽셀만 투명 처리 — 물 자리엔 칸 좌표로 샘플링한 전역 물결이
+   비쳐서 타일 물과 베이크 물 사이 이음선이 안 생겨요. 나머지는 이미지 그대로예요 */
+function shoreSrc(key){
+  var c=shoreSrcC[key];
+  if(c===undefined){
+    var src=TILEIMG[key]; c=null;
+    if(src&&src.width){
+      c=document.createElement("canvas");c.width=40;c.height=40;
+      var g=c.getContext("2d");g.drawImage(src,0,0);
+      var d=g.getImageData(0,0,40,40),P=d.data;
+      for(var i=0;i<40*40;i++){
+        var r=P[i*4],gg=P[i*4+1],b=P[i*4+2];
+        if(b>150&&b>r+30) P[i*4+3]=0;   /* 물·물가 하이라이트 → 투명 */
+      }
+      g.putImageData(d,0,0);
+      shoreSrcC[key]=c;
+    }
+  }
+  return c;
+}
+function shoreImg(kind,rot,v){
+  var key=kind+rot+"_"+v, c=shoreBake[key];
+  if(c===undefined){
+    c=null;
+    if(kind==="c"){
+      /* 볼록 모퉁이 — 아래·오른쪽 물 엣지 띠를 합치되 모서리는 대각 컷으로 깎아요
+         (직각 꺾임이 아니라 이미지처럼 45° 모서리) */
+      var base=shoreSrc("sh_e"+v), ic=shoreSrc("sh_i");
+      if(base){
+        c=document.createElement("canvas");c.width=40;c.height=40;
+        var g=c.getContext("2d");
+        g.drawImage(base,0,0);
+        /* 오른쪽 엣지 = 물이 오른쪽인 상태로 돌린 타일 — 모서리 위까지만 */
+        var tmp=document.createElement("canvas");tmp.width=40;tmp.height=40;
+        var tg=tmp.getContext("2d");
+        tg.translate(20,20); tg.rotate(-Math.PI/2); tg.drawImage(base,-20,-20);
+        g.drawImage(tmp,24,0,16,30, 24,0,16,30);
+        /* 우하 모서리 = i 타일의 대각 컷 부분 */
+        if(ic) g.drawImage(ic,30,30,10,10, 30,30,10,10);
+        var r2=document.createElement("canvas");r2.width=40;r2.height=40;
+        var rg=r2.getContext("2d");
+        rg.translate(20,20); rg.rotate(rot*Math.PI/180); rg.drawImage(c,-20,-20);
+        c=r2;
+        shoreBake[key]=c;
+      }
+    }else{
+      var src=shoreSrc(kind==="i"?"sh_i":"sh_e"+v);
+      if(src){
+        c=document.createElement("canvas");c.width=40;c.height=40;
+        var g=c.getContext("2d");
+        g.translate(20,20); g.rotate(rot*Math.PI/180); g.drawImage(src,-20,-20);
+        shoreBake[key]=c;
+      }
+    }
+  }
+  return c;
+}
+/* 물가 타일이 덮이는 영역에 먼저 전역 물결을 깔아요 — 투명한 물 자리가
+   이 텍스처를 그대로 보여줘서 이웃 물 칸과 완전히 이어져요 */
+function shoreFillWater(g,x,y,sx,sy,sw,sh){
+  var wc=terrainCanvas("water"); if(!wc) return;
+  g.drawImage(wc, x*CELL+sx, y*CELL+sy, sw, sh,  x*CELL+sx, y*CELL+sy, sw, sh);
+}
+/* dir(0=동 1=서 2=남 3=북) 기준 회전각 — canonical: 엣지는 물이 아래쪽 */
+var SHORE_ROT=[270,90,0,180];
+/* ---- 물가 오토타일: 변 단위 수위 전파 ----
+   각 육지 칸의 4개 변마다 "물가선이 덮이는 구간"을 계산해요.
+   물 칸과 맞닿은 변은 전체(0~40), 이웃 육지 칸의 물가선이 칸 경계를 넘어
+   들어오는 구간은 그 폭만큼 스텁으로 그려요 — 그래야 물가선이 칸 사이에서
+   끊기지 않고 이어져요. 모서리에 물이 닿으면 인접 변으로 10px 전파되고,
+   두 변이 같은 모서리에 닿으면 45° 대각 컷으로 꺾어요.
+   전파는 물 칸 기준 8방향 첫 번째 테두리 안에서만 돌아서 물 줄기가
+   멀리 번지지 않아요 */
+var SHORE_LEAK=10;
+/* 변 d의 l끝(0)·r끝(1) 모서리에 인접한 다른 변과 그 끝 — [다른변,그쪽끝] */
+var SHORE_ADJ=[[[3,1],[2,1]],[[3,0],[2,0]],[[1,1],[0,1]],[[1,0],[0,0]]];
+function paintShoreAll(g,st){
+  var DX=[1,-1,0,0],DY=[0,0,1,-1],OPP=[1,0,3,2];
+  var EX=[],x,y,d,i;
+  for(y=0;y<ROWS;y++){EX[y]=[];for(x=0;x<COLS;x++){
+    var ta=terrainAt(st,x,y,true), near=false;
+    for(var dy=-1;dy<=1;dy++)for(var dx=-1;dx<=1;dx++){
+      var nx=x+dx,ny=y+dy;
+      if(nx>=0&&ny>=0&&nx<COLS&&ny<ROWS&&terrainAt(st,nx,ny,true)==="water") near=true;
+    }
+    EX[y][x]=(ta&&ta!=="water"&&near)?[{l:0,r:0},{l:0,r:0},{l:0,r:0},{l:0,r:0}]:null;
+  }}
+  function isW(x2,y2){return x2>=0&&y2>=0&&x2<COLS&&y2<ROWS&&terrainAt(st,x2,y2,true)==="water";}
+  /* 칸의 변 dd에 실제로 보이는 물 수위 = 직접 수위 + 양끝 모서리 전파 */
+  function showSpan(cell,dd){
+    var s=cell[dd],ad=SHORE_ADJ[dd],o,e;
+    o=cell[ad[0][0]];e=ad[0][1]===0?o.l:o.r;
+    var l=Math.max(s.l,e>0?SHORE_LEAK:0);
+    o=cell[ad[1][0]];e=ad[1][1]===0?o.l:o.r;
+    return {l:l,r:Math.max(s.r,e>0?SHORE_LEAK:0)};
+  }
+  for(var it=0;it<4;it++){
+    for(y=0;y<ROWS;y++)for(x=0;x<COLS;x++){
+      var A=EX[y][x];if(!A)continue;
+      for(d=0;d<4;d++){
+        var nx=x+DX[d],ny=y+DY[d],t=null;
+        if(isW(nx,ny))t={l:40,r:40};
+        else if(nx>=0&&ny>=0&&nx<COLS&&ny<ROWS&&EX[ny][nx])t=showSpan(EX[ny][nx],OPP[d]);
+        if(t){if(t.l>A[d].l)A[d].l=t.l;if(t.r>A[d].r)A[d].r=t.r;}
+      }
+    }
+  }
+  /* 모서리 컷 조건·회전·위치: [변A,끝A],[변B,끝B],i회전,dx,dy — NW,NE,SW,SE */
+  var CORN=[[[3,0],[1,0],180,0,0],
+            [[3,1],[0,0],270,26,0],
+            [[2,0],[1,1],90,0,26],
+            [[2,1],[0,1],0,26,26]];
+  for(y=0;y<ROWS;y++)for(x=0;x<COLS;x++){
+    var C=EX[y][x];if(!C)continue;
+    var px=x*CELL,py=y*CELL;
+    var v=1+Math.floor(hashf(x,y)*SHORE_N);
+    for(d=0;d<4;d++){
+      var s=C[d];if(s.l<=0&&s.r<=0)continue;
+      var e=shoreImg("e",SHORE_ROT[d],v);if(!e)continue;
+      var l=Math.min(40,s.l),r=Math.min(40,s.r);
+      var spans=l+r>=40?[[0,40]]:(l>0&&r>0?[[0,l],[40-r,40]]:(l>0?[[0,l]]:[[40-r,40]]));
+      for(i=0;i<spans.length;i++){
+        var a=spans[i][0],b=spans[i][1],sx,sy,sw,sh;
+        if(d===2){sx=a;sy=24;sw=b-a;sh=16;}
+        else if(d===3){sx=a;sy=0;sw=b-a;sh=16;}
+        else if(d===0){sx=24;sy=a;sw=16;sh=b-a;}
+        else{sx=0;sy=a;sw=16;sh=b-a;}
+        shoreFillWater(g,x,y,sx,sy,sw,sh);
+        g.drawImage(e,sx,sy,sw,sh, px+sx,py+sy,sw,sh);
+      }
+    }
+    for(var ci=0;ci<4;ci++){
+      var cn=CORN[ci],eA=C[cn[0][0]],eB=C[cn[1][0]];
+      var rA=cn[0][1]===0?eA.l:eA.r, rB=cn[1][1]===0?eB.l:eB.r;
+      if(rA<=0||rB<=0)continue;
+      var im=shoreImg("i",cn[2],1);if(!im)continue;
+      shoreFillWater(g,x,y,cn[3],cn[4],14,14);
+      g.drawImage(im,cn[3],cn[4],14,14, px+cn[3],py+cn[4],14,14);
+    }
+  }
+}
+function paintTerrainEdges(g,st){
+  if(!stageHasTerrain(st)) return;
+  /* 물가 오토타일 — 변 단위 수위 전파로 전체 물가선을 한 번에 그려요.
+     물 칸은 건드리지 않아서 물은 항상 순수 물결이에요 */
+  paintShoreAll(g,st);
+  var B=6;
+  for(var y=0;y<ROWS;y++) for(var x=0;x<COLS;x++){
+    var ta=terrainAt(st,x,y,true); if(!ta) continue;
+    var pa=TERRAIN_PRIO[ta];
+    /* 나머지 지형 쌍은 기존 디더 전이 (오른쪽·아래쪽 이웃만 봐서 중복 방지) */
+    if(x<COLS-1){
+      var tb=terrainAt(st,x+1,y,true);
+      if(tb&&tb!==ta&&TERRAIN_PRIO[tb]!=null&&tb!=="water"&&ta!=="water"){
+        var pb=TERRAIN_PRIO[tb];
+        var hi=pa<pb?tb:ta, loX=pa<pb?x:x+1, aIsLo=pa<pb;
+        var tc=terrainCanvas(hi);
+        if(tc) wavyTerrBand(g,tc,loX*CELL+(aIsLo?CELL-B:0),y*CELL,B,CELL,true,!aIsLo);
+      }
+    }
+    if(y<ROWS-1){
+      var td=terrainAt(st,x,y+1,true);
+      if(td&&td!==ta&&TERRAIN_PRIO[td]!=null&&td!=="water"&&ta!=="water"){
+        var pd=TERRAIN_PRIO[td];
+        var hi2=pa<pd?td:ta, loY=pa<pd?y:y+1, aIsLo2=pa<pd;
+        var tc3=terrainCanvas(hi2);
+        if(tc3) wavyTerrBand(g,tc3,x*CELL,loY*CELL+(aIsLo2?CELL-B:0),CELL,B,false,!aIsLo2);
+      }
+    }
+  }
+}
+/* 오브젝트를 칸보다 크게 그려 이웃 칸으로 살짝 넘치게 해요 —
+   나뭇잎이 서로 겹치면서 칸 격자가 안 보이고 숲이 이어져요.
+   s: 배율, a: "bottom"(바닥 기준·키 큰 것) | "center"(가운데·낮은 장식) */
+var FEAT_DRAW={
+  ob_tree_big:{s:1.55,a:"bottom",l:6}, ob_tree:{s:2.0,a:"bottom",l:8},
+  ob_tree_wide:{s:2.0,a:"span2",im:"ob_tree",l:8},   /* 진짜 가로 2칸 — 칸 x~x+1에 걸쳐 그려요 */
+  ob_pine:{s:1.5,a:"bottom",l:6,im:"ob_pine_hi"},
+  ob_pine_wide:{s:2.0,a:"bottom",im:"ob_pine_hi",l:8},
+  ob_pine_wide2:{s:2.8,a:"span2",im:"ob_pine_hi",l:8},   /* 진짜 가로 2칸 — 칸 x~x+1에 걸쳐 그려요 */
+  ob_bush:{s:1.3,a:"bottom"}, ob_scrub:{s:1.25,a:"bottom"}, ob_fern:{s:1.1,a:"bottom"},
+  ob_rock:{s:1.15,a:"bottom",l:5}, ob_stone:{s:2.0,a:"block2",im:"ob_stone_hi",l:5}, ob_stump:{s:1.1,a:"bottom",l:5},
+  ob_log:{s:1.25,a:"bottom"}, ob_tower:{s:1.4,a:"bottom"},
+  ob_flower_p:{s:0.9,a:"bottom"}, ob_flower_w:{s:0.9,a:"bottom"}, ob_shroom:{s:0.9,a:"bottom"}
+};
+function paintFeatures(g,st,compact){
+  /* 위 행부터 아래로 — 아래쪽 오브젝트가 위쪽 나무 밑동을 덮어 깊이감이 생겨요 */
+  for(var y=0;y<ROWS;y++) for(var x=0;x<COLS;x++){
+    var ft=st.grid[y]&&FOREST_TILES[st.grid[y][x]];
+    if(!ft||!ft.feat) continue;
+    var cfg=FEAT_DRAW[ft.feat]||{s:1.15,a:"bottom"};
+    var im=TILEIMG[cfg.im||ft.feat];
+    if(!im||!im.width) continue;
+    /* compact: 에디터용 — 칸 내용이 그대로 보이게 칸 크기로만 그려요 */
+    if(compact){ g.drawImage(im,x*CELL,y*CELL,CELL,CELL); continue; }
+    var w=CELL*cfg.s, h=CELL*cfg.s;
+    /* 칸마다 살짝 다른 좌우 흔들림·반전으로 반복 패턴을 깨요 (결정적) */
+    var jx=((x*31+y*17)%5-2)*1.5;
+    /* span2: 자기 칸(x)부터 오른쪽 칸(x+1)까지 2칸 폭으로 그려요 — 밑동이 칸 경계에 와요
+       block2: 자기 칸을 왼쪽 위로 해서 x~x+1·y~y+1, 2×2 영역을 덮어요 — 바닥이 (y+1)칸 아래에 와요 */
+    var dx=cfg.a==="span2"||cfg.a==="block2"?x*CELL+CELL-w/2+jx:x*CELL+(CELL-w)/2+jx;
+    var dy=cfg.a==="center"?y*CELL+(CELL-h)/2:cfg.a==="block2"?(y+2)*CELL-h-(cfg.l||0):(y+1)*CELL-h-(cfg.l||0);
+    var flip=((x*13+y*29)%4)===0;
+    if(flip){
+      g.save(); g.translate(dx+w/2,0); g.scale(-1,1); g.translate(-(dx+w/2),0);
+      g.drawImage(im,dx,dy,w,h); g.restore();
+    }else g.drawImage(im,dx,dy,w,h);
+  }
+}
+/* 칸 위로 넘친 수관 부분만 엔티티(고양이·플레이어) 위에 다시 그려요 —
+   고양이가 칸 아래에 서 있어도 앞 나무 잎에 가려져서 깊이감이 생겨요 */
+function drawCanopyFront(g,st){
+  if(!stageHasTerrain(st)) return;
+  for(var y=0;y<ROWS;y++) for(var x=0;x<COLS;x++){
+    var ft=st.grid[y]&&FOREST_TILES[st.grid[y][x]];
+    if(!ft||!ft.feat) continue;
+    var cfg=FEAT_DRAW[ft.feat]||{s:1.15,a:"bottom"};
+    var h=CELL*cfg.s, over=h-CELL;
+    if(over<=0) continue;
+    var im=TILEIMG[cfg.im||ft.feat];
+    if(!im||!im.width) continue;
+    var w=CELL*cfg.s;
+    var jx=((x*31+y*17)%5-2)*1.5;
+    var dx=cfg.a==="span2"||cfg.a==="block2"?x*CELL+CELL-w/2+jx:x*CELL+(CELL-w)/2+jx;
+    var dy=cfg.a==="block2"?(y+2)*CELL-h-(cfg.l||0):(y+1)*CELL-h-(cfg.l||0);
+    var srcH=im.height*(over/h);
+    var flip=((x*13+y*29)%4)===0;
+    if(flip){ g.save(); g.translate(dx+w/2,0); g.scale(-1,1); g.translate(-(dx+w/2),0); }
+    g.drawImage(im,0,0,im.width,srcH,dx,dy,w,over);
+    if(flip) g.restore();
+  }
+}
+
+/* ---------- 외래 이음새 디더 전이 ----------
+   시트 원본에서 이웃하던 타일쌍은 손대지 않고, 다른 자리에서 온 타일이
+   붙은 경계는 도트 디더링으로 서서히 바꿔요 — 블러 없이 선명한 도트 전이.
+   같은 규칙(숲끼리·바닥끼리)일 때만 적용돼요. */
+var SEAM_B=14, seamH=null, seamV=null;
+/* 4×4 Bayer 행렬 — 경계에서 멀어질수록 B 쪽 픽셀이 촘촘해져요 */
+var BAYER=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];
+function seamMaskInto(sg,w,h,horiz){
+  /* destination-in에 쓸 디더 마스크: 경계 가까울수록(끝) 검정, 멀수록 흰색 */
+  var d=sg.getImageData(0,0,w,h), p=d.data;
+  for(var y=0;y<h;y++)for(var x=0;x<w;x++){
+    var t=horiz?x/(w-1):y/(h-1);          /* 0=타일 안쪽, 1=경계 */
+    var keep=BAYER[(y%4)*4+(x%4)]/16>t;   /* 안쪽은 A 유지, 경계로 갈수록 뚫림 */
+    p[(y*w+x)*4+3]=keep?255:0;
+  }
+  sg.putImageData(d,0,0);
+}
+function forestSheetPos(spr){ var m=/^f_(\d+)_(\d+)$/.exec(spr||""); return m?{x:+m[1],y:+m[2]}:null; }
+function seamTileInfo(st,ch,forest){
+  var ft=FOREST_TILES[ch];
+  if(ft) return ft.spr?{spr:ft.spr,rule:ft.rule}:null;   /* 2레이어 타일은 지형 전이가 처리 */
+  /* 숲 스테이지에서 ^·H·U 같은 특수 칸 밑에는 잔디 타일(f_4_4)이 깔려요 —
+     지형 타일 맵은 그쪽이 잔디 텍스처이므로 여기선 제외 */
+  if(forest&&!stageHasTerrain(st)&&ch!=="#"&&TILEIMG.f_4_4) return {spr:"f_4_4",rule:"decor"};
+  return null;
+}
+function drawSeamH(g,imA,imB,dx,dy){
+  if(!seamH){ seamH=document.createElement("canvas"); seamH.width=SEAM_B; seamH.height=CELL; }
+  var sg=seamH.getContext("2d");
+  sg.globalCompositeOperation="source-over";
+  sg.clearRect(0,0,SEAM_B,CELL);
+  sg.drawImage(imA,CELL-SEAM_B,0,SEAM_B,CELL,0,0,SEAM_B,CELL);
+  var m=sg.createLinearGradient(0,0,SEAM_B,0);
+  m.addColorStop(0,"rgba(0,0,0,1)");m.addColorStop(1,"rgba(0,0,0,0)");
+  sg.globalCompositeOperation="destination-in"; sg.fillStyle=m; sg.fillRect(0,0,SEAM_B,CELL);
+  g.drawImage(seamH,dx,dy);
+  sg.globalCompositeOperation="source-over";
+  sg.clearRect(0,0,SEAM_B,CELL);
+  sg.drawImage(imB,0,0,SEAM_B,CELL,0,0,SEAM_B,CELL);
+  var m2=sg.createLinearGradient(0,0,SEAM_B,0);
+  m2.addColorStop(0,"rgba(0,0,0,0)");m2.addColorStop(1,"rgba(0,0,0,1)");
+  sg.globalCompositeOperation="destination-in"; sg.fillStyle=m2; sg.fillRect(0,0,SEAM_B,CELL);
+  g.drawImage(seamH,dx,dy);
+}
+function drawSeamV(g,imA,imB,dx,dy){
+  if(!seamV){ seamV=document.createElement("canvas"); seamV.width=CELL; seamV.height=SEAM_B; }
+  var sg=seamV.getContext("2d");
+  sg.globalCompositeOperation="source-over";
+  sg.clearRect(0,0,CELL,SEAM_B);
+  sg.drawImage(imA,0,CELL-SEAM_B,CELL,SEAM_B,0,0,CELL,SEAM_B);
+  var m=sg.createLinearGradient(0,0,0,SEAM_B);
+  m.addColorStop(0,"rgba(0,0,0,1)");m.addColorStop(1,"rgba(0,0,0,0)");
+  sg.globalCompositeOperation="destination-in"; sg.fillStyle=m; sg.fillRect(0,0,CELL,SEAM_B);
+  g.drawImage(seamV,dx,dy);
+  sg.globalCompositeOperation="source-over";
+  sg.clearRect(0,0,CELL,SEAM_B);
+  sg.drawImage(imB,0,0,CELL,SEAM_B,0,0,CELL,SEAM_B);
+  var m2=sg.createLinearGradient(0,0,0,SEAM_B);
+  m2.addColorStop(0,"rgba(0,0,0,0)");m2.addColorStop(1,"rgba(0,0,0,1)");
+  sg.globalCompositeOperation="destination-in"; sg.fillStyle=m2; sg.fillRect(0,0,CELL,SEAM_B);
+  g.drawImage(seamV,dx,dy);
+}
+function blendForestSeams(g,st){
+  var forest=stageHasForest(st); if(!forest) return;
+  for(var y=0;y<ROWS;y++) for(var x=0;x<COLS;x++){
+    var a=seamTileInfo(st,st.grid[y][x],forest); if(!a) continue;
+    var pa=forestSheetPos(a.spr);
+    if(x<COLS-1){
+      var b=seamTileInfo(st,st.grid[y][x+1],forest);
+      if(b&&b.rule===a.rule){
+        var pb=forestSheetPos(b.spr);
+        if(!(pa&&pb&&pb.x===pa.x+1&&pb.y===pa.y)){
+          var ia=TILEIMG[a.spr], ib=TILEIMG[b.spr];
+          if(ia&&ib&&ia.width&&ib.width) drawSeamH(g,ia,ib,x*CELL+CELL-SEAM_B,y*CELL);
+        }
+      }
+    }
+    if(y<ROWS-1){
+      var c=seamTileInfo(st,st.grid[y+1][x],forest);
+      if(c&&c.rule===a.rule){
+        var pc=forestSheetPos(c.spr);
+        if(!(pa&&pc&&pc.x===pa.x&&pc.y===pa.y+1)){
+          var ia2=TILEIMG[a.spr], ic=TILEIMG[c.spr];
+          if(ia2&&ic&&ia2.width&&ic.width) drawSeamV(g,ia2,ic,x*CELL,y*CELL+CELL-SEAM_B);
+        }
+      }
+    }
+  }
+}
+
 /* ================= 배경 베이크 ================= */
 function bakeBoard(st){
   var g=board.getContext("2d");
@@ -159,6 +551,9 @@ function bakeBoard(st){
   if(!forest) paintGrid(g,st);
   paintFurniture(g,st);
   paintSpecial(g,st);
+  if(forest) blendForestSeams(g,st);
+  paintTerrainEdges(g,st);
+  paintFeatures(g,st);
   paintGoalMat(g,st);
   if(forest) return;                        /* 숲 타일은 그림 자체가 배경 — 비네트·외곽선 없음 */
   paintVignette(g,st);
@@ -173,16 +568,27 @@ function paintFloor(g,st){
      · 그 밖의 바닥 = 오크 마루 타일
      두 타일 모두 아트의 액자 테두리를 잘라 40×40으로 줄여, 이웃 칸과 무늬가 이어져요. */
   pf(g,0,0,CVW,CVH,FLOOR.base);
+  var forest=stageHasForest(st);
   for(var y=0;y<ROWS;y++) for(var x=0;x<COLS;x++){
     var ch=st.grid[y][x];
     if(ch==="#") continue;
     /* 숲 타일(FOREST_TILES)은 배경이 구워진 40×40 아트라 그대로 칸을 덮어요 —
-       장식·장애물 모두 바닥 패스에서 그려도 어차피 개체보다 아래 깔려요 */
+       장식·장애물 모두 바닥 패스에서 그려도 어차피 개체보다 아래 깔려요.
+       2레이어 타일(terrain)은 전역 좌표로 샘플링해서 칸끼리 이어져요 */
     var ft=FOREST_TILES[ch];
     if(ft){
-      var fim=TILEIMG[ft.spr];
-      if(fim&&fim.width) g.drawImage(fim,x*CELL,y*CELL,CELL,CELL);
+      if(ft.terrain) drawTerrainCell(g,st,x,y);
+      else{
+        var fim=TILEIMG[ft.spr];
+        if(fim&&fim.width) g.drawImage(fim,x*CELL,y*CELL,CELL,CELL);
+      }
       continue;
+    }
+    /* 숲 스테이지의 발판·구멍 같은 특수 칸 밑: 지형 타일 맵이면 잔디 텍스처,
+       아니면 예전처럼 잔디 아트(f_4_4) */
+    if(forest){
+      if(stageHasTerrain(st)){ drawTerrainCell(g,st,x,y); continue; }
+      if(TILEIMG.f_4_4&&TILEIMG.f_4_4.width){ g.drawImage(TILEIMG.f_4_4,x*CELL,y*CELL,CELL,CELL); continue; }
     }
     var im=TILEIMG[ch==="~"?"cream":"oak"];
     if(im&&im.width){
@@ -757,10 +1163,15 @@ function drawWardrobeFallback(g,x0,y0){
   pf(g,x0+1,y0+33,CELL-2,2,"#3d2410");
 }
 
-/* EXIT 칸 = 새 탈출 매트 스프라이트(화살표 + 작은 EXIT 글자). */
+/* EXIT 칸 = 통나무 탈출구 스프라이트(EXIT 각인 포함). */
 function paintGoalMat(g,st){
   var x0=st.goal.x*CELL, y0=st.goal.y*CELL;
-  var im=TILEIMG.mat;
+  var im=TILEIMG.exitlog;
+  if(im&&im.width){
+    g.drawImage(im,x0,y0);
+    return;
+  }
+  im=TILEIMG.mat;
   if(im&&im.width){
     g.drawImage(im,x0,y0);
     /* 매트 화살표 아래에 작은 EXIT 글자 — 예전과 같은 3×5 픽셀 폰트 */
@@ -813,7 +1224,7 @@ function paintVignette(g,st){
 
 /* ================= 스프라이트: 인간 / 생선 ================= */
 function drawHuman(g,pl,now,dir,moving){
-  var cx=pl.rx*CELL+CELL/2, gy=pl.ry*CELL+CELL-3;
+  var cx=pl.rx*CELL+CELL/2, gy=pl.ry*CELL+CELL-8;
   shadowPix(g,cx,gy-1,7,3,0.32);
   var spr=HUMIMG[dir|0]||HUMIMG[2];
   if(!spr||!spr.width) return;                  /* 스프라이트 로드 전 */
@@ -1222,6 +1633,7 @@ function draw(){
   }
   if(!pDrawn) drawPlayerNow(st,now,G.playerDir);
   drawBushFront(ctx,st);
+  drawCanopyFront(ctx,st);
 
   if(G.mode==="play"){
     drawIntent(ctx,st,now);
@@ -1239,7 +1651,7 @@ function blit(){
 
 function drawPlayerNow(st,now,plDir){
   var pl=st.player;
-  pl.rx+=(pl.x-pl.rx)*0.42; pl.ry+=(pl.y-pl.ry)*0.42;
+  pl.rx+=(pl.x-pl.rx)*0.26; pl.ry+=(pl.y-pl.ry)*0.26;
   if(Math.abs(pl.rx-pl.x)<0.01) pl.rx=pl.x;
   if(Math.abs(pl.ry-pl.y)<0.01) pl.ry=pl.y;
   var moving=Math.abs(pl.rx-pl.x)>0.02||Math.abs(pl.ry-pl.y)>0.02;
@@ -1251,7 +1663,7 @@ function drawPlayerNow(st,now,plDir){
 function drawStamGauge(g,st,now){
   var pl=st.player;
   var cx=Math.round(pl.rx*CELL+CELL/2);
-  var headY=Math.round(pl.ry*CELL+CELL-3-25);      /* 인간 스프라이트 머리 꼭대기 */
+  var headY=Math.round(pl.ry*CELL+CELL-8-25);      /* 인간 스프라이트 머리 꼭대기 */
   var pw=34, ph=12, x0=cx-(pw>>1), y0=headY-15;
   var out=(st.stam||0)<=0;
   fillRR(g,x0,y0,pw,ph,3,"rgba(9,7,14,0.80)");

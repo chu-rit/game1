@@ -9,22 +9,25 @@ function makeCat(def,id){
   var c={id:id,type:def.type,x:def.x,y:def.y,dir:(def.dir!=null?def.dir:0),
          home:{x:def.x,y:def.y,dir:(def.dir!=null?def.dir:0)},state:"idle",lure:0,
          sense:(CAT_SENSE[def.type]!=null?CAT_SENSE[def.type]:1),
-         chaseSteps:0,dirs:def.dirs||null,patrol:def.patrol||null,pi:0,psign:1,rx:def.x,ry:def.y,alertT:0};
+         chaseSteps:0,dirs:def.dirs||null,patrol:def.patrol||null,pi:0,psign:1,rx:def.x,ry:def.y,alertT:0,
+         lureMem:0,lureTgt:null};
   if(c.type==="C"){ c.pi=0; c.psign=1; if(def.patrol){ for(var k=0;k<def.patrol.length;k++){ if(def.patrol[k][0]===def.x&&def.patrol[k][1]===def.y){c.pi=k;} } } c.psign=(c.pi===0)?1:-1; }
   if(c.type==="B"&&c.dirs){ c.dir=c.dirs[0]; }
   return c;
 }
 function loadStage(idx){
   var s=STAGES[idx], grid=[], player=null, goal=null;
+  /* 숫자 배열 행(새 맵 저장 형식)은 내부 한 글자 문자로 먼저 풀어요 — 이후 로직은 그대로 */
+  var mrows=s.map.map(function(r){ return mapRowToChars(r); });
   /* 스테이지마다 맵 크기가 다를 수 있어요 — 줄 수/칸 수를 세어 보드 크기를 맞춰요 */
-  var rows=s.map.length, cols=1;
-  for(var ry=0;ry<rows;ry++){ if(s.map[ry].length>cols) cols=s.map[ry].length; }
+  var rows=mrows.length, cols=1;
+  for(var ry=0;ry<rows;ry++){ if(mrows[ry]&&mrows[ry].length>cols) cols=mrows[ry].length; }
   setBoardSize(rows,cols);
   if(typeof sizeBoardCanvases==="function") sizeBoardCanvases();
   for(var y=0;y<ROWS;y++){
     var row=[];
     for(var x=0;x<COLS;x++){
-      var ch=s.map[y].charAt(x);
+      var ch=(mrows[y]||"").charAt(x);
       if(!ch) ch="#";                 /* 모자란 칸은 벽으로 막아 둬요 */
       if(ch==="P"){ player={x:x,y:y}; ch="."; }
       else if(ch==="G"){ goal={x:x,y:y}; ch="."; }
@@ -96,13 +99,25 @@ var SPECIAL={
   "U":{name:"은신 수풀",   human:true,  cat:false, sight:true }
 };
 /* 숲 타일(FOREST_TILES) — rule(data.js) 하나로 판정을 만들어요:
-   decor=밟는 장식(DECOR), solid=이동·시선 차단, water=이동만 차단(시선 통과) */
+   decor=밟는 장식(DECOR), solid=이동·시선 차단, water/low=이동만 차단(시선 통과) */
 for(var _ft in FOREST_TILES){
   var _fr=FOREST_TILES[_ft];
   if(_fr.rule==="decor") DECOR[_ft]=1;
   else SPECIAL[_ft]={name:_fr.name, human:false, cat:false, sight:_fr.rule==="solid"};
 }
 function specialAt(st,x,y){ return SPECIAL[tileAt(st,x,y)]||null; }
+/* 큰 구조물에 덮인 칸인가 — block2(2×2, 왼쪽 위 앵커)는 앵커 후보 4곳을,
+   span2(가로 2칸, 왼쪽 앵커)는 자기 칸·왼쪽 칸을 봐요 */
+function coveredByBig(st,x,y){
+  var t=FOREST_TILES[tileAt(st,x,y)];
+  if(t&&(t.block2||t.span2)) return true;
+  t=FOREST_TILES[tileAt(st,x-1,y)];
+  if(t&&(t.block2||t.span2)) return true;
+  t=FOREST_TILES[tileAt(st,x,y-1)];
+  if(t&&t.block2) return true;
+  t=FOREST_TILES[tileAt(st,x-1,y-1)];
+  return !!(t&&t.block2);
+}
 /* 은신 수풀 칸인가 — 여기 서 있으면 눈에도 귀에도 안 잡혀요 */
 function isHideTile(st,x,y){ return tileAt(st,x,y)==="U"; }
 /* 시선·기척을 막는 칸인가 — 구멍(H)은 막고, 발판(^)은 통과 */
@@ -112,6 +127,7 @@ function isBlocked(st,x,y){
   if(ch==="W") return true;             /* 장롱(W): 벽처럼 시선·기척을 막아요 */
   var sp=SPECIAL[ch];
   if(sp) return !!sp.sight;
+  if(coveredByBig(st,x,y)) return true;
   return (st.theme[ch]!==undefined&&!DECOR[ch]);
 }
 /* 인간(플레이어)이 밟을 수 있는 칸 */
@@ -121,6 +137,7 @@ function humanWalkable(st,x,y){
   if(ch==="W") return false;             /* 장롱(W): 사람도 지나갈 수 없어요 */
   var sp=SPECIAL[ch];
   if(sp) return !!sp.human;
+  if(coveredByBig(st,x,y)) return false;
   return !(st.theme[ch]!==undefined&&!DECOR[ch]);
 }
 /* 고양이가 밟을 수 있는 칸 (BFS·유인·추격 모두 이 기준) */
@@ -130,6 +147,7 @@ function catWalkable(st,x,y){
   if(ch==="W") return false;             /* 장롱(W): 고양이도 지나갈 수 없어요 */
   var sp=SPECIAL[ch];
   if(sp) return !!sp.cat;
+  if(coveredByBig(st,x,y)) return false;
   return !(st.theme[ch]!==undefined&&!DECOR[ch]);
 }
 function walkable(st,x,y){ return humanWalkable(st,x,y); }
@@ -315,8 +333,11 @@ function catStep(st,cat,events){
   }else if(cat.state==="lured"){
     /* 생선 냄새를 따라 생선 '위'까지 걸어가요. 다 와서 올라서면 그 자리에서 먹기 시작. */
     var nf=nearestFish(st,cat);
+    /* 사거리 밖이어도 1턴 기억(lureTgt)으로 마지막 먹이 자리를 향해 계속 걸어요 —
+       단 그 자리에 먹이가 아직 있을 때만(다른 고양이가 먹었으면 그냥 포기) */
+    if(!nf&&cat.lureTgt){ var mf=fishAt(st,cat.lureTgt.x,cat.lureTgt.y); if(mf) nf=mf; }
     if(!nf){
-      cat.state="return"; cat.chaseSteps=0;
+      cat.state="return"; cat.chaseSteps=0; cat.lureTgt=null;
       events.push({k:"calm",id:cat.id});
     }else if(cat.x===nf.x&&cat.y===nf.y){
       startEat(st,cat,nf,events);
@@ -400,10 +421,14 @@ function simStep(st,action,events){
         events.push({k:(c.state==="return")?"chain":"lure",id:c.id,kind:lf.kind});
         c.state="lured"; c.chaseSteps=0; c.lureWait=1;
       }
+      /* '저기 먹이 있었지' 2턴 기억 — 사거리를 스치듯 벗어나도 바로 잊지 않아요
+         (cloneState가 매 턴 깊은 복사를 하니 객체 참조 대신 좌표를 기억해요) */
+      c.lureMem=2; c.lureTgt={x:lf.x,y:lf.y};
       faceToward(c,lf);
     }else if(c.state==="lured"){
-      c.state="return"; c.chaseSteps=0;
-      events.push({k:"calm",id:c.id});
+      if(c.lureMem>0){ c.lureMem--; }   /* 사거리 밖 2턴은 기억하고 그대로 걸어가요 */
+      else{ c.state="return"; c.chaseSteps=0; c.lureTgt=null;
+        events.push({k:"calm",id:c.id}); }
     }
   }
   for(var j=0;j<st.cats.length;j++){ catStep(st,st.cats[j],events); }

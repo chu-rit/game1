@@ -186,10 +186,16 @@ function validFishTiles(){
     for(var pi=0;pi<G.st.pickups.length;pi++){ if(G.st.pickups[pi].x===x&&G.st.pickups[pi].y===y) return false; }
     return true;
   };
+  /* 낮은 장애물(그루터기 등 rule:"low")은 던진 먹이가 넘어가요 — 착지는 못 해요 */
+  var low=function(x,y){
+    var ft=FOREST_TILES[tileAt(G.st,x,y)];
+    return !!(ft&&ft.rule==="low");
+  };
   var rng=fishRange();
   for(var d=0;d<4;d++){
     for(var step=1;step<=rng;step++){
       var x=p.x+DIRS[d][0]*step, y=p.y+DIRS[d][1]*step;
+      if(low(x,y)) continue;            /* 그루터기 위로 날아감 — 멈추지도 착지도 안 해요 */
       if(!free(x,y)) break;
       out.push({x:x,y:y});
     }
@@ -237,6 +243,7 @@ function beginTurn(action){
     var c=st.cats[i], nc=next.cats[i];
     c.x=nc.x; c.y=nc.y; c.dir=nc.dir; c.state=nc.state; c.lure=nc.lure;
     c.chaseSteps=nc.chaseSteps; c.pi=nc.pi; c.psign=nc.psign;
+    c.lureMem=nc.lureMem; c.lureTgt=nc.lureTgt; c.lureWait=nc.lureWait;
   }
 
   var arc=null, firstPickupKind=null;

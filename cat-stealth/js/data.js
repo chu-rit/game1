@@ -141,8 +141,105 @@ var FOREST_TILES={
   "걍":{spr:"f_5_8", name:"통나무 5,8", rule:"solid"},
   "걎":{spr:"f_6_8", name:"통나무 6,8", rule:"solid"},
   "걏":{spr:"f_7_8", name:"수련 7,8", rule:"water"},
-  "걐":{spr:"f_8_8", name:"수련 8,8", rule:"water"},
+  "걐":{spr:"f_8_8", name:"수련 8,8", rule:"water"}
 };
+
+/* ---- 2레이어 타일: 지형 × 구조물 조합 (코드 181~240) ----
+   칸 하나는 지형(밑바닥) + 구조물(위에 얹는 그림) 두 층이에요.
+   에디터에서 각 층을 따로 칠하고, 조합은 순서가 고정돼 코드가 안정적이에요:
+   코드 = 181 + 지형번호*15 + 구조물번호 (지형: 잔디0·흙길1·숲바닥2·물3) */
+var LAYER_TERR=["grass","dirt","floor","water"];
+var LAYER_FEAT=[null,"ob_tree_big","ob_tree","ob_tree_wide","ob_pine","ob_pine_wide","ob_pine_wide2","ob_bush","ob_scrub",
+                "ob_rock","ob_stone","ob_log","ob_stump",
+                "ob_fern","ob_tower","ob_flower_p","ob_flower_w","ob_shroom"];
+var TERR_NAME={grass:"잔디",dirt:"흙길",floor:"숲바닥",water:"물"};
+var FEAT_NAME={ob_tree_big:"큰나무",ob_tree:"나무(넓)",ob_tree_wide:"나무(2칸)",ob_pine:"침엽수",ob_pine_wide:"큰침엽수",ob_pine_wide2:"침엽수(2칸)",
+               ob_bush:"덤불",ob_scrub:"수풀",
+               ob_rock:"바위",ob_stone:"돌(2×2)",ob_log:"통나무",ob_stump:"그루터기",
+               ob_fern:"고사리",ob_tower:"캣타워",ob_flower_p:"보라꽃",ob_flower_w:"흰꽃",ob_shroom:"버섯"};
+var FEAT_RULE={ob_tree_big:"solid",ob_tree:"solid",ob_tree_wide:"solid",ob_pine:"solid",ob_pine_wide:"solid",ob_pine_wide2:"solid",
+               ob_bush:"solid",ob_scrub:"solid",
+               ob_rock:"solid",ob_stone:"solid",ob_log:"solid",ob_stump:"low",
+               ob_fern:"decor",ob_tower:"decor",ob_flower_p:"decor",ob_flower_w:"decor",ob_shroom:"decor"};
+/* 코드 칸(왼쪽 위 앵커)부터 우·하·우하까지 2×2 발자취를 차지하는 구조물 — 이동·시선 모두 막아요 */
+var FEAT_BLOCK2={ob_stone:1};
+/* 코드 칸(왼쪽 앵커)부터 오른쪽 칸까지 가로 2칸 발자취를 차지하는 구조물 */
+var FEAT_SPAN2={ob_tree_wide:1,ob_pine_wide2:1};
+/* 구조물을 레거시 칸에 올릴 때의 기본 지형 — 나무·돌류는 숲바닥, 꽃·캣타워는 잔디 */
+var FEAT_TERR={ob_tree_big:"floor",ob_tree:"floor",ob_tree_wide:"floor",ob_pine:"floor",ob_pine_wide:"floor",ob_pine_wide2:"floor",
+               ob_bush:"floor",ob_scrub:"floor",
+               ob_rock:"floor",ob_stone:"floor",ob_log:"floor",ob_stump:"floor",ob_fern:"floor",
+               ob_shroom:"floor",ob_tower:"grass",ob_flower_p:"grass",ob_flower_w:"grass"};
+(function(){
+  for(var t=0;t<LAYER_TERR.length;t++)for(var f=0;f<LAYER_FEAT.length;f++){
+    var code=181+t*20+f, ch=String.fromCharCode(0xAC00+code-100), ft=LAYER_FEAT[f];
+    FOREST_TILES[ch]=ft?{terrain:LAYER_TERR[t],feat:ft,name:FEAT_NAME[ft],rule:FEAT_RULE[ft],block2:!!FEAT_BLOCK2[ft],span2:!!FEAT_SPAN2[ft]}
+                       :{terrain:LAYER_TERR[t],name:TERR_NAME[LAYER_TERR[t]],
+                         rule:LAYER_TERR[t]==="water"?"water":"decor"};
+  }
+})();
+/* 지형+구조물 조합에 맞는 타일 문자를 찾아요 */
+function tileForLayers(terrain,feat){
+  for(var k in FOREST_TILES){
+    var f=FOREST_TILES[k];
+    if(f.terrain===terrain&&(f.feat||null)===(feat||null)) return k;
+  }
+  return null;
+}
+
+/* ---- 타일 숫자 코드 (저장·임포트/익스포트 전용) ----
+   첫 자리가 테마 번호예요 — 숲은 1. 숲 타일 코드는 100 + 칸 번호(y*9+x):
+   100=(0,0) … 108=(8,0), 109=(0,1) … 180=(8,8).
+   내부 표현(st.grid·draft.map·FOREST_TILES 키)은 지금처럼 한 글자 문자 그대로예요.
+   실내·특수 레거시 타일(. # ~ X S T B W ^ H U 와 P/G 표기)은 그대로 써요. */
+function tileCodeToCh(v){
+  if(typeof v==="number"&&Number.isInteger(v)&&v>=100&&v<400){
+    var ch=String.fromCharCode(0xAC00+v-100);
+    return FOREST_TILES[ch]?ch:null;
+  }
+  if(typeof v==="string"&&v.length===1) return v;
+  return null;
+}
+function tileChToCode(ch){
+  if(typeof ch==="string"&&ch.length===1&&FOREST_TILES[ch]){ return 100+(ch.charCodeAt(0)-0xAC00); }
+  return ch;
+}
+function mapRowToChars(row){
+  if(typeof row==="string") return row;
+  if(!Array.isArray(row)) return null;
+  var s="";
+  for(var i=0;i<row.length;i++){ var ch=tileCodeToCh(row[i]); if(ch==null) return null; s+=ch; }
+  return s;
+}
+function mapRowToCodes(str){
+  var out=[];
+  for(var i=0;i<str.length;i++) out.push(tileChToCode(str.charAt(i)));
+  return out;
+}
+
+/* 지형 이름 → 그 지형만 깐 '평지' 타일 문자 (feat 없는 첫 타일) — 도구 아이콘 배경용 */
+var TERRAIN_BASE={};
+for(var _tb in FOREST_TILES){
+  var _tf=FOREST_TILES[_tb];
+  if(_tf.terrain&&!_tf.feat&&!TERRAIN_BASE[_tf.terrain]) TERRAIN_BASE[_tf.terrain]=_tb;
+}
+function terrainBaseChar(t){ return TERRAIN_BASE[t]||null; }
+
+/* ---- 타일 세트: 한 클릭에 여러 칸을 칠하는 스탬프 ----
+   at = 원본 9×9 시트의 왼쪽 위 좌표, w/h = 칸 수.
+   칸 하나하나는 시트의 같은 자리 타일(코드 100+번호)이에요.
+   tileSetCells → [{dx,dy,ch}] (ch = 내부 한 글자 문자) */
+var TILE_SETS=[
+  {name:"큰나무", at:[0,0], w:2, h:3}
+];
+function tileSetCells(set){
+  var out=[];
+  for(var j=0;j<set.h;j++) for(var i=0;i<set.w;i++){
+    var ch=tileCodeToCh(100+(set.at[1]+j)*9+set.at[0]+i);
+    if(ch) out.push({dx:i,dy:j,ch:ch});
+  }
+  return out;
+}
 
 /* 1단계 숲 공터 — 81칸 전부 원본 그림의 같은 좌표 조각(위 FOREST_TILES)이라
    보드가 승인 그림과 픽셀 단위로 같아요. 판정은 예전과 똑같아요(이동 28칸·막힘 53칸).
@@ -160,30 +257,45 @@ var FOREST_TILES={
 
 /* ---------------------------- 스테이지 데이터 ---------------------------- */
 var STAGES=[
- { /* 1단계 숲 공터 — 승인된 그림(hq-fullmap-aligned-art.png) 9×9 를 그대로 잘라
-      81칸 전부 '그 자리 조각'(FOREST_TILES)으로 얹은 맵. 브라우저에서 이어 붙이면 승인 그림과
-      픽셀 단위로 같아요. 코드는 U+AC00 + y*9 + x 순서라 (0,0)=가 … (8,8)=걐 이에요.
-      판정은 직전 맵과 똑같아요(이동 28칸·막힘 53칸, 그중 물 5칸). */
+ { /* 1단계 숲 공터 — 흙길(201) 공터를 침엽수·바위·그루터기 테두리가 둘러싼 맵. */
    name:"고양이 사이로", theme:{},
-   map:["가각갂갃간갅갆갇갈",
-        "갉갊갋갌갍갎갏감갑",
-        "값갓갔강갖갗갘같갚",
-        "갛개객갞갟갠갡갢갣",
-        "갤갥갦갧갨갩갪갫갬",
-        "갭갮갯갰갱갲갳갴갵",
-        "갶갷갸갹갺갻갼갽갾",
-        "갿걀걁걂걃걄걅걆걇",
-        "걈걉걊걋걌걍걎걏걐"],
+   map:[[225,221,230,221,221,221,230,221,226],
+        [227,221,201,201,201,201,201,227,221],
+        [226,221,201,201,201,201,201,221,226],
+        [227,221,201,201,201,201,201,227,221],
+        [226,221,201,201,201,201,201,221,226],
+        [227,221,201,201,201,201,201,227,221],
+        [226,221,201,201,201,201,201,221,226],
+        [227,221,201,201,201,201,201,227,221],
+        [226,221,233,221,221,221,233,221,226]],
    start:[6,7], goalPos:[3,1], maxTurns:20,
    cats:[{type:"A",x:3,y:6,dir:0},{type:"A",x:6,y:2,dir:3}],
    pickups:[], hint:"" },
- { name:"거실 소파", theme:{S:"sofa","~":"rug",X:"counter",W:"wardrobe",T:"table"},
-   map:["#########","#####X.##","#####X~##","#####X~##","#####X~##","#WWWWX~##","#~~~~~~##","#..^.^..#","#########"],
+ { /* 2단계 숲길 — 숲바닥(221) 공터에 나무·바위·그루터기가 흩어진 맵.
+      흙길(201)이 위쪽 통로와 아래 가로길로 이어져요. */
+   name:"숲길", theme:{},
+   map:[[222,221,232,221,221,222,201,221,223],
+        [221,221,221,222,224,221,201,227,221],
+        [224,221,226,221,222,233,201,221,221],
+        [232,222,221,224,221,225,201,221,221],
+        [221,221,221,222,201,201,201,221,221],
+        [222,224,221,221,201,233,201,227,221],
+        [227,221,224,221,201,230,201,232,222],
+        [201,201,201,201,201,201,201,201,201],
+        [230,230,221,230,221,230,221,230,221]],
    start:[1,7], goalPos:[6,1], maxTurns:20,
    cats:[{type:"A",x:6,y:5,dir:2}],
    pickups:[{x:2,y:7,kind:"small"}], hint:"" },
- { name:"연쇄 먹이", theme:{X:"counter","~":"rug",S:"sofa",W:"wardrobe"},
-   map:["#########","##~~~~###","##WWW~###","##WWW~###","##~~~~###","##~XX~###","##~SS~###","##~~~~###","#########"],
+ { name:"연쇄 먹이", theme:{},
+   map:[[227,221,221,221,221,221,221,224,221],
+        [221,223,201,201,201,201,230,221,234],
+        [224,221,231,221,233,201,227,221,221],
+        [227,221,221,221,233,201,230,221,221],
+        [221,222,201,201,201,201,233,224,221],
+        [224,221,201,231,221,201,230,221,236],
+        [221,222,201,221,221,201,227,221,221],
+        [227,221,201,201,201,201,234,231,221],
+        [221,222,221,221,221,221,221,221,221]],
    start:[2,7], goalPos:[2,1], maxTurns:20,
    cats:[{type:"C",x:5,y:4,dir:3,patrol:[[5,4],[5,4]]}],
    pickups:[{x:3,y:7,kind:"small"},{x:4,y:7,kind:"small"}], hint:"" },

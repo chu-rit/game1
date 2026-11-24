@@ -41,6 +41,19 @@ function editorNormalize(src){
   var map=[], start=null, goal=null, pCnt=0, gCnt=0;
   for(var y=0;y<N;y++){
     var row=src.map[y];
+    /* 행은 문자열(레거시) 또는 길이 9 배열(숲 숫자 코드 또는 한 글자 문자열) 둘 다 허용 */
+    if(Array.isArray(row)){
+      if(row.length!==N) throw edErr("map "+(y+1)+"줄 길이가 9가 아니에요");
+      var crow="";
+      for(var ai=0;ai<N;ai++){
+        var el=row[ai], eok=false;
+        if(typeof el==="number"){ eok=(tileCodeToCh(el)!=null); }
+        else if(typeof el==="string"&&el.length===1){ eok=edOwn(ED_MAP_CHARS,el); }
+        if(!eok) throw edErr("알 수 없는 타일 코드 '"+el+"' ("+ai+","+y+")");
+        crow+=tileCodeToCh(el);
+      }
+      row=crow;
+    }
     if(typeof row!=="string"||row.length!==N) throw edErr("map "+(y+1)+"줄 길이가 9가 아니에요");
     var out="";
     for(var x=0;x<N;x++){
@@ -143,7 +156,14 @@ function editorState(stage) {
     goal:stage.goalPos?{x:stage.goalPos[0],y:stage.goalPos[1]}:null,
     cats:stage.cats.map(makeCat),pickups:stage.pickups||[],fishes:[]};
 }
-function editorExport(stage){ return JSON.stringify(stage,null,2); }
+/* map 행은 한 줄 배열로 읽기 쉽게 접고, 나머지 필드는 기존 2칸 들여쓰기 유지 */
+function editorExport(stage){
+  var mapJson=null;
+  var body=JSON.stringify(stage,function(k,v){ if(k==="map"){ mapJson=v; return "__EDMAP__"; } return v; },2);
+  if(mapJson==null) return body;
+  var lines=mapJson.map(function(r){ return "    "+JSON.stringify(r); });
+  return body.replace('"__EDMAP__"',"[\n"+lines.join(",\n")+"\n  ]");
+}
 
 /* 단일 타일 문자 기준 이동 가능 여부(엔티티 호환성 판정용) */
 function editorHumanTile(theme,ch){

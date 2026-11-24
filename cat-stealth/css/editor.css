@@ -29,6 +29,13 @@ textarea{width:100%;min-height:110px;padding:8px;font-size:11px;font-family:ui-m
 .good{background:linear-gradient(#1d3028,#16241e);border-color:#2f5a46;color:var(--green);}
 
 #edMain{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;}
+/* 보드 열: 현재 맵 위 + 참고용 맵 아래 */
+#edBoardCol{flex:0 0 auto;display:flex;flex-direction:column;gap:10px;}
+#edRefCard{--tile:clamp(30px,7.2vmin,52px);}
+#edRefCv{display:block;width:calc(9 * var(--tile));height:calc(9 * var(--tile));
+  image-rendering:pixelated;border-radius:8px;cursor:crosshair;
+  background:#100c11;touch-action:none;}
+.refsub{font-weight:400;letter-spacing:0;text-transform:none;color:var(--dim);margin-left:6px;font-size:10px;}
 #edBoardWrap{flex:0 0 auto;position:relative;filter:drop-shadow(0 14px 28px rgba(0,0,0,.5));
   --tile:clamp(30px,7.2vmin,52px);
   background:#100c11;border-radius:12px;
@@ -63,6 +70,22 @@ textarea{width:100%;min-height:110px;padding:8px;font-size:11px;font-family:ui-m
 .card{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:12px;padding:10px 12px;}
 .card h2{font-size:11px;letter-spacing:.18em;color:var(--dim);margin:0 0 8px;font-weight:800;}
 .toolrow{display:flex;flex-wrap:wrap;gap:6px;}
+/* 지형 도구 그룹 라벨 — 줄 전체를 차지해 섹션을 나눠요 */
+.tglabel{flex-basis:100%;margin:6px 0 2px;font-size:10px;font-weight:800;
+  letter-spacing:.14em;color:var(--dim);}
+/* 지형 타일 버튼 — 이름 없이 그림만 따닥따닥 */
+#edTerrainTools{gap:1px;}
+.tool.terr{min-width:0;padding:1px;border-radius:4px;line-height:0;position:relative;}
+.tool.terr canvas{width:34px;height:34px;margin:0;border-radius:3px;}
+/* 구조물 버튼 오른쪽 아래 타일 코드 번호 */
+.tool .tcode{position:absolute;right:1px;bottom:1px;font-size:8px;line-height:1;
+  padding:1px 2px;background:rgba(20,24,18,.85);color:#cfe0c8;border-radius:2px;
+  font-family:ui-monospace,monospace;pointer-events:none;}
+/* 세트 버튼은 블록 크기만큼 넓게, 미리보기 캔버스는 네이티브 크기로 */
+.tool.terr.set canvas{width:auto;height:auto;border-radius:3px;}
+/* 세트 도구 유령 미리보기 — 칠해질 칸 */
+.cell.setghost{outline:2px solid #ffd9a6;outline-offset:-2px;background:rgba(255,217,166,.16);}
+.tglabel:first-child{margin-top:0;}
 .tool{min-width:42px;padding:7px 8px;font-size:12px;text-align:center;}
 .tool .g{display:block;font-size:15px;line-height:1.2;}
 .tool.on{border-color:var(--amber);background:#3a2c20;color:#ffd9a6;box-shadow:0 0 10px rgba(255,179,56,.25);}
@@ -90,7 +113,7 @@ textarea{width:100%;min-height:110px;padding:8px;font-size:11px;font-family:ui-m
 .tool canvas{display:block;width:30px;height:30px;margin:0 auto 2px;image-rendering:pixelated;border-radius:5px;}
 @media (max-width:760px){
   #edMain{flex-direction:column;}
-  #edBoardWrap{--tile:calc((100vw - 60px)/9);}
+  #edBoardWrap,#edRefCard{--tile:calc((100vw - 60px)/9);}
 }
 
 /* ---------- 테스트 플레이 모달 ---------- */
