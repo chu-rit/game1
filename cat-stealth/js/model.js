@@ -10,7 +10,7 @@ function makeCat(def,id){
          home:{x:def.x,y:def.y,dir:(def.dir!=null?def.dir:0)},state:"idle",lure:0,
          sense:(CAT_SENSE[def.type]!=null?CAT_SENSE[def.type]:1),
          chaseSteps:0,dirs:def.dirs||null,patrol:def.patrol||null,pi:0,psign:1,rx:def.x,ry:def.y,alertT:0,
-         spotWait:0,freezeT:0,
+         freezeT:0,
          lureMem:0,lureTgt:null};
   if(c.type==="C"){ c.pi=0; c.psign=1; if(def.patrol){ for(var k=0;k<def.patrol.length;k++){ if(def.patrol[k][0]===def.x&&def.patrol[k][1]===def.y){c.pi=k;} } } c.psign=(c.pi===0)?1:-1; }
   if(c.type==="B"&&c.dirs){ c.dir=c.dirs[0]; }
@@ -210,6 +210,51 @@ function bfsNext(st,from,target,ignoreCats){
   if(node.x===from.x&&node.y===from.y) return null;
   return node;
 }
+/* 목표 칸 자체를 고양이가 못 밟을 때(수풀·구멍에 든 플레이어) —
+   목표 옆의 밟을 수 있는 칸까지 다가가는 첫 스텝을 찾아요 */
+function bfsNextToAdj(st,from,target){
+  if(catWalkable(st,target.x,target.y)) return bfsNext(st,from,target);
+  for(var d=0;d<4;d++){
+    var ax=target.x+DIRS[d][0], ay=target.y+DIRS[d][1];
+    if(!catWalkable(st,ax,ay)) continue;
+    var n=bfsNext(st,from,{x:ax,y:ay});
+    if(n) return n;
+  }
+  return null;
+}
+/* 먹이로 가는 길이 아예 막혔을 때 — 닿을 수 있는 칸 중 먹이에 가장 가까운 칸.
+   다른 고양이는 어차피 자리를 옮기니 도달성 판단에선 무시해요. */
+function closestReachable(st,from,target){
+  var seen={}; seen[from.x+","+from.y]=1;
+  var q=[{x:from.x,y:from.y}], qi=0, best={x:from.x,y:from.y}, bd=man(from,target);
+  while(qi<q.length){
+    var cur=q[qi++];
+    for(var i=0;i<4;i++){
+      var nx=cur.x+DIRS[i][0], ny=cur.y+DIRS[i][1], k=nx+","+ny;
+      if(seen[k]||!catWalkable(st,nx,ny)) continue;
+      seen[k]=1;
+      var d=Math.abs(nx-target.x)+Math.abs(ny-target.y);
+      if(d<bd){ bd=d; best={x:nx,y:ny}; }
+      q.push({x:nx,y:ny});
+    }
+  }
+  return best;
+}
+/* 최근접 칸에 선 고양이가 먹이 쪽으로 기웃거리는 한 발 —
+   먹이에 가장 가까운 이웃 빈 칸(다른 고양이 점유 칸 제외)으로 나갔다가 다음 턴 돌아와요 */
+function paceStep(st,cat,nf){
+  var best=null,bd=1e9;
+  for(var d=0;d<4;d++){
+    var nx=cat.x+DIRS[d][0], ny=cat.y+DIRS[d][1];
+    if(!catWalkable(st,nx,ny)) continue;
+    var occ=false;
+    for(var i=0;i<st.cats.length;i++){ var oc=st.cats[i]; if(oc!==cat&&oc.x===nx&&oc.y===ny){ occ=true; break; } }
+    if(occ) continue;
+    var dd=Math.abs(nx-nf.x)+Math.abs(ny-nf.y);
+    if(dd<bd){ bd=dd; best={x:nx,y:ny}; }
+  }
+  return best;
+}
 function faceToward(cat,t){ cat.dir=dirFromTo(cat,t); }
 /* 바닥의 그 칸에 놓인 생선 */
 function fishAt(st,x,y){
@@ -233,6 +278,8 @@ function nearestFish(st,cat,clear,onlyKind){
   var best=null,bd=1e9;
   for(var i=0;i<st.fishes.length;i++){
     var f=st.fishes[i], d=man(cat,f), nr=noticeRange(f,cat);
+    /* 이미 어떤 고양이가 물고 있는(eater) 먹이는 없는 먹이 취급 — 다른 고양이는 안 쫓아가요 */
+    if(f.eater!=null) continue;
     if(onlyKind&&f.kind!==onlyKind) continue;
     if(d<=nr&&d<bd&&(!clear||smellReaches(st,cat,f,nr))){ bd=d; best=f; }
   }
@@ -316,23 +363,31 @@ function catStep(st,cat,events){
   /* 수풀에 놓친 직후 이동금지 — freezeT턴 동안 제자리에서 마지막으로 본 쪽만 바라봐요 */
   if(cat.freezeT){ cat.freezeT--; cat.dir=dirFromTo(cat,st.player); return; }
   if(cat.state==="chase"){
-    /* 발각한 그 턴은 깜짝 놀라 제자리에서 플레이어만 바라봐요 — 다음 턴부터 추격 */
-    if(cat.spotWait){ cat.spotWait--; cat.dir=dirFromTo(cat,st.player); return; }
-    var nxt=bfsNext(st,cat,st.player);
+    /* 발각한 턴엔 이미 자기 이동을 끝낸 뒤라, 다음 턴부터는 바로 추격해요 */
+    /* '!'가 풀리는 턴(시야·기척에서 벗어난 채 CHASE_LOST째)에는 움직이지 않아요 —
+       제자리에 서서 마지막으로 본 쪽을 바라보다 다음 턴부터 돌아가요 */
+    if(!(inBeam(st,cat,st.player)||senseHit(st,cat,st.player))&&cat.chaseSteps+1>=CHASE_LOST){
+      cat.state="return"; cat.chaseSteps=0;
+      cat.dir=dirFromTo(cat,st.player);
+      events.push({k:"calm",id:cat.id});
+      return;
+    }
+    /* 플레이어가 수풀·구멍에 있으면 그 칸까지가 아니라 가장자리까지 쫓아가요 */
+    var nxt=bfsNextToAdj(st,cat,st.player);
     if(nxt){ cat.dir=dirFromTo(cat,nxt); cat.x=nxt.x; cat.y=nxt.y; }
     else{ cat.dir=dirFromTo(cat,st.player); }   /* 못 움직여도 쫓는 쪽은 바라봐요 */
-    /* 시야나 기척에 잡히면 계속 추격: 보이면(들키면) 리셋, 안 보인 채 CHASE_LOST턴이면 포기 */
+    /* 시야나 기척에 잡히면 계속 추격: 보이면(들키면) 리셋, 안 보이면 한 턴 세요 */
     if(inBeam(st,cat,st.player)||senseHit(st,cat,st.player)){ cat.chaseSteps=0; }
-    else{ cat.chaseSteps++; if(cat.chaseSteps>=CHASE_LOST){ cat.state="return"; } }
+    else{ cat.chaseSteps++; }
   }else if(cat.state==="return"){
     var tgt, arrive=null;
     if(cat.type==="C"){ var ni=nearestPatrolIdx(cat); tgt={x:cat.patrol[ni][0],y:cat.patrol[ni][1],ni:ni}; }
     else tgt={x:cat.home.x,y:cat.home.y};
     var stp=bfsNext(st,cat,tgt);
-    /* 돌아가는 길에도 작은 인간의 칸은 밟지 않아요(그 턴은 제자리에서 기다림) */
-    if(stp&&!(stp.x===st.player.x&&stp.y===st.player.y)){ cat.dir=dirFromTo(cat,stp); cat.x=stp.x; cat.y=stp.y; }
+    /* 작은 인간의 칸으로 가는 발걸음은 그대로 밟아요 — 겹치면 바로 잡혀요 */
+    if(stp){ cat.dir=dirFromTo(cat,stp); cat.x=stp.x; cat.y=stp.y; }
     /* 길이 막혔으면 그 턴은 제자리에서 기다립니다(방향도 그대로) */
-    else if(!stp){
+    else{
       cat.state="idle"; cat.chaseSteps=0;
       if(cat.type==="C"){
         cat.pi=tgt.ni; cat.psign=(cat.pi===0)?1:-1;
@@ -375,7 +430,7 @@ function catStep(st,cat,events){
     var nf=nearestFish(st,cat);
     /* 사거리 밖이어도 1턴 기억(lureTgt)으로 마지막 먹이 자리를 향해 계속 걸어요 —
        단 그 자리에 먹이가 아직 있을 때만(다른 고양이가 먹었으면 그냥 포기) */
-    if(!nf&&cat.lureTgt){ var mf=fishAt(st,cat.lureTgt.x,cat.lureTgt.y); if(mf) nf=mf; }
+    if(!nf&&cat.lureTgt){ var mf=fishAt(st,cat.lureTgt.x,cat.lureTgt.y); if(mf&&mf.eater==null) nf=mf; }
     if(!nf){
       cat.state="return"; cat.chaseSteps=0; cat.lureTgt=null;
       events.push({k:"calm",id:cat.id});
@@ -386,10 +441,24 @@ function catStep(st,cat,events){
       cat.lureWait=0; faceToward(cat,nf);
     }else{
       var f=bfsNext(st,cat,nf);
-      /* 작은 인간의 칸은 밟지 않아요(그 턴은 그 자리에서 기다림) */
-      if(f&&!(f.x===st.player.x&&f.y===st.player.y)){ cat.dir=dirFromTo(cat,f); cat.x=f.x; cat.y=f.y; }
+      /* 작은 인간의 칸으로 가는 발걸음도 그대로 밟아요 — 겹치면 바로 잡혀요 */
+      if(f){ cat.dir=dirFromTo(cat,f); cat.x=f.x; cat.y=f.y; }
       if(cat.x===nf.x&&cat.y===nf.y){ startEat(st,cat,nf,events); }
-      else if(man(cat,nf)<=1){ faceToward(cat,nf); }
+      else if(f){ if(man(cat,nf)<=1){ faceToward(cat,nf); } }
+      else{
+        /* 길이 아예 막힌 먹이 — 멍하니 서있지 않고 닿을 수 있는 최근접 칸까지 가서
+           그 자리를 왔다갔다(기웃거렸다 물러났다) 해요 */
+        var cp=closestReachable(st,cat,nf);
+        var g=(cat.x!==cp.x||cat.y!==cp.y)?bfsNext(st,cat,cp):null;
+        if(g){ cat.dir=dirFromTo(cat,g); cat.x=g.x; cat.y=g.y; }
+        else{
+          /* 최근접 칸 도착, 또는 그 칸을 먹는 중인 고양이가 차지해서 못 가면 —
+             제자리에 서있지 않고 먹이 쪽으로 기웃거리듯 이웃 칸을 왔다갔다 해요 */
+          var pv=paceStep(st,cat,nf);
+          if(pv){ cat.dir=dirFromTo(cat,pv); cat.x=pv.x; cat.y=pv.y; }
+          else cat.dir=dirFromTo(cat,nf);
+        }
+      }
     }
   }else{ /* idle */
     if(cat.type==="B"&&cat.dirs){ cat.dir=(cat.dir===cat.dirs[0])?cat.dirs[1]:cat.dirs[0]; }
@@ -402,20 +471,20 @@ function catStep(st,cat,events){
         pt={x:cat.patrol[nxi][0],y:cat.patrol[nxi][1]};
       }
       var pst=bfsNext(st,cat,pt);
-      if(pst&&!(pst.x===st.player.x&&pst.y===st.player.y)){ cat.dir=dirFromTo(cat,pst); cat.x=pst.x; cat.y=pst.y; }
+      if(pst){ cat.dir=dirFromTo(cat,pst); cat.x=pst.x; cat.y=pst.y; }
     }
   }
 }
 /* 감지 패스: 평소(idle)·복귀 중인 고양이는 눈(시야)과 귀(기척)를 모두 열어 둡니다.
    생선에 정신이 팔린 lured/eat 상태에서는 기척도 시야도 없어요.
-   발각 = chase 전환 + spotWait — 깜짝 놀라 제자리에서 바라보기만 해요. */
+   발각 = chase 전환 — 발각한 그 턴엔 이미 움직인 뒤라 다음 턴부터 곧장 쫓아와요. */
 function detectStep(st,events){
   for(var k2=0;k2<st.cats.length;k2++){
     var c2=st.cats[k2];
     if(c2.state!=="idle"&&c2.state!=="return") continue;
     var seen=inBeam(st,c2,st.player), heard=senseHit(st,c2,st.player);
     if(seen||heard){
-      c2.state="chase"; c2.chaseSteps=0; c2.alertT=0; c2.spotWait=1;
+      c2.state="chase"; c2.chaseSteps=0; c2.alertT=0;
       /* 발각 순간 플레이어 쪽으로 몸을 돌려요 — 귀로 들었든 눈으로 봤든 쫓는 쪽을 봐야 자연스러워요 */
       c2.dir=dirFromTo(c2,st.player);
       events.push({k:"spot",id:c2.id,bySense:!seen&&heard});
@@ -423,9 +492,6 @@ function detectStep(st,events){
   }
 }
 function simStep(st,action,events){
-  /* 이 턴에 수풀에서 나오는지 — 나오는 턴엔 고양이가 미리 멈칫해야 해서
-     그 경우에만 이동 전 발각을 한 번 더 돌려요 */
-  var wasHide=st.player&&isHideTile(st,st.player.x,st.player.y);
   var chase0=false;
   for(var c0=0;c0<st.cats.length;c0++){ if(st.cats[c0].state==="chase"){ chase0=true; break; } }
   if(action){
@@ -455,19 +521,7 @@ function simStep(st,action,events){
       events.push({k:"rest"});
     }
   }
-  /* 🌿 은신 수풀: 수풀 칸에 들어서면 추격 중이던 고양이는 그 턴에 바로 추격을 멈추고
-     (return · chaseSteps=0) 제자리로 돌아가요. 잎에 가려 눈에도 귀에도 안 잡혀요.
-     놓친 고양이는 '그 다음 턴 한 번만' 멍하니 서 있어요 — hidCats 에 담아 catStep 뒤에 걸어요 */
   var hidCats=[];
-  if(isHideTile(st,st.player.x,st.player.y)){
-    for(var hi=0;hi<st.cats.length;hi++){
-      var hc=st.cats[hi];
-      if(hc.state==="chase"){
-        hc.state="return"; hc.chaseSteps=0; hidCats.push(hc);
-        events.push({k:"hide",id:hc.id});
-      }
-    }
-  }
   /* 유인: 사거리 안에 생선이 있으면 idle·돌아가는 중인 고양이가 그쪽으로 끌려가요.
      생선은 아무도 먹지 않으면 판이 끝날 때까지 바닥에 그대로 있습니다. */
   for(var i=0;i<st.cats.length;i++){
@@ -492,19 +546,29 @@ function simStep(st,action,events){
         events.push({k:"calm",id:c.id}); }
     }
   }
-  /* 수풀에서 막 나온 턴은 예외 — 나온 그 턴에 고양이가 멈칫해야 해서
-     이 경우에만 이동 전 발각을 한 번 더 확인해요 */
-  if(wasHide&&!isHideTile(st,st.player.x,st.player.y)) detectStep(st,events);
-  /* 감지는 이동(catStep) 후 위치 기준으로만 봐요 — 고양이는 자기 차례의
-     이동을 끝내고 나서야 시야·기척을 확인하고, 발각하면 이동한 지점에서
-     '!'를 띄워요. 그 다음 턴은 spotWait로 멈칫하며 바라보기만 해요. */
+  /* 감지는 이동(catStep) 후 위치 기준으로만 봐요 — 수풀에서 나오는 턴도 예외 없이
+     고양이가 자기 차례의 이동(순찰이면 앞으로 한 칸)을 끝내고 나서야 시야·기척을
+     확인하고, 발각하면 이동한 지점에서 '!'를 띄워요. 다음 턴부터 곧장 추격해요. */
   for(var j=0;j<st.cats.length;j++){ catStep(st,st.cats[j],events); }
   detectStep(st,events);
+  /* 🌿 은신 수풀: 수풀 칸에 들어서는 '그 턴까지' 추격하던 고양이는 이번 턴 이동을
+     끝내고 나서야 놓쳐요 — '?'를 띄우고 다음 턴 한 번 멍하니 서요( freezeT ).
+     잎에 가린 플레이어는 눈에도 귀에도 안 잡혀요. */
+  if(isHideTile(st,st.player.x,st.player.y)){
+    for(var hi=0;hi<st.cats.length;hi++){
+      var hc=st.cats[hi];
+      if(hc.state==="chase"){
+        hc.state="return"; hc.chaseSteps=0; hidCats.push(hc);
+        events.push({k:"hide",id:hc.id});
+      }
+    }
+  }
   /* 수풀에 놓친 고양이의 1턴 이동금지는 '다음 턴'부터 — 이 턴의 catStep 은 정상적으로 끝난 뒤에 걸어요 */
   for(var hf=0;hf<hidCats.length;hf++){ hidCats[hf].freezeT=1; }
   for(var k3=0;k3<st.cats.length;k3++){
     var c3=st.cats[k3];
-    if(c3.state==="chase"&&c3.x===st.player.x&&c3.y===st.player.y){ events.push({k:"caught",id:c3.id}); }
+    /* 어떤 상태의 고양이든 사람 칸에 올라가면 잡혀요 — 순찰·복귀 중에도 겹치면 끝 */
+    if(c3.x===st.player.x&&c3.y===st.player.y){ events.push({k:"caught",id:c3.id}); }
   }
   if(st.player.x===st.goal.x&&st.player.y===st.goal.y){ events.push({k:"goal"}); }
   /* 쫓기는 고양이가 한 마리도 없으면 지구력은 자동 완충 (다음 추격 때 다시 3칸) */

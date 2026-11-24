@@ -292,7 +292,7 @@ function beginTurn(action){
   for(var i=0;i<st.cats.length;i++){
     var c=st.cats[i], nc=next.cats[i];
     c.x=nc.x; c.y=nc.y; c.dir=nc.dir; c.state=nc.state; c.lure=nc.lure;
-    c.chaseSteps=nc.chaseSteps; c.pi=nc.pi; c.psign=nc.psign; c.spotWait=nc.spotWait; c.freezeT=nc.freezeT;
+    c.chaseSteps=nc.chaseSteps; c.pi=nc.pi; c.psign=nc.psign; c.freezeT=nc.freezeT;
     c.lureMem=nc.lureMem; c.lureTgt=nc.lureTgt; c.lureWait=nc.lureWait;
   }
 

@@ -93,13 +93,27 @@ ok("4) 귀환 중 고양이도 이동 후 발각 — 귀환 스텝으로 칸을 
   assert.strictEqual(E(`canPlayerMoveTo(mk([{type:"A",x:3,y:4,dir:0,state:"return",home:[3,4]}]),3,4)`),false);
 });
 
-ok("5) 비켜나려는 고양이가 다른 고양이에 막히면 여전히 차단 (복도)",()=>{
+ok("5) 길 막힌 유인 고양이는 왔다갔다 하며 칸을 비움 — 진입 가능하지만 다음 턴 밟힘 (복도)",()=>{
   const st=`mk([
     {type:"A",x:3,y:4,dir:1,state:"lured"},
     {type:"A",x:4,y:4,dir:0,state:"eat"}],
     {fishes:[{x:5,y:4,kind:"big"},{x:4,y:4,kind:"big"}],
      grid:function(g){ for(var y=1;y<8;y++) for(var x=1;x<8;x++) if(y!==4) g[y][x]="#"; }})`;
-  assert.strictEqual(E(`canPlayerMoveTo(${st},3,4)`),false);
+  /* 먹이가 다른 고양이에 막혀 못 가면 고양이는 제자리 대기가 아니라 한 발 물러나
+     왔다갔다(페이싱) — 그래서 칸이 비고, 들어가면 다음 턴 되돌아오는 발걸음에 밟혀 잡혀요 */
+  assert.strictEqual(E(`canPlayerMoveTo(${st},3,4)`),true);
+  const r=E(`(function(){var s=${st};var ev=[];simStep(s,{t:"move",x:3,y:4},ev);
+    var evs=ev.map(function(e){return e.k});
+    var c=s.cats[0];
+    /* 이번 턴: 고양이가 물러남(페이싱) → 플레이어 진입 성공. 아직 caught 아님 */
+    var first={cat:[c.x,c.y],caught:evs.indexOf("caught")>=0};
+    /* 다음 턴: 고양이가 되돌아오는 발걸음으로 플레이어 칸을 밟아 잡힘 */
+    ev=[];simStep(s,{t:"wait"},ev);
+    var second={cat:[s.cats[0].x,s.cats[0].y],caught:ev.map(function(e){return e.k}).indexOf("caught")>=0};
+    return [first,second];})()`);
+  assert.strictEqual(r[0].caught,false);
+  assert.strictEqual(JSON.stringify(r[1].cat),"[3,4]");
+  assert.strictEqual(r[1].caught,true);
 });
 
 ok("6) 최종 점유는 모든 고양이 검사 — 추격 고양이가 목적지로 들어오면 차단",()=>{

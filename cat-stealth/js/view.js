@@ -1520,17 +1520,6 @@ function drawWarnMarks(g,st,now){
     pf(g,wx,wy,1,CELL,"rgba(90,10,18,0.55)"); pf(g,wx+CELL-1,wy,1,CELL,"rgba(90,10,18,0.55)");
     pf(g,wx+1,wy+1,CELL-2,2,"rgba(220,38,38,0.95)"); pf(g,wx+1,wy+CELL-3,CELL-2,2,"rgba(220,38,38,0.95)");
     pf(g,wx+1,wy+1,2,CELL-2,"rgba(220,38,38,0.95)"); pf(g,wx+CELL-3,wy+1,2,CELL-2,"rgba(220,38,38,0.95)");
-    /* 픽셀 삼각형 */
-    var tx=wx+CELL/2, ty=wy+5;
-    for(var r=0;r<10;r++){
-      var ww=r+2;
-      pf(g,Math.round(tx-ww/2)-1,ty+r,ww+2,1,"rgba(90,10,18,0.85)");
-    }
-    for(var r2=0;r2<10;r2++){
-      var ww2=r2+1;
-      pf(g,Math.round(tx-ww2/2),ty+r2,ww2,1,"#ffe9ea");
-    }
-    text3(g,"!",Math.round(tx)-1,ty+3,"#c8232f");
   }
 }
 

@@ -14,7 +14,10 @@ for(var _fk in FOREST_TILES) TILE_KO[_fk]=FOREST_TILES[_fk].name;
 /* 레이어 도구 — 바닥(지형)과 구조물을 따로 칠해요.
    바닥 칠하기는 구조물을, 구조물 칠하기는 바닥을 그대로 둬요 */
 var GROUND_TOOLS=["grass","dirt","floor","water"];
-var FEAT_TOOLS=LAYER_FEAT.slice(1);   /* null 제외 14종 */
+var FEAT_TOOLS=LAYER_FEAT.slice(1);   /* null 제외 — 표시 순서만, 코드는 LAYER_FEAT 순서가 정해요 */
+/* 아기나무(239)를 나무 도구 맨 앞으로 — LAYER_FEAT 순서(=코드)는 그대로 두고 팔레트만 바꿔요 */
+FEAT_TOOLS.splice(FEAT_TOOLS.indexOf("ob_sapling"),1);
+FEAT_TOOLS.unshift("ob_sapling");
 /* 원본 시트에서 자른 '그림 타일' — 규칙별 그룹, 한 장짜리 타일이라 칸이 통째로 바뀌어요 */
 var TERRAIN_GROUPS=[
   {n:"그림 · 바닥·장식",  tools:[]},
