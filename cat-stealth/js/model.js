@@ -4,7 +4,7 @@ var G={ mode:"title", stageIdx:0, st:null, fishMode:false, fishKind:null,
         fishAim:null,
         undoStack:[], moveTiles:[], dangerTiles:[], pending:null, playerDir:2,
         panelTimer:null, warnT:0, t:0, fx:[], bites:[],
-        tT0:0, clearMs:null };   /* tT0 = 이 방을 시작한 시각(performance.now), clearMs = 출구 도착까지 걸린 시간 */
+        tT0:0, clearMs:null, peekAlways:true };   /* tT0 = 이 방을 시작한 시각(performance.now), clearMs = 출구 도착까지 걸린 시간 · peekAlways = 다음 턴 영역 미리보기 항상 표시 */
 
 function makeCat(def,id){
   var c={id:id,type:def.type,x:def.x,y:def.y,dir:(def.dir!=null?def.dir:0),
@@ -281,8 +281,9 @@ function nearestFish(st,cat,clear,onlyKind){
   var best=null,bd=1e9;
   for(var i=0;i<st.fishes.length;i++){
     var f=st.fishes[i], d=man(cat,f), nr=noticeRange(f,cat);
-    /* 이미 어떤 고양이가 물고 있는(eater) 먹이는 없는 먹이 취급 — 다른 고양이는 안 쫓아가요 */
-    if(f.eater!=null) continue;
+    /* 이미 어떤 고양이가 물고 있는(eater) 먹이는 없는 먹이 취급 — 다른 고양이는 안 쫓아가요.
+       단 캣닢(ttl)은 예외: 누가 물고 있어도 향기는 계속 나서 4턴 동안 전부 끌어요 */
+    if(f.eater!=null&&f.ttl==null) continue;
     if(onlyKind&&f.kind!==onlyKind) continue;
     if(d<=nr&&d<bd&&(!clear||smellReaches(st,cat,f,nr))){ bd=d; best=f; }
   }
@@ -367,21 +368,20 @@ function catStep(st,cat,events){
   if(cat.freezeT){ cat.freezeT--; cat.dir=dirFromTo(cat,st.player); return; }
   if(cat.state==="chase"){
     /* 발각한 턴엔 이미 자기 이동을 끝낸 뒤라, 다음 턴부터는 바로 추격해요 */
-    /* '!'가 풀리는 턴(시야·기척에서 벗어난 채 CHASE_LOST째)에는 움직이지 않아요 —
-       제자리에 서서 마지막으로 본 쪽을 바라보다 다음 턴부터 돌아가요 */
-    if(!(inBeam(st,cat,st.player)||senseHit(st,cat,st.player))&&cat.chaseSteps+1>=CHASE_LOST){
+    /* 플레이어와 CHASE_DIST칸 이상 벌어지면 수풀 은신과 같은 방식으로 놓쳐요:
+       '?'를 띄우며 이 턴은 제자리에 서고, 다음 턴은 멍하니(freezeT) 본 쪽을
+       바라보다가 그 다음 턴부터 자리로 돌아가요 */
+    if(Math.abs(cat.x-st.player.x)+Math.abs(cat.y-st.player.y)>=CHASE_DIST){
       cat.state="return"; cat.chaseSteps=0;
       cat.dir=dirFromTo(cat,st.player);
-      events.push({k:"calm",id:cat.id});
+      cat.freezeT=1;
+      events.push({k:"lost",id:cat.id});
       return;
     }
     /* 플레이어가 수풀·구멍에 있으면 그 칸까지가 아니라 가장자리까지 쫓아가요 */
     var nxt=bfsNextToAdj(st,cat,st.player);
     if(nxt){ cat.dir=dirFromTo(cat,nxt); cat.x=nxt.x; cat.y=nxt.y; }
     else{ cat.dir=dirFromTo(cat,st.player); }   /* 못 움직여도 쫓는 쪽은 바라봐요 */
-    /* 시야나 기척에 잡히면 계속 추격: 보이면(들키면) 리셋, 안 보이면 한 턴 세요 */
-    if(inBeam(st,cat,st.player)||senseHit(st,cat,st.player)){ cat.chaseSteps=0; }
-    else{ cat.chaseSteps++; }
   }else if(cat.state==="return"){
     var tgt, arrive=null;
     if(cat.type==="C"){ var ni=nearestPatrolIdx(cat); tgt={x:cat.patrol[ni][0],y:cat.patrol[ni][1],ni:ni}; }
@@ -433,7 +433,7 @@ function catStep(st,cat,events){
     var nf=nearestFish(st,cat);
     /* 사거리 밖이어도 1턴 기억(lureTgt)으로 마지막 먹이 자리를 향해 계속 걸어요 —
        단 그 자리에 먹이가 아직 있을 때만(다른 고양이가 먹었으면 그냥 포기) */
-    if(!nf&&cat.lureTgt){ var mf=fishAt(st,cat.lureTgt.x,cat.lureTgt.y); if(mf&&mf.eater==null) nf=mf; }
+    if(!nf&&cat.lureTgt){ var mf=fishAt(st,cat.lureTgt.x,cat.lureTgt.y); if(mf&&(mf.eater==null||mf.ttl!=null)) nf=mf; }
     if(!nf){
       cat.state="return"; cat.chaseSteps=0; cat.lureTgt=null;
       events.push({k:"calm",id:cat.id});
@@ -466,10 +466,12 @@ function catStep(st,cat,events){
   }else{ /* idle */
     if(cat.type==="B"&&cat.dirs){ cat.dir=(cat.dir===cat.dirs[0])?cat.dirs[1]:cat.dirs[0]; }
     else if(cat.type==="C"&&cat.patrol){
+      if(cat.pi<0||cat.pi>=cat.patrol.length) cat.pi=0;
       var pt={x:cat.patrol[cat.pi][0],y:cat.patrol[cat.pi][1]};
       if(cat.x===pt.x&&cat.y===pt.y){
         var nxi=cat.pi+cat.psign;
         if(nxi<0||nxi>=cat.patrol.length){ cat.psign*=-1; nxi=cat.pi+cat.psign; }
+        if(nxi<0||nxi>=cat.patrol.length) nxi=cat.pi;   /* 지점이 하나뿐이면 제자리 초소 */
         cat.pi=nxi;
         pt={x:cat.patrol[nxi][0],y:cat.patrol[nxi][1]};
       }
@@ -514,7 +516,9 @@ function simStep(st,action,events){
       var kind=action.kind||"small";
       if((st.inv[kind]||0)>0){
         st.inv[kind]--;
-        st.fishes.push({x:action.x,y:action.y,kind:kind});
+        var fe={x:action.x,y:action.y,kind:kind};
+        if(KIND[kind]&&KIND[kind].ttl!=null) fe.ttl=KIND[kind].ttl;   /* 캣닢: 시간제 유인 */
+        st.fishes.push(fe);
         events.push({k:"fish",x:action.x,y:action.y,kind:kind});
       }
     }
@@ -583,6 +587,14 @@ function simStep(st,action,events){
     if(c3.x===st.player.x&&c3.y===st.player.y){ events.push({k:"caught",id:c3.id}); }
   }
   if(st.player.x===st.goal.x&&st.player.y===st.goal.y){ events.push({k:"goal"}); }
+  /* 🌿 시간제 먹이(캣닢) 카운트다운 — ttl턴이 지나면 향기가 사라져요.
+     사라지면 유인된 고양이들은 다음 턴 목표를 잃고 자리로 돌아가요( !nf → calm ). */
+  for(var fi=st.fishes.length-1;fi>=0;fi--){
+    var ff=st.fishes[fi];
+    if(ff.ttl==null) continue;
+    ff.ttl--;
+    if(ff.ttl<=0){ removeFish(st,ff); events.push({k:"fade",x:ff.x,y:ff.y,kind:ff.kind}); }
+  }
   /* 쫓기는 고양이가 한 마리도 없으면 지구력은 자동 완충 (다음 추격 때 다시 3칸) */
   var stillC=false;
   for(var c9=0;c9<st.cats.length;c9++){ if(st.cats[c9].state==="chase"){ stillC=true; break; } }

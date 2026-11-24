@@ -35,16 +35,18 @@ TERRAIN_GROUPS.forEach(function(g){
 });
 var ENTITY_TOOLS=[
   {id:"start",n:"시작"},{id:"goal",n:"골"},
-  {id:"catA",n:"고정 감시"},{id:"catB",n:"교대 감시"},{id:"catC",n:"순찰"},
+  {id:"catA",n:"구름"},{id:"catB",n:"치즈"},{id:"catC",n:"쿠키"},
   {id:"small",n:"작은 생선"},{id:"big",n:"큰 통생선"},{id:"catnip",n:"캣닢"},{id:"choco",n:"초콜릿"},
   {id:"erase",g:"✕",n:"개체 지우기"},{id:"select",g:"☝",n:"선택"}
 ];
 var CAT_ROLE={A:"고정 감시",B:"교대 감시",C:"순찰"};
+/* 고양이 별명(구름·치즈·쿠키) — 게임 정보 카드(CAT_INFO)와 같은 이름을 에디터에도 써요 */
+function catName(t){ return (CAT_INFO[t]||{}).name||CAT_ROLE[t]||t; }
 var DIR_GLYPH=["↑","→","↓","←"], DIR_NAME=["위","오른쪽","아래","왼쪽"];
 var TERRAIN_CLASS={".":"t-dot","#":"t-wall","~":"t-rug","X":"t-X","S":"t-S","T":"t-T","B":"t-B","W":"t-W","^":"t-care","H":"t-H","U":"t-U"};
 var SAVE_KEY="catStealthEditorDraft";
 
-var draft=null, tool={kind:"ground",t:"grass"}, sel=null, patrolMode=false;
+var draft=null, tool={kind:"entity",id:"select"}, sel=null, patrolMode=-1;   /* 기본 도구는 '선택' / 순찰 지점 찍기: -1 끔 · 0=A · 1=B */
 var undoStack=[], redoStack=[], dirty=false, painting=false, paintSnap=null;
 
 /* ---------- 상태/유틸 ---------- */
@@ -53,7 +55,7 @@ function snap(){ return JSON.stringify(draft); }
 function markDirty(){ dirty=true; autosave(); }
 function autosave(){ try{ localStorage.setItem(SAVE_KEY,snap()); }catch(e){} }
 function pushUndo(){ undoStack.push(snap()); if(undoStack.length>80) undoStack.shift(); redoStack=[]; }
-function restore(json){ draft=JSON.parse(json); sel=null; patrolMode=false; renderAll(); }
+function restore(json){ draft=JSON.parse(json); sel=null; patrolMode=-1; renderAll(); }
 function confirmReplace(){
   if(!dirty) return true;
   return window.confirm("저장하지 않은 편집 내용이 있어요. 덮어쓸까요?");
@@ -101,8 +103,8 @@ function buildGrid(){
   g.addEventListener("click",function(e){
     if(e.detail!==0) return;
     var c=cellFromEvent(e); if(!c) return;
-    if(patrolMode&&sel&&sel.kind==="cat"&&draft.cats[sel.i]&&draft.cats[sel.i].type==="C"){
-      addPatrolPoint(c.x,c.y); return;
+    if(patrolMode>=0&&sel&&sel.kind==="cat"&&draft.cats[sel.i]&&draft.cats[sel.i].type==="C"){
+      setPatrolPoint(patrolMode,c.x,c.y); return;
     }
     if(tool.kind==="terrain"||tool.kind==="ground"||tool.kind==="feat"){ pushUndo(); paintTerrain(c.x,c.y); markDirty(); renderAll(); }
     else if(tool.kind==="set"){ pushUndo(); paintSet(c.x,c.y); markDirty(); renderAll(); }
@@ -139,11 +141,12 @@ function drawBoardArt(d,g){
 
 function renderGrid(){
   var danger=$("edDanger").checked?editorDangerTiles(draft):{};
-  /* 선택된 C 고양이의 순찰 번호 */
+  /* 선택된 C 고양이의 순찰 A·B 표시 */
   var pnums={};
   if(sel&&sel.kind==="cat"&&draft.cats[sel.i]&&draft.cats[sel.i].type==="C"){
     var pt=draft.cats[sel.i].patrol||[];
-    for(var i=0;i<pt.length;i++) pnums[pt[i][1]*N+pt[i][0]]=i+1;
+    if(pt[0]) pnums[pt[0][1]*N+pt[0][0]]="A";
+    if(pt[1]) pnums[pt[1][1]*N+pt[1][0]]="B";
   }
   for(var y=0;y<N;y++) for(var x=0;x<N;x++){
     var el=cellEls[y][x], ch=cellChar(x,y);
@@ -157,7 +160,7 @@ function renderGrid(){
       else if(ent.kind==="pickup") label="먹이 "+(KIND[draft.pickups[ent.i].kind]||{}).label||draft.pickups[ent.i].kind;
       else{
         var c=draft.cats[ent.i];
-        label="고양이 · "+(CAT_ROLE[c.type]||c.type);
+        label=catName(c.type);
         var dg=document.createElement("span"); dg.className="dir";
         dg.textContent=DIR_GLYPH[c.type==="B"&&c.dirs?c.dirs[0]:c.dir]; el.appendChild(dg);
       }
@@ -312,7 +315,7 @@ function buildTools(){
     e.appendChild(b);
   });
 }
-function setTool(t2){ tool=t2; patrolMode=false; clearSetGhost();
+function setTool(t2){ tool=t2; patrolMode=-1; clearSetGhost();
   document.querySelectorAll("#edTerrainTools .tool").forEach(function(b){
     b.classList.toggle("on",(tool.kind==="terrain"&&b.dataset.tch===tool.ch)||
                             (tool.kind==="set"&&+b.dataset.si===tool.si)||
@@ -358,8 +361,8 @@ function onCellDown(e){
   if(e.button!==0) return;
   var c=cellFromEvent(e); if(!c) return;
   e.preventDefault();
-  if(patrolMode&&sel&&sel.kind==="cat"&&draft.cats[sel.i]&&draft.cats[sel.i].type==="C"){
-    addPatrolPoint(c.x,c.y); return;
+  if(patrolMode>=0&&sel&&sel.kind==="cat"&&draft.cats[sel.i]&&draft.cats[sel.i].type==="C"){
+    setPatrolPoint(patrolMode,c.x,c.y); return;
   }
   if(tool.kind==="terrain"||tool.kind==="ground"||tool.kind==="feat"||tool.kind==="set"||tool.kind==="refpaste"){
     painting=true; paintSnap=snap();
@@ -544,7 +547,7 @@ function applyEntity(x,y){
   if(id==="select"){
     var ent=entityAt(x,y);
     sel=ent?(ent.kind==="cat"?{kind:"cat",i:ent.i}:{kind:"cell",x:x,y:y}):{kind:"cell",x:x,y:y};
-    patrolMode=false; renderAll();
+    patrolMode=-1; renderAll();
     status(ent?("선택: ("+x+","+y+")"):"빈 칸 ("+x+","+y+")");
     return;
   }
@@ -581,7 +584,7 @@ function applyEntity(x,y){
     pushUndo();
     draft.cats.push(nc);
     sel={kind:"cat",i:draft.cats.length-1};
-    markDirty(); renderAll(); status("고양이 · "+(CAT_ROLE[type]||type)+" 배치 — 아래에서 방향·경로를 정하세요");
+    markDirty(); renderAll(); status(catName(type)+" 배치 — 아래에서 방향·경로를 정하세요");
     return;
   }
   /* 먹이 */
@@ -594,15 +597,18 @@ function applyEntity(x,y){
   markDirty(); renderAll(); status("먹이 배치 ("+x+","+y+")");
 }
 
-/* 순찰 경로 찍기 — 선택된 C 고양이에 지점 추가 */
-function addPatrolPoint(x,y){
+/* 순찰 지점 지정 — 선택된 C 고양이의 A(0)·B(1) 끝점을 맵 클릭으로 찍어요.
+   고양이는 두 지점 사이를 왕복해요 (지점 배열은 [A,B] 두 개만 유지) */
+function setPatrolPoint(idx,x,y){
   var c=draft.cats[sel.i]; if(!c||c.type!=="C") return;
   var ch=cellChar(x,y);
   if(!editorCatTile(draft.theme,ch)){ status("고양이가 지날 수 없는 칸이에요",true); return; }
   pushUndo();
-  c.patrol=c.patrol||[[c.x,c.y]];
-  c.patrol.push([x,y]);
-  markDirty(); renderAll(); status("순찰 지점 "+c.patrol.length+" 추가 ("+x+","+y+")");
+  if(!Array.isArray(c.patrol)||!c.patrol.length) c.patrol=[[c.x,c.y],[c.x,c.y]];
+  c.patrol=[c.patrol[0]||[c.x,c.y], c.patrol[1]||[c.x,c.y]];
+  c.patrol[idx]=[x,y];
+  patrolMode=-1;
+  markDirty(); renderAll(); status("순찰 "+(idx===0?"A":"B")+" 지점 ("+x+","+y+") — 두 칸 사이를 왕복해요");
 }
 
 /* ---------- 선택 패널 ---------- */
@@ -614,7 +620,7 @@ function renderSelPanel(){
     return;
   }
   var c=draft.cats[sel.i];
-  info.textContent="고양이 "+(sel.i+1)+" · "+(CAT_ROLE[c.type]||c.type)+" · ("+c.x+","+c.y+")";
+  info.textContent=catName(c.type)+" "+(sel.i+1)+" · ("+c.x+","+c.y+")";
   { /* A/B/C 모두 초기 방향을 정할 수 있어요 (C는 순찰 이동 전 대기 방향) */
     var d1=document.createElement("div"); d1.className="frow";
     var l1=document.createElement("label"); l1.textContent=(c.type==="B"?"방향 1":"방향");
@@ -637,19 +643,24 @@ function renderSelPanel(){
     }
   }
   if(c.type==="C"){
+    if(!Array.isArray(c.patrol)||c.patrol.length<2) c.patrol=[c.patrol&&c.patrol[0]||[c.x,c.y],c.patrol&&c.patrol[1]||[c.x,c.y]];
     var pr=document.createElement("div"); pr.className="frow";
     var pl=document.createElement("label"); pl.textContent="순찰";
     pr.appendChild(pl);
-    var pb=document.createElement("button"); pb.textContent=patrolMode?"경로 찍기 중… (끝내려면 다시 클릭)":"경로 찍기";
-    pb.className=patrolMode?"accent":"";
-    pb.addEventListener("click",function(){ patrolMode=!patrolMode; renderSelPanel(); });
-    pr.appendChild(pb);
-    var cb=document.createElement("button"); cb.textContent="경로 지우기";
-    cb.addEventListener("click",function(){ pushUndo(); c.patrol=[[c.x,c.y]]; patrolMode=false; markDirty(); renderAll(); });
+    ["A","B"].forEach(function(ab,ii){
+      var p=c.patrol[ii];
+      var b=document.createElement("button");
+      b.textContent=(patrolMode===ii?ab+" 찍는 중… ":ab+" ("+p[0]+","+p[1]+")");
+      b.className=patrolMode===ii?"accent":"";
+      b.addEventListener("click",function(){ patrolMode=(patrolMode===ii?-1:ii); renderSelPanel(); });
+      pr.appendChild(b);
+    });
+    var cb=document.createElement("button"); cb.textContent="초기화";
+    cb.addEventListener("click",function(){ pushUndo(); c.patrol=[[c.x,c.y],[c.x,c.y]]; patrolMode=-1; markDirty(); renderAll(); });
     pr.appendChild(cb);
     body.appendChild(pr);
     var pn=document.createElement("div"); pn.className="note";
-    pn.textContent="경로 찍기 중 맵의 칸을 누르면 순서대로 지점이 추가돼요(분홍 숫자). 지점은 고양이가 걸을 수 있는 칸만.";
+    pn.textContent="A·B 버튼을 누른 뒤 맵의 칸을 찍으면 그 칸이 지점이 돼요. 고양이는 두 지점 사이를 왕복해요(지점은 고양이가 걸을 수 있는 칸만).";
     body.appendChild(pn);
   }
   var del=document.createElement("button"); del.textContent="이 고양이 삭제"; del.style.marginTop="6px";
@@ -751,7 +762,7 @@ function buildStageSel(){
   });
 }
 function loadDraft(d,msg){
-  draft=d; sel=null; patrolMode=false; undoStack=[]; redoStack=[]; dirty=false;
+  draft=d; sel=null; patrolMode=-1; undoStack=[]; redoStack=[]; dirty=false;
   autosave(); renderAll(); status(msg||"");
 }
 function loadBuiltin(i){
@@ -903,7 +914,7 @@ function subscribeAssets(){
 /* ---------- 초기화 ---------- */
 function init(){
   buildGrid(); buildTools(); buildStageSel(); bindMeta(); subscribeAssets(); initRef();
-  setTool({kind:"terrain",ch:"."});
+  setTool({kind:"entity",id:"select"});   /* 기본 도구는 '선택' */
   $("edLoad").addEventListener("click",function(){
     if(!confirmReplace()) return;
     var d=loadBuiltin(+$("edStageSel").value);

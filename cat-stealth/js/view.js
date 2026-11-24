@@ -1350,6 +1350,23 @@ function drawFishKind(g,cx,cy,kind,now,opt){
 function drawFish(g,cx,cy,now,alpha,glow){
   drawFishKind(g,cx,cy,"small",now,{alpha:alpha,glow:glow});
 }
+/* 먹이 스프라이트의 노란 실루엣 — 줍는 아이템의 '띠 윤곽선'에 써요 (kind별 캐시).
+   표시 크기(0.7×) 그대로 스무딩 켜서 구워요 — 최근접 축소로 굽으면 띠가 들쭉날쭉 깨져요 */
+var FOOD_OUTLINE={};
+var OUT_OFF=[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[1,-1],[-1,1],[1,1]];
+function foodOutlineSpr(kind){
+  if(FOOD_OUTLINE[kind]!==undefined) return FOOD_OUTLINE[kind];
+  var spr=FOODIMG[kind]||FOODIMG.small;
+  if(!spr||!spr.width){ FOOD_OUTLINE[kind]=null; return null; }
+  var half=Math.round(32*0.7);
+  var oc=document.createElement("canvas"); oc.width=half*2+8; oc.height=half*2+8;
+  var og=oc.getContext("2d");
+  og.imageSmoothingEnabled=true;
+  og.drawImage(spr,4,4,half*2,half*2);
+  og.globalCompositeOperation="source-in";
+  og.fillStyle="#ffd94a"; og.fillRect(0,0,oc.width,oc.height);
+  FOOD_OUTLINE[kind]=oc; return oc;
+}
 
 /* ================= 렌더 레이어 ================= */
 function drawBeam(g,st,cat,now){
@@ -1451,30 +1468,31 @@ function drawTargets(g,st,now){
   var targets=fish?validFishTiles():(G.moveTiles||[]);
   var col=fish?(G.fishKind==="catnip"?"150,235,170":(G.fishKind==="big"?"255,176,110":"255,158,196")):"86,205,255";
   var edge=fish?col:"196,246,255";
-  var a=(fish?0.30:0.40)+0.10*blink;
+  var a=(fish?0.30:0.16)+0.10*blink*(fish?1:0.5);
+  var edgeA=fish?0.96:0.50, edgeA2=fish?0.88:0.42, outerA=fish?0.60:0.26;
   for(var ti=0;ti<targets.length;ti++){
     var tt=targets[ti], x0=tt.x*CELL, y0=tt.y*CELL;
-    /* 1) 칸 전체를 또렷하게 물들인다 (체크무늬 대신 고른 색면) */
+    /* 1) 칸 전체를 옅게 물들인다 */
     pf(g,x0,y0,CELL,CELL,"rgba("+col+","+a.toFixed(3)+")");
     pf(g,x0+2,y0+2,CELL-4,CELL-4,"rgba("+col+","+(a*0.50).toFixed(3)+")");
     /* 2) 바깥 1px 진한 선 — 크림색 러그에서도 윤곽이 서도록 */
-    pf(g,x0,y0,CELL,1,"rgba(10,32,44,0.60)");
-    pf(g,x0,y0+CELL-1,CELL,1,"rgba(10,32,44,0.60)");
-    pf(g,x0,y0,1,CELL,"rgba(10,32,44,0.60)");
-    pf(g,x0+CELL-1,y0,1,CELL,"rgba(10,32,44,0.60)");
+    pf(g,x0,y0,CELL,1,"rgba(10,32,44,"+outerA+")");
+    pf(g,x0,y0+CELL-1,CELL,1,"rgba(10,32,44,"+outerA+")");
+    pf(g,x0,y0,1,CELL,"rgba(10,32,44,"+outerA+")");
+    pf(g,x0+CELL-1,y0,1,CELL,"rgba(10,32,44,"+outerA+")");
     /* 3) 안쪽 2px 실선 테두리 */
-    pf(g,x0+1,y0+1,CELL-2,2,"rgba("+edge+",0.96)");
-    pf(g,x0+1,y0+CELL-3,CELL-2,2,"rgba("+edge+",0.88)");
-    pf(g,x0+1,y0+1,2,CELL-2,"rgba("+edge+",0.96)");
-    pf(g,x0+CELL-3,y0+1,2,CELL-2,"rgba("+edge+",0.88)");
+    pf(g,x0+1,y0+1,CELL-2,2,"rgba("+edge+","+edgeA+")");
+    pf(g,x0+1,y0+CELL-3,CELL-2,2,"rgba("+edge+","+edgeA2+")");
+    pf(g,x0+1,y0+1,2,CELL-2,"rgba("+edge+","+edgeA+")");
+    pf(g,x0+CELL-3,y0+1,2,CELL-2,"rgba("+edge+","+edgeA2+")");
     if(fish){
       pf(g,x0+CELL/2-3,y0+CELL/2-1,5,3,"rgba("+col+",0.95)");
       pf(g,x0+CELL/2-5,y0+CELL/2-2,2,2,"rgba("+col+",0.80)");
     }else{
       var md=(tt.dir!=null)?tt.dir:(G.playerDir||0);
       var cx=Math.round(x0+CELL/2), cy=Math.round(y0+CELL/2);
-      arrowTip(g,cx,cy,md,10,7,"rgba(6,28,40,0.45)");
-      arrowTip(g,cx,cy,md,8,5,"rgba(240,253,255,"+(0.84+0.16*blink).toFixed(3)+")");
+      arrowTip(g,cx,cy,md,10,7,"rgba(6,28,40,0.30)");
+      arrowTip(g,cx,cy,md,8,5,"rgba(240,253,255,"+(0.60+0.16*blink).toFixed(3)+")");
     }
   }
 }
@@ -1572,6 +1590,62 @@ function drawSense(g,st,cat,now){
   }
 }
 
+/* ---------- 다음 턴 시야·기척 미리보기 ---------- */
+/* 고양이가 "이번 턴 이동을 마친 뒤" 서 있을 자리와 방향을 예측해요.
+   chase는 플레이어 행동에 따라 달라져서 예측 불가 → 표시 안 함.
+   lured/eat는 시야·기척이 닫혀 있어 표시할 게 없어요. */
+function nextCatPose(st,cat){
+  if(cat.freezeT) return {x:cat.x,y:cat.y,dir:cat.dir};        /* 스턴 — 제자리 그대로 */
+  if(cat.state==="chase"||cat.state==="lured"||cat.state==="eat") return null;
+  if(cat.state==="return"){
+    var tgt=(cat.type==="C"&&cat.patrol)?{x:cat.patrol[nearestPatrolIdx(cat)][0],y:cat.patrol[nearestPatrolIdx(cat)][1]}:cat.home;
+    var stp=bfsNext(st,cat,tgt);
+    return stp?{x:stp.x,y:stp.y,dir:dirFromTo(cat,stp)}:{x:cat.x,y:cat.y,dir:cat.dir};
+  }
+  if(cat.type==="B"&&cat.dirs){
+    return {x:cat.x,y:cat.y,dir:(cat.dir===cat.dirs[0])?cat.dirs[1]:cat.dirs[0]};
+  }
+  if(cat.type==="C"&&cat.patrol){
+    var it=catIntent(st,cat);
+    if(it&&it.next) return {x:it.next.x,y:it.next.y,dir:it.dir};
+    return {x:cat.x,y:cat.y,dir:(it&&it.dir!=null)?it.dir:cat.dir};
+  }
+  return {x:cat.x,y:cat.y,dir:cat.dir};                        /* A형 — 자리·방향 고정 */
+}
+function drawNextZones(g,st,now){
+  for(var i=0;i<st.cats.length;i++){
+    var c=st.cats[i], pose=nextCatPose(st,c);
+    if(!pose) continue;
+    var fake={x:pose.x,y:pose.y,dir:pose.dir,sense:c.sense};
+    var beam=beamTiles(st,fake), beamKey={};
+    for(var j=0;j<beam.length;j++) beamKey[beam[j].x+","+beam[j].y]=1;
+    var senseT=c.sense?senseTilesOf(st,fake):[];
+    for(var s=0;s<senseT.length;s++){
+      var t=senseT[s]; if(beamKey[t.x+","+t.y]) continue;
+      zoneTileDash(g,t.x,t.y,"rgba(160,130,255,",0.42);
+    }
+    for(var b=0;b<beam.length;b++){
+      var t2=beam[b];
+      zoneTileDash(g,t2.x,t2.y,"rgba(120,220,255,",0.55);
+    }
+    /* 다음 위치 표시 — 고양이 실루엣 대신 작은 점선 괄호 */
+    var nx=pose.x*CELL, ny=pose.y*CELL, kc="rgba(160,240,255,0.75)";
+    pf(g,nx+5,ny+5,6,2,kc); pf(g,nx+5,ny+5,2,6,kc);
+    pf(g,nx+CELL-11,ny+5,6,2,kc); pf(g,nx+CELL-7,ny+5,2,6,kc);
+    pf(g,nx+5,ny+CELL-7,6,2,kc); pf(g,nx+5,ny+CELL-11,2,6,kc);
+    pf(g,nx+CELL-11,ny+CELL-7,6,2,kc); pf(g,nx+CELL-7,ny+CELL-11,2,6,kc);
+  }
+}
+/* 한 칸에 고정 점선 테두리만 */
+function zoneTileDash(g,tx,ty,rgb,edgeA){
+  var x0=tx*CELL, y0=ty*CELL;
+  for(var a=0;a<CELL;a+=8){
+    var w=Math.min(4,CELL-a);
+    pf(g,x0+a,y0,w,2,rgb+edgeA+")"); pf(g,x0+a,y0+CELL-2,w,2,rgb+edgeA+")");
+    pf(g,x0,y0+a,2,w,rgb+edgeA+")"); pf(g,x0+CELL-2,y0+a,2,w,rgb+edgeA+")");
+  }
+}
+
 /* ---------- 바닥에 떨어져 있는 생선(줍기) ---------- */
 function drawPickupEntity(g,st,now){
   if(!st.pickups||!st.pickups.length) return;
@@ -1581,28 +1655,28 @@ function drawPickupEntity(g,st,now){
     var ptop=onP?perchTopPx(pk.x,pk.y):0;
     var x0=pk.x*CELL, y0=pk.y*CELL, cx=x0+CELL/2, cy=onP?ptop+3:y0+CELL/2;
     var pulse=0.5+0.5*Math.sin(now/430+pk.x*1.7);
+    /* 그림자는 바닥에 그대로 — 몸만 살짝 공중에 떠서 '주울 수 있음'을 표시 */
     shadowPix(g,cx,onP?ptop+7:y0+CELL-7,9,3,0.24);
-    /* 금빛 프레임 = '밟으면 주워요' (크림 타일에서도 보이도록 2px 실선 + 안쪽 점선) */
-    pf(g,x0,y0,CELL,1,"rgba(70,35,0,0.42)"); pf(g,x0,y0+CELL-1,CELL,1,"rgba(70,35,0,0.42)");
-    pf(g,x0,y0,1,CELL,"rgba(70,35,0,0.42)"); pf(g,x0+CELL-1,y0,1,CELL,"rgba(70,35,0,0.42)");
-    pf(g,x0+1,y0+1,CELL-2,2,"rgba(217,119,6,0.85)"); pf(g,x0+1,y0+CELL-3,CELL-2,2,"rgba(217,119,6,0.85)");
-    pf(g,x0+1,y0+1,2,CELL-2,"rgba(217,119,6,0.85)"); pf(g,x0+CELL-3,y0+1,2,CELL-2,"rgba(217,119,6,0.85)");
-    var a=(0.55+0.25*pulse).toFixed(3);
-    for(var e=2;e<CELL-8;e+=7){
-      pf(g,x0+4+e,y0+4,4,1,"rgba(255,232,168,"+a+")");
-      pf(g,x0+4+e,y0+CELL-5,4,1,"rgba(255,232,168,"+a+")");
-      pf(g,x0+4,y0+4+e,1,4,"rgba(255,232,168,"+a+")");
-      pf(g,x0+CELL-5,y0+4+e,1,4,"rgba(255,232,168,"+a+")");
+    var bob=Math.round(Math.sin(now/430+pk.x*1.7)*2);
+    var fcy=cy-7+bob;
+    /* 노란색 띠 윤곽선 — 노란 실루엣을 8방향으로 살짝 어긋나게 깔고 그 위에 본체 */
+    var os=foodOutlineSpr(pk.kind);
+    if(os){
+      var half=Math.round(32*0.7);
+      for(var oi=0;oi<8;oi++){
+        g.drawImage(os,Math.round(cx)+OUT_OFF[oi][0]-half-4,Math.round(fcy)+OUT_OFF[oi][1]-half-4);
+      }
     }
-    drawFishKind(g,cx,cy-2,pk.kind,now,{scale:0.7});
-    var sx=Math.round(cx+7), sy=Math.round(cy-9);
+    drawFishKind(g,cx,fcy,pk.kind,now,{scale:0.7});
+    var sx=Math.round(cx+7), sy=Math.round(fcy-7);
     pf(g,sx,sy-1,1,3,"rgba(255,246,208,"+(0.35+0.45*pulse).toFixed(3)+")");
     pf(g,sx-1,sy,3,1,"rgba(255,246,208,"+(0.35+0.45*pulse).toFixed(3)+")");
   }
 }
 
 function drawFishEntity(g,st,now){
-  /* 던져 둔 생선: 아무도 먹지 않으면 판이 끝날 때까지 바닥에 그대로(수명·페이드 없음).
+  /* 던져 둔 생선: 아무도 먹지 않으면 판이 끝날 때까지 바닥에 그대로.
+     캣닢만 시간제 — ttl턴이 지나면 향기가 사라지고, 남은 턴수를 칸 구석에 표시해요.
      먹는 중인 고양이가 그 칸을 차지하고 있으면 바닥 생선은 그리지 않아요 —
      그 고양이는 '입에 생선을 문' eat 프레임으로 그려지므로 생선이 두 번 보이면 안 되니까요.
      (게임 상태 st.fishes·eater·eatLeft는 그대로 두고 그리기만 건너뜀) */
@@ -1620,9 +1694,9 @@ function drawFishEntity(g,st,now){
       }
       if(held) continue;                       /* 입에 물고 있는 중 → 바닥 중복 렌더 생략 */
     }
-    shadowPix(g,cx,onP?ptop+8:f.y*CELL+CELL-8,f.kind==="big"?10:8,3,0.30);
     dith(g,cx-11,cy-9,22,18,"rgba(255,170,205,0.14)",0.4,1);
     drawFishKind(g,cx,cy,f.kind,now,{scale:0.7});
+    if(f.ttl!=null) stepBadge(g,f.x*CELL+CELL-13,f.y*CELL+2,f.ttl,false);
   }
 }
 
@@ -1728,6 +1802,7 @@ function draw(){
   if(G.mode==="play"){
     drawIntent(ctx,st,now);
     if(!G.fishMode) drawWarnMarks(ctx,st,now);
+    if(G.nextPeek||G.peekAlways) drawNextZones(ctx,st,now);
   }
   if((G.mode==="play"||G.mode==="anim")&&anyChasing()) drawStamGauge(ctx,st,now);
 

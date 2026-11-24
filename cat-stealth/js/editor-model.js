@@ -267,14 +267,16 @@ function editorValidate(draft){
     if(c.type==="C"){
       if(!c.patrol||!c.patrol.length){ errors.push(tag+"에 순찰 경로가 없어요"); }
       else{
+        /* 고양이가 지점 위에 서 있을 필요는 없어요 — 지점까지 걸어갈 수 있으면 그쪽으로 합류해요.
+           (모델도 patrol[pi]까지 BFS로 이동한 뒤 왕복을 시작해요) */
         var onRoute=false;
+        var rc=st.cats[ci];
         for(var wi=0;wi<c.patrol.length;wi++){
           var w=c.patrol[wi];
-          if(w[0]===c.x&&w[1]===c.y) onRoute=true;
+          if(!onRoute&&editorCatPath(st,{x:c.x,y:c.y},{x:w[0],y:w[1]},rc)) onRoute=true;
           if(!editorCatTile(draft.theme,chAt(w[0],w[1]))) errors.push(tag+" 순찰 지점 "+(wi+1)+"이(가) 고양이가 못 서는 칸이에요");
         }
-        if(!onRoute) errors.push(tag+"의 현재 위치가 순찰 경로 위에 없어요");
-        var rc=st.cats[ci];
+        if(!onRoute) errors.push(tag+"의 현재 위치에서 순찰 지점으로 갈 수 없어요");
         for(var wj=1;wj<c.patrol.length;wj++){
           var a={x:c.patrol[wj-1][0],y:c.patrol[wj-1][1]}, b={x:c.patrol[wj][0],y:c.patrol[wj][1]};
           if(!editorCatPath(st,a,b,rc)) errors.push(tag+" 순찰 지점 "+wj+"→"+(wj+1)+" 사이가 끊겨 있어요");

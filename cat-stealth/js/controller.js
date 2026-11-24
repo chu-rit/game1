@@ -325,6 +325,12 @@ function beginTurn(action){
       setWarn("🌿 수풀에 몸을 숨겼어요 — 고양이가 추격을 포기해요","fish");
       clearWarnSoon(2200);
     }
+    else if(v.k==="lost"){
+      var lcat=catById(v.id); if(lcat) lcat.qT=performance.now();
+      sHide();
+      setWarn("고양이가 놓쳤어요 — 추격을 포기해요","fish");
+      clearWarnSoon(2000);
+    }
     else if(v.k==="rest"){ setWarn("😮‍💨 제자리에서 숨을 골라요…","fish"); clearWarnSoon(1500); }
     else if(v.k==="choco"){
       sChoco();
