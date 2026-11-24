@@ -1235,6 +1235,81 @@ function drawHuman(g,pl,now,dir,moving){
   g.restore();
 }
 
+/* ================= 출구 도착 연출: 점프 → 구멍 속으로 '뽕' =================
+   클리어 판정은 model.js 그대로 두고 그리기만 여기서 해요.
+   출발점·구멍 중심·시작 시각은 controller.js 가 G.exit 에 넣어 줍니다. */
+function exitHolePt(x,y){ return {x:x*CELL+CELL/2+EXIT_HOLE_DX, y:y*CELL+EXIT_HOLE_DY}; }
+/* 픽셀 도트로 그리는 타원 테두리 — 파동 링용 */
+function exitEllipseDots(g,cx,cy,rx,ry,col){
+  g.fillStyle=col;
+  var steps=Math.max(18,Math.round((rx+ry)*2.4));
+  for(var i=0;i<steps;i++){
+    var a=i/steps*Math.PI*2;
+    g.fillRect(Math.round(cx+Math.cos(a)*rx),Math.round(cy+Math.sin(a)*ry),1,1);
+  }
+}
+function drawExitPlayer(g,now,dir){
+  var ex=G.exit;
+  if(!ex) return;
+  var t=now-ex.t0;
+  if(t<0||t>=EXIT_MS) return;              /* 연출 끝 → 사람은 구멍 속(안 그림) */
+  var spr=HUMIMG[dir|0]||HUMIMG[2];
+  if(!spr||!spr.width) return;
+  var fx=ex.sx, fy=ex.sy, sc=1, alpha=1, sqx=1, sqy=1, sh=1;
+  if(t<EXIT_CROUCH_MS){                    /* 1) 웅크리기 */
+    var u=t/EXIT_CROUCH_MS;
+    sqy=1-0.18*Math.sin(Math.PI*u);
+    sqx=1+0.09*Math.sin(Math.PI*u);
+  }else if(t<EXIT_ARC_MS){                 /* 2) 포물선 점프 — 솟았다가 구멍 위로 꽂힘 */
+    var u2=(t-EXIT_CROUCH_MS)/(EXIT_ARC_MS-EXIT_CROUCH_MS);
+    fx=ex.sx+(ex.hx-ex.sx)*u2;
+    fy=ex.sy+(ex.hy-ex.sy)*u2-EXIT_HOP*Math.sin(Math.PI*u2);
+    var lift=Math.max(0,1-u2*2.4);         /* 이륙 순간 살짝 늘어나요 */
+    sqy=1+0.12*lift; sqx=1-0.06*lift;
+    if(u2>0.7) sc=1-0.25*((u2-0.7)/0.3);   /* 구멍에 가까워지며 살짝 작아지기 시작 */
+    sh=1-u2;                               /* 바닥 그림자는 점점 옅게 */
+  }else{                                   /* 3) 구멍 속으로 뽕 — 작아지며 사라짐 */
+    var u3=Math.min(1,(t-EXIT_ARC_MS)/(EXIT_SINK_MS-EXIT_ARC_MS));
+    fx=ex.hx; fy=ex.hy+11*u3;
+    sc=0.75*(1-0.80*Math.pow(u3,0.9));
+    alpha=u3>0.55?Math.max(0,1-(u3-0.55)/0.45):1;
+  }
+  if(sh>0.02) shadowPix(g,ex.sx,ex.sy+1,7,3,0.30*sh);
+  g.save();
+  if(alpha<1) g.globalAlpha=alpha;
+  g.translate(Math.round(fx),Math.round(fy));
+  g.scale(sc*sqx,sc*sqy);
+  g.drawImage(spr,-Math.round(spr.width/2),-spr.height+1);
+  g.restore();
+}
+/* '뽕' 이펙트 — 작은 동심원 파동 2겹 + 먼지·별 6점 + 짧은 섬광 (구멍 위에 얹어요) */
+var EXIT_POP_MS=380, EXIT_POP_DIRS=[[-1,-0.85],[1,-0.95],[-0.7,-1.45],[0.8,-1.35],[-1.35,-0.25],[1.35,-0.15]];
+function drawExitPop(g,now){
+  var ex=G.exit;
+  if(!ex||!ex.popT0) return;
+  var t=now-ex.popT0;
+  if(t<0||t>=EXIT_POP_MS) return;
+  var cx=ex.hx, cy=ex.hy, i;
+  for(i=0;i<2;i++){                        /* 동심원 파동 — 두 번째는 조금 늦게 */
+    var tt=t-i*70; if(tt<0) continue;
+    var u=Math.min(1,tt/300), k=Math.pow(u,0.55);
+    var a=(1-u)*(i?0.55:0.85);
+    exitEllipseDots(g,cx,cy,2+12*k,1.6+9*k,i?"rgba(150,240,190,"+a.toFixed(3)+")":"rgba(240,255,245,"+a.toFixed(3)+")");
+  }
+  for(i=0;i<EXIT_POP_DIRS.length;i++){     /* 톡 터지는 먼지·별 */
+    var u2=Math.min(1,t/330), e=1-Math.pow(1-u2,2), dv=EXIT_POP_DIRS[i];
+    var dx=dv[0]*(3+7*e), dy=dv[1]*(3+7*e)+6*u2*u2;   /* 살짝 중력으로 떨어져요 */
+    var aa=Math.max(0,1-u2);
+    pf(g,cx+dx-0.5,cy+dy-0.5,2,2,(i%2?"rgba(198,255,214,":"rgba(255,255,240,")+aa.toFixed(3)+")");
+  }
+  var uf=Math.min(1,t/120);                /* 들어가는 순간의 짧은 밝은 섬광 */
+  if(uf<1){
+    var aa2=(1-uf)*0.75, rr=3+6*uf;
+    exitEllipseDots(g,cx,cy,rr,rr*0.7,"rgba(255,255,240,"+aa2.toFixed(3)+")");
+    exitEllipseDots(g,cx,cy,rr*0.5,rr*0.35,"rgba(255,255,255,"+(aa2*0.9).toFixed(3)+")");
+  }
+}
+
 /* ---------- 먹이 스프라이트 3종 ---------- */
 /* 스프라이트 3종: small(작은생선) · big(통생선) · catnip(캣닢) */
 function drawFishKind(g,cx,cy,kind,now,opt){
@@ -1634,6 +1709,7 @@ function draw(){
   if(!pDrawn) drawPlayerNow(st,now,G.playerDir);
   drawBushFront(ctx,st);
   drawCanopyFront(ctx,st);
+  drawExitPop(ctx,now);            /* '뽕' 이펙트는 나뭇잎 위에 얹어 보이게 */
 
   if(G.mode==="play"){
     drawIntent(ctx,st,now);
@@ -1651,6 +1727,7 @@ function blit(){
 
 function drawPlayerNow(st,now,plDir){
   var pl=st.player;
+  if(G.exit){ drawExitPlayer(ctx,now,plDir); return; }   /* 출구 연출 중엔 사람 대신 점프 연출 */
   pl.rx+=(pl.x-pl.rx)*0.26; pl.ry+=(pl.y-pl.ry)*0.26;
   if(Math.abs(pl.rx-pl.x)<0.01) pl.rx=pl.x;
   if(Math.abs(pl.ry-pl.y)<0.01) pl.ry=pl.y;

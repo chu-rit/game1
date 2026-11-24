@@ -306,15 +306,10 @@ function finishTurn(){
   }
   G.st.turn++;
   if(goal){
-    sGoal();
+    /* 바로 클리어 창을 띄우지 않고, 점프 → 구멍 속으로 '뽕' 연출을 먼저 재생해요.
+       (연출이 끝난 뒤 startExitAnim 이 클리어/완탈출 창을 띄웁니다) */
     updateHUD();
-    if(G.stageIdx>=STAGES.length-1){
-      G.mode="win";
-      G.panelTimer=setTimeout(function(){ G.panelTimer=null; if(G.mode==="win") showPanel(winPanel); },700);
-    }else{
-      G.mode="clear";
-      G.panelTimer=setTimeout(function(){ G.panelTimer=null; if(G.mode==="clear") showPanel(clearPanel); },700);
-    }
+    startExitAnim(G.stageIdx>=STAGES.length-1?"win":"clear");
     return;
   }
   if(G.st.turn>G.st.maxTurns){
@@ -328,6 +323,43 @@ function finishTurn(){
   setWarn("");
   if(G.st.stam<=0&&anyChasing()) setWarn("😮‍💨 지쳤어요! 이번 턴은 제자리에서 쉬어야 해요","bad");
   computeDanger(); updateHUD();
+}
+/* ================= 출구 도착 연출 (view.js 가 G.exit 를 보고 그려요) =================
+   클리어 판정은 model.js 의 simStep 그대로 — 여기서는 연출과 상태 전환만 맡아요.
+   사람은 이미 출구 칸에 도착해 있어서, 그 자리에서 톡 튀어 올라 통나무 구멍으로 뽕 들어갑니다. */
+function cancelExitAnim(){
+  if(G.exitTimers&&G.exitTimers.length){
+    for(var i=0;i<G.exitTimers.length;i++) clearTimeout(G.exitTimers[i]);
+  }
+  G.exitTimers=[]; G.exit=null;
+}
+function startExitAnim(finalMode){
+  var st=G.st, pl=st.player, hp=exitHolePt(st.goal.x,st.goal.y);
+  cancelExitAnim();
+  G.exitTimers=[];
+  G.exit={ t0:performance.now(), popT0:0,
+           sx:pl.rx*CELL+CELL/2, sy:pl.ry*CELL+CELL-8,   /* 지금 발 위치에서 출발 */
+           hx:hp.x, hy:hp.y };
+  G.mode="exit";
+  G.fishMode=false; G.fishKind=null; G.fishAim=null;
+  sExitHop();
+  /* 구멍에 들어가는 순간 '뽕' */
+  G.exitTimers.push(setTimeout(function(){
+    if(!G.exit||G.mode!=="exit") return;
+    /* 이펙트 기준 시각은 연출 시작 시각에서 파생 — 타이머가 조금 늦어도 그림과 소리가 어긋나지 않아요 */
+    G.exit.popT0=G.exit.t0+EXIT_ARC_MS;
+    sExitPop();
+  },EXIT_ARC_MS));
+  /* 연출이 끝난 뒤 결과 창 */
+  G.exitTimers.push(setTimeout(function(){
+    G.exitTimers=[];
+    if(!G.exit||G.mode!=="exit") return;
+    G.mode=finalMode;
+    sGoal();
+    showPanel(finalMode==="win"?winPanel:clearPanel);
+    updateHUD();
+  },EXIT_PANEL_MS));
+  updateHUD();
 }
 function undo(){
   if(G.pending) return;
@@ -349,6 +381,7 @@ function undo(){
 function resetStage(){
   if(G.pending) return;
   if(G.mode!=="play"&&G.mode!=="caught") return;
+  cancelExitAnim();
   hideItemTip();
   if(G.panelTimer){ clearTimeout(G.panelTimer); G.panelTimer=null; }
   hidePanel();
@@ -401,6 +434,7 @@ $("bReset").addEventListener("click",function(){ this.blur(); resetStage(); });
 function stageNav(d){
   var ni=G.stageIdx+d;
   if(ni<0||ni>=STAGES.length) return;
+  cancelExitAnim();            /* 연출 타이머가 남아 다음 스테이지에 끼어들지 않게 */
   hidePanel(); G.stageIdx=ni; G.mode="play"; loadStage(ni); setWarn("");
 }
 $("sPrev").addEventListener("click",function(){ this.blur(); stageNav(-1); });
@@ -597,6 +631,7 @@ document.addEventListener("keydown",function(e){
   if(G.mode==="title"){ if(enter) startGame(); return; }
   if(G.mode==="clear"){ if(enter) nextStage(); return; }
   if(G.mode==="win"){ if(enter) restartFromStart(); return; }
+  if(G.mode==="exit") return;      /* 출구 연출 중에는 입력을 받지 않아요 */
   if(G.mode==="caught"){
     if(enter||k==="u"||k==="U"||k==="z"||k==="Z"||k==="Backspace") undo();
     else if(k==="r"||k==="R") resetStage();
@@ -642,9 +677,9 @@ document.addEventListener("keydown",function(e){
 function showPanel(fn){ hideItemTip(); var ov=$("overlay"), p=$("panel"); p.innerHTML=""; fn(p); ov.classList.remove("hidden"); }
 function hidePanel(){ $("overlay").classList.add("hidden"); }
 /* 패널 버튼 동작 — 터치/클릭과 키보드(Enter·Space·u·z·r)가 같은 함수를 씁니다 */
-function startGame(){ hidePanel(); G.mode="play"; G.stageIdx=0; loadStage(0); setWarn(""); beep(600,0.1,"triangle",0.05,200); }
-function nextStage(){ if(G.stageIdx>=STAGES.length-1) return; hidePanel(); G.stageIdx++; G.mode="play"; loadStage(G.stageIdx); setWarn(""); }
-function restartFromStart(){ hidePanel(); G.stageIdx=0; G.mode="play"; loadStage(0); setWarn(""); }
+function startGame(){ cancelExitAnim(); hidePanel(); G.mode="play"; G.stageIdx=0; loadStage(0); setWarn(""); beep(600,0.1,"triangle",0.05,200); }
+function nextStage(){ if(G.stageIdx>=STAGES.length-1) return; cancelExitAnim(); hidePanel(); G.stageIdx++; G.mode="play"; loadStage(G.stageIdx); setWarn(""); }
+function restartFromStart(){ cancelExitAnim(); hidePanel(); G.stageIdx=0; G.mode="play"; loadStage(0); setWarn(""); }
 function titlePanel(p){
   p.innerHTML='<canvas id="pCat" width="200" height="112"></canvas>'+
   '<div id="tSub">TACTICAL STEALTH PUZZLE</div><h2 id="tTitle">TINY &amp; PAWS</h2>'+

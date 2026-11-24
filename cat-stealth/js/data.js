@@ -16,6 +16,12 @@ var SIGHT_LEN=4, FISH_RANGE=2, CHASE_LOST=3;
    A 고정 감시 · B 교대 감시 · C 순회 */
 var CAT_SENSE={ A:2, B:2, C:2 };   /* 모든 고양이 기척(귀) 기본 2칸 — 벽·가구 사이면 끊김(lineClear) */
 var STEP_MS=200, ANIM_MS=210, FISH_MS=190, UNDO_MAX=80;
+/* ---- 출구 도착 연출(점프 → 구멍 속으로 뽕) 길이 ----
+   EXIT_CROUCH_MS 웅크리기 → EXIT_ARC_MS 까지 포물선 점프 → EXIT_SINK_MS 까지 구멍으로 빨려 들어감.
+   EXIT_MS 뒤엔 캐릭터가 안 보이고, EXIT_PANEL_MS 에 클리어 창을 띄워요. */
+var EXIT_CROUCH_MS=110, EXIT_ARC_MS=370, EXIT_SINK_MS=560, EXIT_MS=620, EXIT_PANEL_MS=700;
+var EXIT_HOP=17;        /* 점프 정점 높이(px) */
+var EXIT_HOLE_DX=-1, EXIT_HOLE_DY=16.5;   /* 출구 칸 안 구멍 중심(칸 좌상단 기준 px) */
 var STAM_MAX=3;   /* 추격 중 지구력: 들키면 3칸, 다 쓰면 제자리에서 1턴 대기 후 완충 */
 var HINT_DEFAULT="바닥의 먹이를 밟으면 주워요 · 보라 점선(기척) 안에 서면 들켜요";
 

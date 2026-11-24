@@ -29,4 +29,7 @@ function sBite(){ beep(300,0.09,"triangle",0.06,-80); }
 function sAte(){ beep(520,0.09,"sine",0.05,160); }
 function sChain(){ beep(600,0.08,"square",0.05,220); setTimeout(function(){ beep(820,0.10,"square",0.05,160); },90); }
 function sHide(){ beep(240,0.09,"triangle",0.05,130); setTimeout(function(){ beep(180,0.12,"triangle",0.04,-40); },70); }
+/* 출구 연출 — 톡 튀어 오르는 소리와 구멍에 빠지는 '뽕'(피치 업 팝) */
+function sExitHop(){ beep(320,0.10,"triangle",0.05,280); }
+function sExitPop(){ beep(420,0.13,"sine",0.06,620); setTimeout(function(){ beep(880,0.07,"square",0.04,180); },55); }
 
