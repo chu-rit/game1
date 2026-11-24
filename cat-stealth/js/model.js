@@ -10,6 +10,7 @@ function makeCat(def,id){
          home:{x:def.x,y:def.y,dir:(def.dir!=null?def.dir:0)},state:"idle",lure:0,
          sense:(CAT_SENSE[def.type]!=null?CAT_SENSE[def.type]:1),
          chaseSteps:0,dirs:def.dirs||null,patrol:def.patrol||null,pi:0,psign:1,rx:def.x,ry:def.y,alertT:0,
+         spotWait:0,freezeT:0,
          lureMem:0,lureTgt:null};
   if(c.type==="C"){ c.pi=0; c.psign=1; if(def.patrol){ for(var k=0;k<def.patrol.length;k++){ if(def.patrol[k][0]===def.x&&def.patrol[k][1]===def.y){c.pi=k;} } } c.psign=(c.pi===0)?1:-1; }
   if(c.type==="B"&&c.dirs){ c.dir=c.dirs[0]; }
@@ -45,7 +46,7 @@ function loadStage(idx){
          cats:s.cats.map(makeCat) };
   G.st.player.rx=player.x; G.st.player.ry=player.y;
   G.fishMode=false; G.fishKind=null; G.fishAim=null; G.pending=null; G.undoStack=[]; G.playerDir=2;
-  G.moveTiles=[]; G.dangerTiles=[]; G.fx=[];
+  G.moveTiles=[]; G.dangerTiles=[]; G.fx=[]; G.bushShake=null;
   if(G.panelTimer){ clearTimeout(G.panelTimer); G.panelTimer=null; }
   bakeBoard(G.st);
   updateHUD(); computeDanger();
@@ -96,14 +97,17 @@ var DECOR={"~":1};
 var SPECIAL={
   "^":{name:"고양이 발판", human:false, cat:true,  sight:false},
   "H":{name:"작은 구멍",   human:true,  cat:false, sight:true },
-  "U":{name:"은신 수풀",   human:true,  cat:false, sight:true }
+  "U":{name:"은신 수풀",   human:true,  cat:false, sight:true, soft:true }
 };
 /* 숲 타일(FOREST_TILES) — rule(data.js) 하나로 판정을 만들어요:
-   decor=밟는 장식(DECOR), solid=이동·시선 차단, water/low=이동만 차단(시선 통과) */
+   decor=밟는 장식(DECOR), solid=이동·시선 차단, water/low=이동만 차단(시선 통과),
+   hide=사람만 들어가 숨는 수풀(시선 차단, U 타일과 동일·냄새는 스며듦 soft) */
 for(var _ft in FOREST_TILES){
   var _fr=FOREST_TILES[_ft];
   if(_fr.rule==="decor") DECOR[_ft]=1;
-  else SPECIAL[_ft]={name:_fr.name, human:false, cat:false, sight:_fr.rule==="solid"};
+  else SPECIAL[_ft]={name:_fr.name, human:_fr.rule==="hide", cat:false,
+                     sight:_fr.rule==="solid"||_fr.rule==="hide",
+                     soft:_fr.rule==="hide"};
 }
 function specialAt(st,x,y){ return SPECIAL[tileAt(st,x,y)]||null; }
 /* 큰 구조물에 덮인 칸인가 — block2(2×2, 왼쪽 위 앵커)는 앵커 후보 4곳을,
@@ -118,8 +122,13 @@ function coveredByBig(st,x,y){
   t=FOREST_TILES[tileAt(st,x-1,y-1)];
   return !!(t&&t.block2);
 }
-/* 은신 수풀 칸인가 — 여기 서 있으면 눈에도 귀에도 안 잡혀요 */
-function isHideTile(st,x,y){ return tileAt(st,x,y)==="U"; }
+/* 은신 수풀 칸인가 — 여기 서 있으면 눈에도 귀에도 안 잡혀요 (U 또는 rule:"hide" 숲 타일) */
+function isHideTile(st,x,y){
+  var ch=tileAt(st,x,y);
+  if(ch==="U") return true;
+  var ft=FOREST_TILES[ch];
+  return !!(ft&&ft.rule==="hide");
+}
 /* 시선·기척을 막는 칸인가 — 구멍(H)은 막고, 발판(^)은 통과 */
 function isBlocked(st,x,y){
   var ch=tileAt(st,x,y);
@@ -216,16 +225,16 @@ function noticeRange(f,cat){
   return lr>sr?lr:sr;
 }
 /* 지금 서 있는 자리에서 알아챌 수 있는 가장 가까운 먹이(없으면 null).
-   clear=true면 기척처럼 사이에 벽·가구가 끼어 있으면 냄새를 못 맡아요 —
+   clear=true면 냄새가 사거리 안으로 번져 닿는지도 봐요(막힌 칸은 돌아서도 가능) —
    '처음 눈치채는 순간'에만 쓰고, 이미 유인돼 걷는 중에는 위치를 기억하고 있으니
-   clear 없이 계속 따라가요(걷다가 시선이 가려졌다고 유인이 풀리면 안 되니까요). */
+   clear 없이 계속 따라가요(걷다가 냄새가 끊겼다고 유인이 풀리면 안 되니까요). */
 function nearestFish(st,cat,clear,onlyKind){
   if(!st.fishes||!st.fishes.length) return null;
   var best=null,bd=1e9;
   for(var i=0;i<st.fishes.length;i++){
-    var f=st.fishes[i], d=man(cat,f);
+    var f=st.fishes[i], d=man(cat,f), nr=noticeRange(f,cat);
     if(onlyKind&&f.kind!==onlyKind) continue;
-    if(d<=noticeRange(f,cat)&&d<bd&&(!clear||lineClear(st,cat,f))){ bd=d; best=f; }
+    if(d<=nr&&d<bd&&(!clear||smellReaches(st,cat,f,nr))){ bd=d; best=f; }
   }
   return best;
 }
@@ -254,6 +263,33 @@ function lineClear(st,a,b){
   }
   return false;
 }
+/* 냄새가 지나지 못하는 칸 — 수풀·화분(soft)은 잎 사이로 스며들지만
+   벽·가구·구멍·나무·돌(시선 차단 타일)은 냄새도 막아요. */
+function smellBlocked(st,x,y){
+  var sp=SPECIAL[tileAt(st,x,y)];
+  if(sp&&sp.soft) return false;
+  return isBlocked(st,x,y);
+}
+/* 냄새는 직선이 아니라 칸 단위로 번져요 — 막힌 칸 하나가 껴 있어도
+   옆으로 돌아서 닿을 수 있어요. 사거리(range) 안에 뚫린 경로가 하나라도
+   있으면 알아채고, 대각선 사이의 두 칸이 '둘 다' 막혔을 때만 못 맡아요. */
+function smellReaches(st,a,b,range){
+  var seen={}; seen[a.x+","+a.y]=1;
+  var q=[{x:a.x,y:a.y,d:0}], qi=0;
+  while(qi<q.length){
+    var c=q[qi++];
+    if(c.d>=range) continue;
+    for(var i=0;i<4;i++){
+      var nx=c.x+DIRS[i][0], ny=c.y+DIRS[i][1], k=nx+","+ny;
+      if(seen[k]) continue;
+      seen[k]=1;
+      if(nx===b.x&&ny===b.y) return true;   /* 도착 칸 자체는 막힘 검사 없이 도달 */
+      if(smellBlocked(st,nx,ny)) continue;
+      q.push({x:nx,y:ny,d:c.d+1});
+    }
+  }
+  return false;
+}
 function senseHit(st,cat,pos){
   if(!cat.sense) return false;
   if(man(cat,pos)>cat.sense) return false;
@@ -277,7 +313,11 @@ function nearestPatrolIdx(cat){
   return best;
 }
 function catStep(st,cat,events){
+  /* 수풀에 놓친 직후 이동금지 — freezeT턴 동안 제자리에서 마지막으로 본 쪽만 바라봐요 */
+  if(cat.freezeT){ cat.freezeT--; cat.dir=dirFromTo(cat,st.player); return; }
   if(cat.state==="chase"){
+    /* 발각한 그 턴은 깜짝 놀라 제자리에서 플레이어만 바라봐요 — 다음 턴부터 추격 */
+    if(cat.spotWait){ cat.spotWait--; cat.dir=dirFromTo(cat,st.player); return; }
     var nxt=bfsNext(st,cat,st.player);
     if(nxt){ cat.dir=dirFromTo(cat,nxt); cat.x=nxt.x; cat.y=nxt.y; }
     else{ cat.dir=dirFromTo(cat,st.player); }   /* 못 움직여도 쫓는 쪽은 바라봐요 */
@@ -366,7 +406,26 @@ function catStep(st,cat,events){
     }
   }
 }
+/* 감지 패스: 평소(idle)·복귀 중인 고양이는 눈(시야)과 귀(기척)를 모두 열어 둡니다.
+   생선에 정신이 팔린 lured/eat 상태에서는 기척도 시야도 없어요.
+   발각 = chase 전환 + spotWait — 깜짝 놀라 제자리에서 바라보기만 해요. */
+function detectStep(st,events){
+  for(var k2=0;k2<st.cats.length;k2++){
+    var c2=st.cats[k2];
+    if(c2.state!=="idle"&&c2.state!=="return") continue;
+    var seen=inBeam(st,c2,st.player), heard=senseHit(st,c2,st.player);
+    if(seen||heard){
+      c2.state="chase"; c2.chaseSteps=0; c2.alertT=0; c2.spotWait=1;
+      /* 발각 순간 플레이어 쪽으로 몸을 돌려요 — 귀로 들었든 눈으로 봤든 쫓는 쪽을 봐야 자연스러워요 */
+      c2.dir=dirFromTo(c2,st.player);
+      events.push({k:"spot",id:c2.id,bySense:!seen&&heard});
+    }
+  }
+}
 function simStep(st,action,events){
+  /* 이 턴에 수풀에서 나오는지 — 나오는 턴엔 고양이가 미리 멈칫해야 해서
+     그 경우에만 이동 전 발각을 한 번 더 돌려요 */
+  var wasHide=st.player&&isHideTile(st,st.player.x,st.player.y);
   var chase0=false;
   for(var c0=0;c0<st.cats.length;c0++){ if(st.cats[c0].state==="chase"){ chase0=true; break; } }
   if(action){
@@ -397,12 +456,14 @@ function simStep(st,action,events){
     }
   }
   /* 🌿 은신 수풀: 수풀 칸에 들어서면 추격 중이던 고양이는 그 턴에 바로 추격을 멈추고
-     (return · chaseSteps=0) 제자리로 돌아가요. 잎에 가려 눈에도 귀에도 안 잡혀요. */
+     (return · chaseSteps=0) 제자리로 돌아가요. 잎에 가려 눈에도 귀에도 안 잡혀요.
+     놓친 고양이는 '그 다음 턴 한 번만' 멍하니 서 있어요 — hidCats 에 담아 catStep 뒤에 걸어요 */
+  var hidCats=[];
   if(isHideTile(st,st.player.x,st.player.y)){
     for(var hi=0;hi<st.cats.length;hi++){
       var hc=st.cats[hi];
       if(hc.state==="chase"){
-        hc.state="return"; hc.chaseSteps=0;
+        hc.state="return"; hc.chaseSteps=0; hidCats.push(hc);
         events.push({k:"hide",id:hc.id});
       }
     }
@@ -431,20 +492,16 @@ function simStep(st,action,events){
         events.push({k:"calm",id:c.id}); }
     }
   }
+  /* 수풀에서 막 나온 턴은 예외 — 나온 그 턴에 고양이가 멈칫해야 해서
+     이 경우에만 이동 전 발각을 한 번 더 확인해요 */
+  if(wasHide&&!isHideTile(st,st.player.x,st.player.y)) detectStep(st,events);
+  /* 감지는 이동(catStep) 후 위치 기준으로만 봐요 — 고양이는 자기 차례의
+     이동을 끝내고 나서야 시야·기척을 확인하고, 발각하면 이동한 지점에서
+     '!'를 띄워요. 그 다음 턴은 spotWait로 멈칫하며 바라보기만 해요. */
   for(var j=0;j<st.cats.length;j++){ catStep(st,st.cats[j],events); }
-  /* 감지: 평소(idle)·복귀 중인 고양이는 눈(시야)과 귀(기척)를 모두 열어 둡니다.
-     생선에 정신이 팔린 lured/eat 상태에서는 기척도 시야도 없어요. */
-  for(var k2=0;k2<st.cats.length;k2++){
-    var c2=st.cats[k2];
-    if(c2.state!=="idle"&&c2.state!=="return") continue;
-    var seen=inBeam(st,c2,st.player), heard=senseHit(st,c2,st.player);
-    if(seen||heard){
-      c2.state="chase"; c2.chaseSteps=0; c2.alertT=0;
-      /* 발각 순간 플레이어 쪽으로 몸을 돌려요 — 귀로 들었든 눈으로 봤든 쫓는 쪽을 봐야 자연스러워요 */
-      c2.dir=dirFromTo(c2,st.player);
-      events.push({k:"spot",id:c2.id,bySense:!seen&&heard});
-    }
-  }
+  detectStep(st,events);
+  /* 수풀에 놓친 고양이의 1턴 이동금지는 '다음 턴'부터 — 이 턴의 catStep 은 정상적으로 끝난 뒤에 걸어요 */
+  for(var hf=0;hf<hidCats.length;hf++){ hidCats[hf].freezeT=1; }
   for(var k3=0;k3<st.cats.length;k3++){
     var c3=st.cats[k3];
     if(c3.state==="chase"&&c3.x===st.player.x&&c3.y===st.player.y){ events.push({k:"caught",id:c3.id}); }

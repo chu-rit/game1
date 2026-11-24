@@ -88,6 +88,7 @@ function showItemTip(idx){
   $("tipTag").textContent=info.tag||"";
   $("tipTag").style.display=info.tag?"":"none";
   $("tipQty").textContent="보유 "+n+"개";
+  $("tipQty").style.display="";
   $("tipBody").innerHTML=rows+(info.tip?'<div class="tnote">'+info.tip+'</div>':"")+
     (typeof FOOD_TIP==="string"?'<div class="tnote trule">'+FOOD_TIP+'</div>':"");
   $("itemTip").classList.remove("hidden");
@@ -98,6 +99,37 @@ function hideItemTip(){
   if(!TIP.open) return;
   TIP.open=false;
   $("itemTip").classList.add("hidden");
+}
+/* 고양이 아이콘: 보드와 같은 도트 스프라이트(CATSPR) — 지금 상태(먹는 중이면 eat)와
+   바라보는 방향 그대로 <img>로 보여 줘요. */
+function catIconHtml(cat){
+  var sp=(typeof CATSPR!=="undefined"&&CATSPR[cat.type]);
+  var pose=sp&&((cat.state==="eat"&&sp.eat)?sp.eat:sp.idle);
+  var b=pose&&(pose[cat.dir]!=null?pose[cat.dir]:pose[2]);
+  if(b) return '<img class="sp-ic" src="data:image/png;base64,'+b+'" alt="" draggable="false">';
+  return "🐈";
+}
+/* 고양이 상세 정보 카드 — 고양이가 있는 칸을 콕 찍으면 떠요 (아이템 카드와 같은 틀) */
+var CAT_STATE_LABEL={ idle:"경계 중", chase:"추격 중 — 도망가세요!", "return":"자리로 돌아가는 중",
+                      lured:"먹이 냄새를 따라가는 중", eat:"먹는 중 — 시야·기척이 닫혀 있어요" };
+function showCatTip(cat){
+  var info=(typeof CAT_INFO!=="undefined"&&CAT_INFO[cat.type])||{name:"고양이",tag:"",rows:[],tip:""};
+  var all=[["지금 상태",CAT_STATE_LABEL[cat.state]||cat.state],
+           ["바라보는 방향",["위 ↑","오른쪽 →","아래 ↓","왼쪽 ←"][cat.dir]||"-"]].concat(info.rows);
+  var rows="";
+  for(var i=0;i<all.length;i++){
+    rows+='<div class="trow"><span class="tk">'+all[i][0]+'</span><span class="tv">'+all[i][1]+'</span></div>';
+  }
+  $("tipEm").innerHTML=catIconHtml(cat);
+  $("tipNm").textContent=info.name;
+  $("tipTag").textContent=info.tag||"";
+  $("tipTag").style.display=info.tag?"":"none";
+  $("tipQty").textContent="";
+  $("tipQty").style.display="none";
+  $("tipBody").innerHTML=rows+(info.tip?'<div class="tnote">'+info.tip+'</div>':"");
+  $("itemTip").classList.remove("hidden");
+  TIP.open=true; TIP.t0=performance.now();
+  sBeepTip();
 }
 /* 게임에서 한 번이라도 주워 본 아이템 종류 — 첫 습득 때 자동으로 정보창을 띄워요 */
 function itemSeenSet(){
@@ -237,12 +269,30 @@ function beginTurn(action){
   var st=G.st;
   if(action.t==="move") G.playerDir=action.dir;
   else if(action.t==="fish") G.playerDir=dirFromTo({x:st.player.x,y:st.player.y,dir:G.playerDir},{x:action.x,y:action.y});
+  /* 수풀(rule:"hide") 진입·이탈 시 덤불이 바스락 흔들려요 — 나오는 칸과 들어가는 칸 둘 다 기록.
+     구운 보드에는 정적 덤불이 남아 있으니, 그 칸을 뺀 채로 다시 구워서 이중 표시를 막아요 */
+  var shkOut=null;
+  if(action.t==="move"){
+    var fFrom=FOREST_TILES[tileAt(st,st.player.x,st.player.y)];
+    if(fFrom&&fFrom.rule==="hide") shkOut=st.player.x+","+st.player.y;
+  }
   st.player.x=next.player.x; st.player.y=next.player.y;
+  if(action.t==="move"){
+    var fTo=FOREST_TILES[tileAt(st,st.player.x,st.player.y)];
+    var shkIn=(fTo&&fTo.rule==="hide")?st.player.x+","+st.player.y:null;
+    if(shkOut||shkIn){
+      if(!G.bushShake) G.bushShake={};
+      var bT=performance.now();
+      if(shkOut) G.bushShake[shkOut]={t0:bT};
+      if(shkIn) G.bushShake[shkIn]={t0:bT};
+      bakeBoard(st);
+    }
+  }
   st.inv=next.inv; st.pickups=next.pickups; st.fishes=next.fishes; st.stam=next.stam;
   for(var i=0;i<st.cats.length;i++){
     var c=st.cats[i], nc=next.cats[i];
     c.x=nc.x; c.y=nc.y; c.dir=nc.dir; c.state=nc.state; c.lure=nc.lure;
-    c.chaseSteps=nc.chaseSteps; c.pi=nc.pi; c.psign=nc.psign;
+    c.chaseSteps=nc.chaseSteps; c.pi=nc.pi; c.psign=nc.psign; c.spotWait=nc.spotWait; c.freezeT=nc.freezeT;
     c.lureMem=nc.lureMem; c.lureTgt=nc.lureTgt; c.lureWait=nc.lureWait;
   }
 
@@ -268,6 +318,7 @@ function beginTurn(action){
     }
     else if(v.k==="ate"){ sAte(); }
     else if(v.k==="hide"){
+      var hcat=catById(v.id); if(hcat) hcat.qT=performance.now();
       sHide();
       setWarn("🌿 수풀에 몸을 숨겼어요 — 고양이가 추격을 포기해요","fish");
       clearWarnSoon(2200);
@@ -414,17 +465,9 @@ cvEl.addEventListener("pointerdown",function(e){
   for(var j=0;j<vm.length;j++){
     if(vm[j].x===tx&&vm[j].y===ty){ beginTurn({t:"move",x:tx,y:ty,dir:vm[j].dir}); return; }
   }
-  /* 못 가는 칸을 콕 찍었을 때: 고양이라면 이유를 알려 준다 */
+  /* 고양이가 있는 칸을 콕 찍으면: 아이템 카드처럼 고양이 상세 정보를 띄워요 */
   for(var ci=0;ci<G.st.cats.length;ci++){
-    if(G.st.cats[ci].x===tx&&G.st.cats[ci].y===ty){
-      if(vm.length===0){
-        setWarn("갈 수 있는 칸이 없어요 · 취소로 되돌아가세요","bad");
-      }else{
-        setWarn("고양이가 길을 막고 있어요 · 생선으로 유인해 보세요","fish");
-      }
-      clearWarnSoon(1900);
-      return;
-    }
+    if(G.st.cats[ci].x===tx&&G.st.cats[ci].y===ty){ showCatTip(G.st.cats[ci]); return; }
   }
   if(vm.length===0){ setWarn("갈 수 있는 칸이 없어요 · 취소로 되돌아가세요","bad"); clearWarnSoon(1900); }
 });

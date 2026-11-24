@@ -38,13 +38,14 @@ E(`var mk=function(catDefs,opts){
 let passed=0;
 function ok(name,fn){ fn(); passed++; console.log("ok -",name); }
 
-ok("1) 순찰 C가 비켜나는 칸 — 이동 허용 + 실제 시뮬 일치 + 원본 불변",()=>{
+ok("1) 고양이 칸으로 진입 — 순찰 고양이는 자기 스텝으로 칸을 비우고 옆 칸에서 발각 + 실제 시뮬 일치 + 원본 불변",()=>{
   const def=`[{type:"C",x:3,y:4,dir:2,patrol:[[3,4],[5,4]]}]`;
   const st0=E(`mk(${def})`);
   const snap=JSON.stringify(st0);
+  /* 발각은 이동 후 위치 기준 — 고양이가 순찰 스텝으로 (3,4)를 비우면 진입이 허용돼요 */
   assert.strictEqual(E(`canPlayerMoveTo(mk(${def}),3,4)`),true);
   assert.strictEqual(E(`canPlayerMoveTo(mk(${def}),3,4)`),true);   /* 반복 호출해도 원본 그대로 */
-  /* 실제 후보 턴 시뮬레이션: 고양이는 (4,4), 인간은 (3,4), 발각 이벤트 가능 */
+  /* 실제 후보 턴 시뮬레이션: 고양이는 (4,4)로 이동한 뒤 옆 칸에서 발각 → 아직 caught는 아님 */
   const r=E(`(function(){
     var st=mk(${def}), ev=[];
     simStep(st,{t:"move",x:3,y:4},ev);
@@ -78,8 +79,9 @@ ok("3) 먹이에 끌린 고양이는 비켜남 / 먹는 중 고양이는 자리 
     {fishes:[{x:3,y:4,kind:"small",eatLeft:1}]}),3,4)`),false);
 });
 
-ok("4) 귀환 중 고양이가 멀어지는 칸은 허용, 집에 이미 있으면 차단",()=>{
+ok("4) 귀환 중 고양이도 이동 후 발각 — 귀환 스텝으로 칸을 비우고 옆 칸에서 발각, 집에 이미 있으면 차단",()=>{
   const ret=`[{type:"A",x:3,y:4,dir:1,state:"return",home:[5,4]}]`;
+  /* 귀환 스텝으로 (4,4)로 이동한 뒤 거기서 발각 — 칸이 비니까 진입 허용 */
   assert.strictEqual(E(`canPlayerMoveTo(mk(${ret}),3,4)`),true);
   const r=E(`(function(){
     var st=mk(${ret}), ev=[];
@@ -135,7 +137,7 @@ ok("8) 판정이 실제 simStep 결과와 일치 + 픽업·원본 불변",()=>{
   const def=`[{type:"C",x:3,y:4,dir:2,patrol:[[3,4],[5,4]]}]`;
   const st=E(`(function(){var s=mk(${def});s.pickups=[{x:5,y:5,kind:"catnip"}];return s;})()`);
   const snap=JSON.stringify(st);
-  assert.strictEqual(E(`canPlayerMoveTo(${snap},3,4)`),true);
+  assert.strictEqual(E(`canPlayerMoveTo(${snap},3,4)`),true);   /* 이동 후 발각 — 순찰 스텝으로 칸을 비워서 허용 */
   /* 실제 턴 실행과 같은 결과 */
   const r=E(`(function(){
     var st=mk(${def}); st.pickups=[{x:5,y:5,kind:"catnip"}];

@@ -37,7 +37,7 @@ var KIND={
 };
 var FISH_ORDER=["small","big","catnip"];
 /* 아이템 상세 정보(인벤토리 슬롯을 길게 누르면 뜨는 카드) — 아래 수치는 KIND·model.js 실제 동작과 같아요. */
-var FOOD_TIP="던지기는 상하좌우 직선 · 작은 생선 3칸, 통생선·캣닢 2칸 · 쫓거나 먹는 중인 고양이는 반응하지 않아요";
+var FOOD_TIP="던지기는 상하좌우 직선 · 작은 생선 3칸, 통생선·캣닢 2칸 · 냄새는 수풀 사이로도 새어 나가고 막힌 칸 하나쯤은 돌아서도 닿아요 · 쫓거나 먹는 중인 고양이는 반응하지 않아요";
 var FOOD_INFO={
   small:{ em:"🐟", name:"작은 생선", tag:"짧은 유인",
     rows:[["유인 사거리","3칸 안의 고양이가 냄새를 맡고 걸어와요"],
@@ -56,6 +56,29 @@ var FOOD_INFO={
     tip:"먹는 동안은 그 고양이의 시야·기척이 닫혀요" }
 };
 
+/* ---------------------------- 고양이 상세 정보(보드에서 고양이 칸을 찍으면 뜨는 카드) ----------------------------
+   종류별 고정 수치만 적어요 — 현재 상태·바라보는 방향은 카드를 띄울 때 붙여요 */
+var CAT_INFO={
+  A:{ name:"구름", tag:"고정 감시",
+      rows:[["행동","한 자리에 앉아 한 방향만 감시해요"],
+            ["시야","바라보는 방향 직선 "+SIGHT_LEN+"칸"],
+            ["기척","주변 "+CAT_SENSE.A+"칸 안 발소리 · 벽에 막히면 못 들어요"],
+            ["이럴 때","생선으로 비켜 세우거나 수풀에 숨어 지나가기"]],
+      tip:"들키면 끝까지 쫓아와요" },
+  B:{ name:"치즈", tag:"교대 감시",
+      rows:[["행동","매 턴 두 방향을 번갈아 바라봐요"],
+            ["시야","바라보는 방향 직선 "+SIGHT_LEN+"칸"],
+            ["기척","주변 "+CAT_SENSE.B+"칸 안 발소리 · 벽에 막히면 못 들어요"],
+            ["이럴 때","등을 돌린 턴을 노려 지나가기"]],
+      tip:"들키면 끝까지 쫓아와요" },
+  C:{ name:"쿠키", tag:"왕복 순찰",
+      rows:[["행동","정해진 길을 끝과 끝 사이로 왕복해요"],
+            ["시야","바라보는 방향 직선 "+SIGHT_LEN+"칸"],
+            ["기척","주변 "+CAT_SENSE.C+"칸 안 발소리 · 벽에 막히면 못 들어요"],
+            ["이럴 때","멀어진 틈을 노리거나 생선으로 불러내기"]],
+      tip:"들키면 끝까지 쫓아와요" }
+};
+
 /* ---------------------------- 숲 타일 81칸 ----------------------------
    1단계 승인 그림(games/screenshots/hq-fullmap-aligned-art.png, 1254×1254 · 9×9 정합본)을
    360×360 으로 줄여 40×40 칸 81개로 자른 '그 자리 그대로' 조각이에요 — assets.js TILESPR
@@ -64,6 +87,7 @@ var FOOD_INFO={
    rule 은 직전 맵(ec272e1)의 칸별 판정을 그대로 물려받았어요(게임 수치 불변):
    · decor : 사람·고양이 모두 밟는 바닥 (잔디·꽃잔디·흙길)
    · solid : 못 지나가고 시선·기척도 차단 (숲·나무·바위·통나무·폭포)
+   · hide  : 사람만 들어가는 은신 수풀 — 시선·기척 차단, 고양이는 못 들어감 (U 타일과 동일)
    · water : 못 지나가지만 시선은 통과 (연못·물가) — 너머로 생선 투척 불가
    이름 뒤 숫자는 원본 그림에서의 칸 위치(열,행)예요. */
 var FOREST_TILES={
@@ -157,16 +181,16 @@ var FOREST_TILES={
 var LAYER_TERR=["grass","dirt","floor","water"];
 var LAYER_FEAT=[null,"ob_tree_big","ob_tree","ob_tree_wide","ob_pine","ob_pine_wide","ob_pine_wide2","ob_bush","ob_scrub",
                 "ob_rock","ob_stone","ob_log","ob_stump",
-                "ob_fern","ob_tower","ob_flower_p","ob_flower_w","ob_shroom"];
+                "ob_fern","ob_tower","ob_flower_p","ob_flower_w","ob_shroom","ob_sapling"];
 var TERR_NAME={grass:"잔디",dirt:"흙길",floor:"숲바닥",water:"물"};
 var FEAT_NAME={ob_tree_big:"큰나무",ob_tree:"나무(넓)",ob_tree_wide:"나무(2칸)",ob_pine:"침엽수",ob_pine_wide:"큰침엽수",ob_pine_wide2:"침엽수(2칸)",
                ob_bush:"덤불",ob_scrub:"수풀",
                ob_rock:"바위",ob_stone:"돌(2×2)",ob_log:"통나무",ob_stump:"그루터기",
-               ob_fern:"고사리",ob_tower:"캣타워",ob_flower_p:"보라꽃",ob_flower_w:"흰꽃",ob_shroom:"버섯"};
+               ob_fern:"고사리",ob_tower:"캣타워",ob_flower_p:"보라꽃",ob_flower_w:"흰꽃",ob_shroom:"버섯",ob_sapling:"아기나무"};
 var FEAT_RULE={ob_tree_big:"solid",ob_tree:"solid",ob_tree_wide:"solid",ob_pine:"solid",ob_pine_wide:"solid",ob_pine_wide2:"solid",
-               ob_bush:"solid",ob_scrub:"solid",
+               ob_bush:"hide",ob_scrub:"solid",
                ob_rock:"solid",ob_stone:"solid",ob_log:"solid",ob_stump:"low",
-               ob_fern:"decor",ob_tower:"decor",ob_flower_p:"decor",ob_flower_w:"decor",ob_shroom:"decor"};
+               ob_fern:"decor",ob_tower:"decor",ob_flower_p:"decor",ob_flower_w:"decor",ob_shroom:"decor",ob_sapling:"solid"};
 /* 코드 칸(왼쪽 위 앵커)부터 우·하·우하까지 2×2 발자취를 차지하는 구조물 — 이동·시선 모두 막아요 */
 var FEAT_BLOCK2={ob_stone:1};
 /* 코드 칸(왼쪽 앵커)부터 오른쪽 칸까지 가로 2칸 발자취를 차지하는 구조물 */
@@ -175,7 +199,7 @@ var FEAT_SPAN2={ob_tree_wide:1,ob_pine_wide2:1};
 var FEAT_TERR={ob_tree_big:"floor",ob_tree:"floor",ob_tree_wide:"floor",ob_pine:"floor",ob_pine_wide:"floor",ob_pine_wide2:"floor",
                ob_bush:"floor",ob_scrub:"floor",
                ob_rock:"floor",ob_stone:"floor",ob_log:"floor",ob_stump:"floor",ob_fern:"floor",
-               ob_shroom:"floor",ob_tower:"grass",ob_flower_p:"grass",ob_flower_w:"grass"};
+               ob_shroom:"floor",ob_tower:"grass",ob_flower_p:"grass",ob_flower_w:"grass",ob_sapling:"floor"};
 (function(){
   for(var t=0;t<LAYER_TERR.length;t++)for(var f=0;f<LAYER_FEAT.length;f++){
     var code=181+t*20+f, ch=String.fromCharCode(0xAC00+code-100), ft=LAYER_FEAT[f];

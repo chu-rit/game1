@@ -396,32 +396,46 @@ var FEAT_DRAW={
   ob_pine_wide:{s:2.0,a:"bottom",im:"ob_pine_hi",l:8},
   ob_pine_wide2:{s:2.8,a:"span2",im:"ob_pine_hi",l:8},   /* 진짜 가로 2칸 — 칸 x~x+1에 걸쳐 그려요 */
   ob_bush:{s:1.3,a:"bottom"}, ob_scrub:{s:1.25,a:"bottom"}, ob_fern:{s:1.1,a:"bottom"},
-  ob_rock:{s:1.15,a:"bottom",l:5}, ob_stone:{s:2.0,a:"block2",im:"ob_stone_hi",l:5}, ob_stump:{s:1.1,a:"bottom",l:5},
+  ob_rock:{s:1.15,a:"bottom",l:5}, ob_stone:{s:2.0,a:"block2",im:"ob_stone_hi",l:5}, ob_stump:{s:0.85,a:"bottom",l:5,jx:0},
   ob_log:{s:1.25,a:"bottom"}, ob_tower:{s:1.4,a:"bottom"},
-  ob_flower_p:{s:0.9,a:"bottom"}, ob_flower_w:{s:0.9,a:"bottom"}, ob_shroom:{s:0.9,a:"bottom"}
+  ob_flower_p:{s:0.9,a:"bottom"}, ob_flower_w:{s:0.9,a:"bottom"}, ob_shroom:{s:0.9,a:"bottom"},
+  ob_sapling:{s:0.85,a:"bottom",l:4,jx:0}
 };
+/* 한 칸의 구조물 스프라이트 그리기 — jxExtra는 수풀 흔들림 같은 프레임별 추가 오프셋 */
+function paintFeatureCell(g,st,x,y,jxExtra){
+  var ft=st.grid[y]&&FOREST_TILES[st.grid[y][x]];
+  if(!ft||!ft.feat) return;
+  var cfg=FEAT_DRAW[ft.feat]||{s:1.15,a:"bottom"};
+  var im=TILEIMG[cfg.im||ft.feat];
+  if(!im||!im.width) return;
+  var w=CELL*cfg.s, h=CELL*cfg.s;
+  /* 칸마다 살짝 다른 좌우 흔들림·반전으로 반복 패턴을 깨요 (결정적) — jx:0이면 중앙 고정 */
+  var jx=(cfg.jx==null?((x*31+y*17)%5-2)*1.5:cfg.jx)+(jxExtra||0);
+  /* span2: 자기 칸(x)부터 오른쪽 칸(x+1)까지 2칸 폭으로 그려요 — 밑동이 칸 경계에 와요
+     block2: 자기 칸을 왼쪽 위로 해서 x~x+1·y~y+1, 2×2 영역을 덮어요 — 바닥이 (y+1)칸 아래에 와요 */
+  var dx=cfg.a==="span2"||cfg.a==="block2"?x*CELL+CELL-w/2+jx:x*CELL+(CELL-w)/2+jx;
+  var dy=cfg.a==="center"?y*CELL+(CELL-h)/2:cfg.a==="block2"?(y+2)*CELL-h-(cfg.l||0):(y+1)*CELL-h-(cfg.l||0);
+  var flip=((x*13+y*29)%4)===0;
+  if(flip){
+    g.save(); g.translate(dx+w/2,0); g.scale(-1,1); g.translate(-(dx+w/2),0);
+    g.drawImage(im,dx,dy,w,h); g.restore();
+  }else g.drawImage(im,dx,dy,w,h);
+}
 function paintFeatures(g,st,compact){
   /* 위 행부터 아래로 — 아래쪽 오브젝트가 위쪽 나무 밑동을 덮어 깊이감이 생겨요 */
   for(var y=0;y<ROWS;y++) for(var x=0;x<COLS;x++){
     var ft=st.grid[y]&&FOREST_TILES[st.grid[y][x]];
     if(!ft||!ft.feat) continue;
-    var cfg=FEAT_DRAW[ft.feat]||{s:1.15,a:"bottom"};
-    var im=TILEIMG[cfg.im||ft.feat];
-    if(!im||!im.width) continue;
     /* compact: 에디터용 — 칸 내용이 그대로 보이게 칸 크기로만 그려요 */
-    if(compact){ g.drawImage(im,x*CELL,y*CELL,CELL,CELL); continue; }
-    var w=CELL*cfg.s, h=CELL*cfg.s;
-    /* 칸마다 살짝 다른 좌우 흔들림·반전으로 반복 패턴을 깨요 (결정적) */
-    var jx=((x*31+y*17)%5-2)*1.5;
-    /* span2: 자기 칸(x)부터 오른쪽 칸(x+1)까지 2칸 폭으로 그려요 — 밑동이 칸 경계에 와요
-       block2: 자기 칸을 왼쪽 위로 해서 x~x+1·y~y+1, 2×2 영역을 덮어요 — 바닥이 (y+1)칸 아래에 와요 */
-    var dx=cfg.a==="span2"||cfg.a==="block2"?x*CELL+CELL-w/2+jx:x*CELL+(CELL-w)/2+jx;
-    var dy=cfg.a==="center"?y*CELL+(CELL-h)/2:cfg.a==="block2"?(y+2)*CELL-h-(cfg.l||0):(y+1)*CELL-h-(cfg.l||0);
-    var flip=((x*13+y*29)%4)===0;
-    if(flip){
-      g.save(); g.translate(dx+w/2,0); g.scale(-1,1); g.translate(-(dx+w/2),0);
-      g.drawImage(im,dx,dy,w,h); g.restore();
-    }else g.drawImage(im,dx,dy,w,h);
+    if(compact){
+      var cfg=FEAT_DRAW[ft.feat]||{s:1.15,a:"bottom"};
+      var im=TILEIMG[cfg.im||ft.feat];
+      if(im&&im.width) g.drawImage(im,x*CELL,y*CELL,CELL,CELL);
+      continue;
+    }
+    /* 수풀 흔들림 중인 칸은 구운 보드에서 빼요 — draw()가 매 프레임 진동해서 다시 그려요 */
+    if(G.bushShake&&G.bushShake[x+","+y]) continue;
+    paintFeatureCell(g,st,x,y,0);
   }
 }
 /* 칸 위로 넘친 수관 부분만 엔티티(고양이·플레이어) 위에 다시 그려요 —
@@ -438,6 +452,12 @@ function drawCanopyFront(g,st){
     if(!im||!im.width) continue;
     var w=CELL*cfg.s;
     var jx=((x*31+y*17)%5-2)*1.5;
+    /* 수풀 진입·이탈 흔들림은 앞잎(넘친 수관)에도 똑같이 — 밑동과 어긋나지 않게 */
+    var bsk=G.bushShake&&G.bushShake[x+","+y];
+    if(bsk){
+      var bAge=performance.now()-bsk.t0;
+      if(bAge<620) jx+=Math.sin(bAge/52)*2.4*(1-bAge/620);
+    }
     var dx=cfg.a==="span2"||cfg.a==="block2"?x*CELL+CELL-w/2+jx:x*CELL+(CELL-w)/2+jx;
     var dy=cfg.a==="block2"?(y+2)*CELL-h-(cfg.l||0):(y+1)*CELL-h-(cfg.l||0);
     var srcH=im.height*(over/h);
@@ -1069,7 +1089,7 @@ function drawBushTile(g,st,x,y){
    화분·바닥은 아래 깔린 수풀 타일 그대로 남아요. */
 function drawBushFront(g,st){
   var pl=st.player;
-  if(!pl||!isHideTile(st,pl.x,pl.y)) return;
+  if(!pl||tileAt(st,pl.x,pl.y)!=="U") return;   /* 화분 잎 앞면 덮기는 U 타일 전용 */
   var im=TILEIMG.bush;
   if(!im||!im.width) return;
   var x0=Math.round(pl.rx*CELL), y0=Math.round(pl.ry*CELL);
@@ -1366,13 +1386,6 @@ function drawBeam(g,st,cat,now){
   pf(g,ex-1,ey-1,3,3,glow);
 }
 
-function drawGoalPulse(g,st,now){
-  var pulse=0.5+0.5*Math.sin(now/620);
-  var x0=st.goal.x*CELL, y0=st.goal.y*CELL;
-  dith(g,x0+1,y0+2,CELL-2,CELL-4,"rgba(120,255,190,"+(0.10+0.10*pulse)+")",0.35+0.2*pulse,1);
-  dith(g,x0-3,y0-3,CELL+6,CELL+6,"rgba(120,255,190,"+(0.06+0.06*pulse)+")",0.25,3);
-}
-
 function stepBadge(g,x,y,n,amber){
   fillRR(g,x-1,y-1,11,11,2,"rgba(12,9,14,0.86)");
   pf(g,x,y,9,9,amber?"#3a2a14":"#182430");
@@ -1643,6 +1656,19 @@ function draw(){
 
   ctx.drawImage(board,0,0);
 
+  /* 수풀 흔들림 — 보드에서 빼 둔 칸을 매 프레임 감쇠 진동으로 다시 그려요.
+     흔들림이 끝난 칸은 다음 구울 때 되돌리려 즉시 재베이크해요 */
+  if(G.bushShake){
+    var reBake=false;
+    for(var bsk2 in G.bushShake){
+      var bt2=G.bushShake[bsk2], bAge2=now-bt2.t0;
+      if(bAge2>=620){ delete G.bushShake[bsk2]; reBake=true; continue; }
+      var bxy=bsk2.split(",");
+      paintFeatureCell(ctx,st,+bxy[0],+bxy[1],Math.sin(bAge2/52)*2.4*(1-bAge2/620));
+    }
+    if(reBake) bakeBoard(st);
+  }
+
   if(G.mode!=="title"){
     for(var i=0;i<st.cats.length;i++){
       var c=st.cats[i];
@@ -1651,8 +1677,6 @@ function draw(){
     /* 기척은 시선 위에 얹는다(시선이 깔린 칸은 기척을 건너뛰므로 두 색이 섞이지 않아요) */
     for(var si=0;si<st.cats.length;si++) drawSense(ctx,st,st.cats[si],now);
   }
-  drawGoalPulse(ctx,st,now);
-
   if(G.mode==="play"){
     drawTargets(ctx,st,now);
     drawFishAim(ctx,now);
@@ -1732,6 +1756,8 @@ function drawPlayerNow(st,now,plDir){
   if(Math.abs(pl.rx-pl.x)<0.01) pl.rx=pl.x;
   if(Math.abs(pl.ry-pl.y)<0.01) pl.ry=pl.y;
   var moving=Math.abs(pl.rx-pl.x)>0.02||Math.abs(pl.ry-pl.y)>0.02;
+  /* 수풀 칸에 자리 잡으면 사람은 잎 속에 완전히 가려져 그리지 않아요 (들어가는 순간엔 보여요) */
+  if(!moving&&isHideTile(st,pl.x,pl.y)) return;
   drawHuman(ctx,{rx:pl.rx,ry:pl.ry},now,plDir,moving);
 }
 
