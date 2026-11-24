@@ -2,11 +2,14 @@
 import { getDatabase, ref, set, onValue, remove, get, update, push } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 // UI 요소
-const matchButton = document.getElementById('match-button');
+const buttonList = document.getElementById('buttonList');
+const practiceButton = document.getElementById('practice_btn');
+const matchButton = document.getElementById('match_btn');
+const rulesButton = document.getElementById('rules_btn');
+
 const gameContainer = document.getElementById('game-container');
 const matchStatus = document.getElementById('match-status');
 const roundElement = document.getElementById('round');
-const numberSelectDiv = document.getElementById('number-select');
 const resultDiv = document.getElementById('result');
 const playerScoreElement = document.getElementById('player-score');
 const opponentScoreElement = document.getElementById('opponent-score');
@@ -14,7 +17,6 @@ const drawScoreElement = document.getElementById('draw-score');
 const restartButton = document.getElementById('restart-button');
 
 // 규칙 모달 관련 요소
-const rulesButton = document.getElementById('rules-button');
 const rulesModal = document.getElementById('rules-modal');
 const closeButton = document.querySelector('.close-button');
 
@@ -822,10 +824,11 @@ return playerRole !== null && gameId !== null;
 }
 
 // 매칭 시스템
-async function joinGame() {
-console.log('joinGame called');
+async function matchGame() {
+console.log('matchGame called');
 const db = getDatabase();
 
+buttonList.classList.add("hidden");
 // 기존 게임이 있다면 초기화
 if (gameId) {
 await remove(ref(db, `games/${gameId}`));
@@ -926,22 +929,14 @@ rulesModal.classList.add('hidden');
 
 // 페이지 로드 시 실행
 window.onload = function() {
-// UI 요소 초기화
-if (!matchButton || !gameContainer || !matchStatus || !roundElement || 
-!numberSelectDiv || !resultDiv || !playerScoreElement || !opponentScoreElement || !drawScoreElement) {
-console.error('필요한 UI 요소를 찾을 수 없습니다.');
-return;
-}
-
 // 플레이어 ID 생성
 playerId = 'player_' + Math.random().toString(36).substr(2, 9);
 
 // 이벤트 리스너 설정
-matchButton.addEventListener('click', joinGame);
+matchButton.addEventListener('click', matchGame);
 
 // 초기 UI 상태 설정
 gameContainer.classList.add('hidden');
-matchStatus.textContent = '게임 시작 대기중...';
 }
 
 // 게임 리셋

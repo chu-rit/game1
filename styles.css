@@ -331,6 +331,46 @@ h1 {
     display: none !important;
 }
 
+#computer-match-button {
+    min-width: 200px; /* Set minimum width to match other buttons */
+    height: 45px; /* Set height to match other buttons */
+    background-color: #87CEEB; /* Light sky blue background */
+    color: white; /* White text */
+    border: none; /* Remove borders */
+    border-radius: 8px; /* Rounded corners */
+    padding: 0; /* Remove padding to standardize height */
+    text-align: center; /* Centered text */
+    text-decoration: none; /* Remove underline */
+    display: inline-block; /* Get the button to behave like a button */
+    font-size: 16px; /* Increase font size */
+    margin: 4px 2px; /* Some margin */
+    cursor: pointer; /* Pointer cursor on hover */
+    transition: background-color 0.3s; /* Smooth transition for background color */
+}
+
+#computer-match-button:hover {
+    background-color: #00BFFF; /* Darker sky blue on hover */
+}
+
+#buttonList div {
+    background-color: #87CEEB; /* Light sky blue background */
+    color: white; /* White text */
+    border: none; /* Remove borders */
+    border-radius: 8px; /* Rounded corners */
+    padding: 15px 32px; /* Some padding */
+    text-align: center; /* Centered text */
+    text-decoration: none; /* Remove underline */
+    display: inline-block; /* Get the button to behave like a button */
+    font-size: 16px; /* Increase font size */
+    margin: 4px 2px; /* Some margin */
+    cursor: pointer; /* Pointer cursor on hover */
+    transition: background-color 0.3s; /* Smooth transition for background color */
+}
+
+#buttonList div:hover {
+    background-color: #00BFFF; /* Darker sky blue on hover */
+}
+
 /* 반응형 디자인 미디어 쿼리 추가 */
 @media screen and (max-width: 768px) {
     body {
@@ -371,7 +411,7 @@ h1 {
     }
 
     #match-button {
-        width: 100%;
+        /* width: 100%; */
         padding: 12px;
         font-size: 16px;
     }
