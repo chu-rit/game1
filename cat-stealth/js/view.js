@@ -1747,7 +1747,7 @@ function draw(){
   }
   var st=G.st;
 
-  if(G.mode==="anim"&&G.pending&&now-G.pending.t0>=ANIM_MS){
+  if(G.mode==="anim"&&G.pending&&now-G.pending.t0>=(G.pending.dur||ANIM_MS)){
     finishTurn();
   }
 
@@ -1814,9 +1814,15 @@ function draw(){
       drawPlayerNow(st,now,G.playerDir); pDrawn=true;
     }
     var cat=ents[e2].cat;
-    cat.rx+=(cat.x-cat.rx)*0.30; cat.ry+=(cat.y-cat.ry)*0.30;
-    if(Math.abs(cat.rx-cat.x)<0.01) cat.rx=cat.x;
-    if(Math.abs(cat.ry-cat.y)<0.01) cat.ry=cat.y;
+    /* 쿠키(C)의 3칸 도약: 턴 애니메이션 동안 시작점→착지점을 직선으로 옮기고
+       몸만 sin(πt) 높이로 띄워요 — 그림자는 바닥선에 그대로 남습니다. */
+    var jp=catJumpProgress(cat,now);
+    if(jp){ cat.rx=jp.x; cat.ry=jp.y; }
+    else{
+      cat.rx+=(cat.x-cat.rx)*0.30; cat.ry+=(cat.y-cat.ry)*0.30;
+      if(Math.abs(cat.rx-cat.x)<0.01) cat.rx=cat.x;
+      if(Math.abs(cat.ry-cat.y)<0.01) cat.ry=cat.y;
+    }
     /* 발판(^)을 오르내릴 때: 논리 위치(목적지)가 발판이면 이동 시작과 함께 몸이 먼저 뜨고,
        뜬 채로 상판 위로 들어가요 — 들어간 뒤에 올라가는 게 아니라 '타고' 오르는 느낌.
        내려올 때도 먼저 몸을 숙이듯 내려오면서 빠져나가요. lift = 발 들어올림 픽셀. */
@@ -1825,7 +1831,7 @@ function draw(){
     if(cat.lift==null) cat.lift=liftT;
     cat.lift+=(liftT-cat.lift)*0.42;
     if(Math.abs(cat.lift-liftT)<0.4) cat.lift=liftT;
-    drawCatEntity(ctx,cat,now);
+    drawCatEntity(ctx,cat,now,jp?{pose:"jump",airLift:jp.lift}:null);
   }
   if(!pDrawn) drawPlayerNow(st,now,G.playerDir);
   drawBushFront(ctx,st);
@@ -1925,4 +1931,18 @@ function drawStamGauge(g,st,now){
 }
 
 function loop(){ draw(); requestAnimationFrame(loop); }
+
+/* ---------- 쿠키(C) 웅크림 도약 진행률 ----------
+   턴 애니메이션(G.pending) 안에서만 동작해요. x·y = 바닥선(그림자) 위치,
+   lift = 몸이 떠오른 높이(px). 뛰는 칸 수가 많을수록 조금 더 높게 뜁니다. */
+function catJumpProgress(cat,now){
+  if(!cat||!cat.jump||!G.pending) return null;
+  var dur=G.pending.dur||JUMP_ANIM_MS;
+  var t=(now-G.pending.t0)/dur;
+  if(t<0) t=0; if(t>1) t=1;
+  var j=cat.jump;
+  var span=Math.max(Math.abs(j.toX-j.fromX),Math.abs(j.toY-j.fromY));
+  return { x:j.fromX+(j.toX-j.fromX)*t, y:j.fromY+(j.toY-j.fromY)*t,
+           lift:Math.sin(Math.PI*t)*CAT_JUMP_H*(0.7+0.1*span), t:t };
+}
 

@@ -295,9 +295,10 @@ function beginTurn(action){
     c.x=nc.x; c.y=nc.y; c.dir=nc.dir; c.state=nc.state; c.lure=nc.lure;
     c.chaseSteps=nc.chaseSteps; c.pi=nc.pi; c.psign=nc.psign; c.freezeT=nc.freezeT;
     c.lureMem=nc.lureMem; c.lureTgt=nc.lureTgt; c.lureWait=nc.lureWait;
+    c.crouch=nc.crouch; c.jump=null;
   }
 
-  var arc=null, firstPickupKind=null;
+  var arc=null, firstPickupKind=null, jumpPend=false;
   setWarn("");   /* 이번 턴 안내 문구를 먼저 지우고, 사건(줍기·연쇄)이 있으면 그걸 띄워요 */
   for(var e=0;e<ev.length;e++){
     var v=ev[e];
@@ -332,6 +333,15 @@ function beginTurn(action){
       clearWarnSoon(2000);
     }
     else if(v.k==="rest"){ setWarn("😮‍💨 제자리에서 숨을 골라요…","fish"); clearWarnSoon(1500); }
+    else if(v.k==="jump"){
+      /* 쿠키의 3칸 도약 — view 가 시작점→착지점을 포물선으로 그려요(G.pending 동안) */
+      var jcat=catById(v.id);
+      if(jcat){
+        jcat.jump={fromX:v.fromX,fromY:v.fromY,toX:v.toX,toY:v.toY};
+        jcat.rx=v.fromX; jcat.ry=v.fromY;
+        jumpPend=true;
+      }
+    }
     else if(v.k==="choco"){
       sChoco();
       /* 플레이어 위에서 부스러기가 톡 터지듯 (view.js drawBiteFx) — 먹은 자리는 이동 전 좌표 */
@@ -342,7 +352,7 @@ function beginTurn(action){
     }
   }
 
-  G.pending={next:next,ev:ev,t0:performance.now(),arc:arc};
+  G.pending={next:next,ev:ev,t0:performance.now(),arc:arc,dur:jumpPend?JUMP_ANIM_MS:0};
   G.mode="anim"; G.fishMode=false; G.fishKind=null; G.fishAim=null;
   if(action.t==="move") sTap();
   updateHUD();

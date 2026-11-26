@@ -233,4 +233,127 @@ ok("9) 🍫 초콜릿: 밟아 줍기 → 먹고 1턴 대기(고양이 1스텝) �
   assert.strictEqual(notLure[2],0,"유인 사거리 0");
 });
 
+ok("10) 쿠키(C): 발각되면 그 자리에서 웅크리고(crouch) 플레이어를 봐요",()=>{
+  const r=E(`(function(){
+    var st=mk([{type:"C",x:6,y:4,dir:3,patrol:[[6,4],[6,4]]}],{player:[2,4]});
+    var ev=[]; simStep(st,{t:"wait"},ev);
+    var c=st.cats[0];
+    return {state:c.state,crouch:c.crouch,dir:c.dir,pos:[c.x,c.y],
+            spot:ev.some(function(e){return e.k==="spot"})};
+  })()`);
+  assert.strictEqual(r.state,"chase");
+  assert.strictEqual(r.spot,true,"시야 4칸 안이라 발각");
+  assert.strictEqual(r.crouch,true,"들킨 턴에 바로 웅크림");
+  assert.strictEqual(r.dir,3,"플레이어(왼쪽) 쪽을 봐요");
+  assert.strictEqual(JSON.stringify(r.pos),"[6,4]","웅크리는 턴엔 제자리");
+});
+
+ok("11) 쿠키(C): 웅크린 다음 턴에 3칸 도약 — 착지 후 다시 웅크림",()=>{
+  const r=E(`(function(){
+    var st=mk([{type:"C",x:6,y:4,dir:3,patrol:[[6,4],[6,4]]}],{player:[2,4]});
+    var ev=[]; simStep(st,{t:"wait"},ev);          /* 발각 + 웅크림 */
+    ev=[]; simStep(st,{t:"wait"},ev);              /* 도약 */
+    var c=st.cats[0];
+    var j=ev.filter(function(e){return e.k==="jump";})[0]||null;
+    var after={pos:[c.x,c.y],crouch:c.crouch,dir:c.dir,jump:j?[j.fromX,j.fromY,j.toX,j.toY]:null,
+               caught:ev.some(function(e){return e.k==="caught"})};
+    ev=[]; simStep(st,{t:"wait"},ev);              /* 착지 다음 턴: 다시 웅크림 */
+    var ready={pos:[c.x,c.y],crouch:c.crouch};
+    return {after:after,ready:ready};
+  })()`);
+  assert.strictEqual(JSON.stringify(r.after.jump),"[6,4,3,4]","6→3 세 칸 도약");
+  assert.strictEqual(r.after.caught,false,"1칸 앞에서 멈춰요(플레이어 칸은 다음 도약)");
+  assert.strictEqual(r.after.crouch,false,"뛴 턴엔 자세를 풀어요");
+  assert.strictEqual(r.after.dir,3,"도약 방향(왼쪽)을 바라봐요");
+  assert.strictEqual(JSON.stringify(r.ready.pos),"[3,4]","웅크리는 턴엔 안 움직여요");
+  assert.strictEqual(r.ready.crouch,true,"다음 도약을 준비해요");
+});
+
+ok("12) 쿠키 도약: 낮은 것(발판 ^)은 넘고 높은 벽(#)은 못 넘어요",()=>{
+  /* 1칸짜리 복도(y=4) — 위야래를 벽으로 막아 "벽을 넘는 대각선"이 생기지 않게 */
+  const corridor=`grid:function(g){ g[4][4]=%s; for(var x=1;x<8;x++){ g[3][x]="#"; g[5][x]="#"; } }`;
+  const over=E(`(function(){
+    var st=mk([{type:"C",x:6,y:4,dir:3,state:"chase"}],{player:[2,4],
+      ${corridor.replace("%s",'"^"')}});
+    st.cats[0].crouch=true;
+    var ev=[]; simStep(st,{t:"wait"},ev);
+    return [st.cats[0].x,st.cats[0].y,ev.some(function(e){return e.k==="jump"})];
+  })()`);
+  const blocked=E(`(function(){
+    var st=mk([{type:"C",x:6,y:4,dir:3,state:"chase"}],{player:[2,4],
+      ${corridor.replace("%s",'"#"')}});
+    st.cats[0].crouch=true;
+    var ev=[]; simStep(st,{t:"wait"},ev);
+    return [st.cats[0].x,st.cats[0].y,ev.some(function(e){return e.k==="jump"})];
+  })()`);
+  assert.strictEqual(JSON.stringify(over),"[3,4,true]","발판 위를 넘어 3칸(6→3)");
+  assert.strictEqual(JSON.stringify(blocked),"[5,4,true]","벽에 막혀 한 칸만(6→5)");
+});
+
+ok("13) 쿠키 도약: 다른 고양이가 선 착지칸은 건너뛰고 그 앞 칸에 착지",()=>{
+  const r=E(`(function(){
+    /* 1칸 복도(y=4) · 플레이어는 수풀(U)에 숨어 고양이가 발을 못 디디고,
+       세 칸 앞 (3,4)은 다른 고양이(A)가 서 있는 경우 */
+    var st=mk([{type:"C",x:6,y:4,dir:3},{type:"A",x:3,y:4,dir:2}],{player:[2,4],
+      grid:function(g){ g[4][2]="U"; for(var x=1;x<8;x++){ g[3][x]="#"; g[5][x]="#"; } }});
+    var land=jumpLanding(st,st.cats[0]);
+    return land?[land.x,land.y]:null;
+  })()`);
+  assert.strictEqual(JSON.stringify(r),"[4,4]","(3,4)는 점유·(2,4)는 수풀이라 (4,4)로");
+});
+
+ok("14) 쿠키 도약: 대각선도 뛰고, 플레이어 칸에 내려오면 잡힘",()=>{
+  /* 유닛: 대각선 3칸(6,6)→(3,3)도 착지 후보에 들어요 */
+  const land=E(`(function(){
+    var st=mk([{type:"C",x:6,y:6,dir:0}],{player:[3,3]});
+    var l=jumpLanding(st,st.cats[0]);
+    return l?[l.x,l.y]:null;
+  })()`);
+  assert.strictEqual(JSON.stringify(land),"[3,3]","대각선 3칸 착지 가능");
+  /* 실제 추격: (6,4)에서 플레이어 (4,2)로 대각선 2칸 도약 → 덮침 */
+  const r=E(`(function(){
+    var st=mk([{type:"C",x:6,y:4,dir:0,state:"chase"}],{player:[4,2]});
+    st.cats[0].crouch=true;
+    var ev=[]; simStep(st,{t:"wait"},ev);
+    var j=ev.filter(function(e){return e.k==="jump";})[0]||null;
+    return {jump:j?[j.fromX,j.fromY,j.toX,j.toY]:null,
+            caught:ev.some(function(e){return e.k==="caught"}),pos:[st.cats[0].x,st.cats[0].y]};
+  })()`);
+  assert.strictEqual(JSON.stringify(r.jump),"[6,4,4,2]","대각선 2칸 도약");
+  assert.strictEqual(r.caught,true,"플레이어 칸에 착지 = 덮침");
+  assert.strictEqual(JSON.stringify(r.pos),"[4,2]");
+});
+
+ok("15) 쿠키: 추격을 벗어나면(거리·수풀) 웅크림이 풀려요",()=>{
+  const far=E(`(function(){
+    var st=mk([{type:"C",x:7,y:4,dir:3,state:"chase"}],{player:[2,4]});
+    st.cats[0].crouch=true;
+    var ev=[]; simStep(st,{t:"wait"},ev);
+    return [st.cats[0].state,st.cats[0].crouch,ev.some(function(e){return e.k==="lost"})];
+  })()`);
+  assert.strictEqual(JSON.stringify(far),'["return",false,true]',"5칸 이상 벌어지면 포기 + 자세 해제");
+  const bush=E(`(function(){
+    var st=mk([{type:"C",x:4,y:3,dir:2,state:"chase"}],{player:[4,4]});
+    st.cats[0].crouch=true;
+    st.grid[4][4]="U";
+    var ev=[]; simStep(st,{t:"wait"},ev);
+    return [st.cats[0].state,st.cats[0].crouch];
+  })()`);
+  assert.strictEqual(JSON.stringify(bush),'["return",false]',"수풀에 숨으면 추격 포기 + 자세 해제");
+});
+
+ok("16) 쿠키 도약은 예고(preview)에서 위험으로 계산 — 다음 턴 잡히는 칸이 danger",()=>{
+  const r=E(`(function(){
+    var st=mk([{type:"C",x:5,y:4,dir:3,state:"chase"}],{player:[2,4]});
+    st.cats[0].crouch=true;
+    var ev=[]; simStep(st,{t:"wait"},ev);
+    var dead=ev.some(function(e){return e.k==="caught"});
+    /* 웅크린 쿠키가 3칸 안에 있으면 도망(이동)해도 다음 도약에 닿아요 */
+    return {catTo:[st.cats[0].x,st.cats[0].y],jump:ev.some(function(e){return e.k==="jump"}),dead:dead};
+  })()`);
+  assert.strictEqual(r.jump,true);
+  assert.strictEqual(r.dead,true,"2칸 앞 웅크린 쿠키는 한 번에 덮쳐요");
+  assert.strictEqual(JSON.stringify(r.catTo),"[2,4]");
+});
+
 console.log(`\n${passed} tests passed`);

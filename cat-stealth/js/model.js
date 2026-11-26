@@ -12,6 +12,7 @@ function makeCat(def,id){
          sense:(CAT_SENSE[def.type]!=null?CAT_SENSE[def.type]:1),
          chaseSteps:0,dirs:def.dirs||null,patrol:def.patrol||null,pi:0,psign:1,rx:def.x,ry:def.y,alertT:0,
          freezeT:0,
+         crouch:false,            /* 쿠키(C) 도약 준비 자세 — 들킨 턴에 웅크리고 다음 턴에 뛰어요 */
          lureMem:0,lureTgt:null};
   if(c.type==="C"){ c.pi=0; c.psign=1; if(def.patrol){ for(var k=0;k<def.patrol.length;k++){ if(def.patrol[k][0]===def.x&&def.patrol[k][1]===def.y){c.pi=k;} } } c.psign=(c.pi===0)?1:-1; }
   if(c.type==="B"&&c.dirs){ c.dir=c.dirs[0]; }
@@ -203,6 +204,93 @@ function bfsNext(st,from,target,ignoreCats){
   if(node.x===from.x&&node.y===from.y) return null;
   return node;
 }
+/* 턱시도 쿠키(C)의 도약 — 웅크린 다음 턴에 최대 3칸(대각선 포함)을 뛰어넘어요.
+   · 넘을 수 있는 낮은 것: 발판(^)·물(~)·작은 구멍(H)·은신 수풀·나무 그루터기(rule:"low")
+   · 막는 높은 것: 벽(#)·장롱(W)·큰 화분 카운터 같은 테마 가구·숲 solid 타일·span2/block2·맵 밖
+   착지 칸은 catWalkable 이어야 하고, 다른 고양이가 서 있으면 안 돼요.
+   플레이어 칸에 착지하면 그대로 덮쳐요(simStep 마지막의 겹침 잡힘 판정). */
+var C_JUMP=3;
+function jumpBlocked(st,x,y){
+  if(x<0||y<0||x>=COLS||y>=ROWS) return true;       /* 맵 밖 */
+  var ch=tileAt(st,x,y);
+  if(ch==="#") return true;
+  if(ch==="W") return true;                         /* 장롱 */
+  var ft=FOREST_TILES[ch];
+  if(ft&&ft.rule==="solid") return true;            /* 숲·나무·바위·통나무·폭포 */
+  if(coveredByBig(st,x,y)) return true;              /* span2·block2 큰 구조물 */
+  var sp=SPECIAL[ch];
+  if(sp) return false;                               /* ^ · H · U · low 그루터기 · 물은 넘어요 */
+  return (st.theme[ch]!==undefined&&!DECOR[ch]);     /* 테마 가구(큰 화분 카운터 X 등) */
+}
+/* 도약선(직선) 위에 높은 장애물이 있는가 — 시작·착지 칸은 빼고 지나가는 칸만 봐요.
+   대각선으로 지나갈 때는 양옆 두 칸도 확인해요(벽 모서리를 비스듬히 꿰뚫지 않게). */
+function jumpLineClear(st,ax,ay,bx,by){
+  var x=ax,y=ay,dx=Math.abs(bx-ax),dy=Math.abs(by-ay);
+  var sx=ax<bx?1:-1, sy=ay<by?1:-1, err=dx-dy, guard=0;
+  while(guard++<24){
+    if(x===bx&&y===by) return true;
+    var e2=err*2, ox=0, oy=0;
+    if(e2>-dy){ err-=dy; x+=sx; ox=sx; }
+    if(e2<dx){ err+=dx; y+=sy; oy=sy; }
+    if(x===bx&&y===by) return true;
+    if(ox&&oy){
+      if(jumpBlocked(st,x-ox,y)||jumpBlocked(st,x,y-oy)) return false;
+    }
+    if(jumpBlocked(st,x,y)) return false;
+  }
+  return false;
+}
+function catAt(st,x,y,except){
+  for(var i=0;i<st.cats.length;i++){
+    var c=st.cats[i];
+    if(c!==except&&c.x===x&&c.y===y) return c;
+  }
+  return null;
+}
+/* 직선 도약으로 갈 수 있는 칸 중 플레이어에게 가장 가까운 곳 — 못 찾으면 null */
+function jumpLanding(st,cat){
+  var best=null, bd=man(cat,st.player);
+  for(var dy=-C_JUMP;dy<=C_JUMP;dy++)for(var dx=-C_JUMP;dx<=C_JUMP;dx++){
+    if(!dx&&!dy) continue;
+    var lx=cat.x+dx, ly=cat.y+dy;
+    var d=Math.abs(lx-st.player.x)+Math.abs(ly-st.player.y);
+    if(d>=bd) continue;                        /* 플레이어에게서 멀어지는 도약은 안 해요 */
+    var onPlayer=(lx===st.player.x&&ly===st.player.y);
+    if(!catWalkable(st,lx,ly)) continue;       /* 수풀·구멍 속 플레이어는 밟을 수 없어요 */
+    if(!onPlayer&&catAt(st,lx,ly,cat)) continue;
+    if(!jumpLineClear(st,cat.x,cat.y,lx,ly)) continue;
+    if(d<bd){ bd=d; best={x:lx,y:ly}; }
+  }
+  return best;
+}
+/* 직선이 높은 장애물에 막혔을 때 — 길을 따라 최대 3칸까지 밟을 수 있는 마지막 칸.
+   (bfsNextToAdj 의 여러 걸음판: 플레이어가 수풀·구멍에 있으면 그 옆 칸까지) */
+function jumpPathLanding(st,cat,maxStep){
+  var goal=st.player;
+  var reachable=function(x,y){ return catWalkable(st,x,y)&&!catAt(st,x,y,cat); };
+  var seen={}, prev={}, depth={};
+  var key=function(x,y){return y*COLS+x;};
+  var q=[{x:cat.x,y:cat.y}], qi=0;
+  seen[key(cat.x,cat.y)]=1; depth[key(cat.x,cat.y)]=0;
+  var best=null, bd=man(cat,goal);
+  while(qi<q.length){
+    var cur=q[qi++], cd=depth[key(cur.x,cur.y)];
+    if(cur.x!==cat.x||cur.y!==cat.y){
+      var d=Math.abs(cur.x-goal.x)+Math.abs(cur.y-goal.y);
+      if(d<bd){ bd=d; best={x:cur.x,y:cur.y}; }
+    }
+    if(cd>=maxStep) continue;
+    for(var i=0;i<4;i++){
+      var nx=cur.x+DIRS[i][0], ny=cur.y+DIRS[i][1], k=key(nx,ny);
+      if(seen[k]) continue;
+      // 목표(플레이어) 칸은 다른 고양이 점유 검사 없이 도달만 보되, 착지로는 안 써요
+      if(!(nx===goal.x&&ny===goal.y)&&!reachable(nx,ny)) continue;
+      if(!catWalkable(st,nx,ny)) continue;
+      seen[k]=1; depth[k]=cd+1; prev[k]=cur; q.push({x:nx,y:ny});
+    }
+  }
+  return best;
+}
 /* 목표 칸 자체를 고양이가 못 밟을 때(수풀·구멍에 든 플레이어) —
    목표 옆의 밟을 수 있는 칸까지 다가가는 첫 스텝을 찾아요 */
 function bfsNextToAdj(st,from,target){
@@ -354,6 +442,8 @@ function nearestPatrolIdx(cat){
   return best;
 }
 function catStep(st,cat,events){
+  /* 추격(chase)에서 벗어난 상태면 도약 준비 자세를 먼저 풀어요 */
+  if(cat.state!=="chase") cat.crouch=false;
   /* 수풀에 놓친 직후 이동금지 — freezeT턴 동안 제자리에서 마지막으로 본 쪽만 바라봐요 */
   if(cat.freezeT){ cat.freezeT--; cat.dir=dirFromTo(cat,st.player); return; }
   if(cat.state==="chase"){
@@ -362,10 +452,31 @@ function catStep(st,cat,events){
        '?'를 띄우며 이 턴은 제자리에 서고, 다음 턴은 멍하니(freezeT) 본 쪽을
        바라보다가 그 다음 턴부터 자리로 돌아가요 */
     if(Math.abs(cat.x-st.player.x)+Math.abs(cat.y-st.player.y)>=CHASE_DIST){
-      cat.state="return"; cat.chaseSteps=0;
+      cat.state="return"; cat.chaseSteps=0; cat.crouch=false;
       cat.dir=dirFromTo(cat,st.player);
       cat.freezeT=1;
       events.push({k:"lost",id:cat.id});
+      return;
+    }
+    /* 턱시도 쿠키(C)는 1칸 걸음 대신 '웅크리기 → 3칸 도약'을 번갈아 해요.
+       들킨 턴에 웅크리고(crouch), 다음 턴에 뛰고, 착지한 다음 턴에 또 웅크려요. */
+    if(cat.type==="C"){
+      if(cat.crouch){
+        var land=jumpLanding(st,cat);
+        if(!land) land=jumpPathLanding(st,cat,C_JUMP);   /* 직선이 막혔으면 길 따라 3칸까지 */
+        var fx=cat.x, fy=cat.y;
+        if(land){
+          cat.dir=dirFromTo({x:fx,y:fy,dir:cat.dir},land);
+          cat.x=land.x; cat.y=land.y;
+          events.push({k:"jump",id:cat.id,fromX:fx,fromY:fy,toX:land.x,toY:land.y});
+        }else{
+          cat.dir=dirFromTo(cat,st.player);              /* 뛸 곳이 없으면 쫓는 쪽만 봐요 */
+        }
+        cat.crouch=false;
+        return;
+      }
+      cat.crouch=true;                                  /* 착지한 다음 턴: 다시 웅크려요 */
+      cat.dir=dirFromTo(cat,st.player);
       return;
     }
     /* 플레이어가 수풀·구멍에 있으면 그 칸까지가 아니라 가장자리까지 쫓아가요 */
@@ -480,6 +591,8 @@ function detectStep(st,events){
     var seen=inBeam(st,c2,st.player), heard=senseHit(st,c2,st.player);
     if(seen||heard){
       c2.state="chase"; c2.chaseSteps=0; c2.alertT=0;
+      /* 쿠키(C)는 들킨 그 자리에서 바로 웅크려 다음 턴 도약을 준비해요 */
+      if(c2.type==="C") c2.crouch=true;
       /* 발각 순간 플레이어 쪽으로 몸을 돌려요 — 귀로 들었든 눈으로 봤든 쫓는 쪽을 봐야 자연스러워요 */
       c2.dir=dirFromTo(c2,st.player);
       events.push({k:"spot",id:c2.id,bySense:!seen&&heard});
@@ -540,7 +653,7 @@ function simStep(st,action,events){
       if(c.state!=="lured"){
         /* 먹이를 다 먹고 돌아가던 길에 또 먹이가 코앞에 있으면 → 연쇄 반응으로 바로 다음 먹이로! */
         events.push({k:(c.state==="return")?"chain":"lure",id:c.id,kind:lf.kind});
-        c.state="lured"; c.chaseSteps=0; c.lureWait=1;
+        c.state="lured"; c.chaseSteps=0; c.lureWait=1; c.crouch=false;
       }
       /* '저기 먹이 있었지' 2턴 기억 — 사거리를 스치듯 벗어나도 바로 잊지 않아요
          (cloneState가 매 턴 깊은 복사를 하니 객체 참조 대신 좌표를 기억해요) */
@@ -564,7 +677,7 @@ function simStep(st,action,events){
     for(var hi=0;hi<st.cats.length;hi++){
       var hc=st.cats[hi];
       if(hc.state==="chase"){
-        hc.state="return"; hc.chaseSteps=0; hidCats.push(hc);
+        hc.state="return"; hc.chaseSteps=0; hc.crouch=false; hidCats.push(hc);
         events.push({k:"hide",id:hc.id});
       }
     }

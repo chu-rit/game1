@@ -349,7 +349,7 @@ function editorSolveState(draft){
 /* BFS 중복 방문 키 — 고양이 상태·냄새·먹이 TTL까지 전부 묶어요 */
 function edSolveKey(st){
   var cats=st.cats.map(function(c){return [c.x,c.y,c.dir,c.state,c.pi,c.psign,c.freezeT||0,c.lureMem||0,
-    c.lureTgt?c.lureTgt.x+","+c.lureTgt.y:"-",c.chaseSteps||0,c.lureWait?1:0].join(":")}).join("|");
+    c.lureTgt?c.lureTgt.x+","+c.lureTgt.y:"-",c.chaseSteps||0,c.lureWait?1:0,c.crouch?1:0].join(":")}).join("|");
   var fishes=st.fishes.map(function(f){return [f.x,f.y,f.kind,f.ttl==null?"":f.ttl,
     f.eater==null?"":f.eater,f.eatLeft==null?"":f.eatLeft].join(":")}).join("|");
   var pk=st.pickups.map(function(p){return p.x+","+p.y+","+p.kind}).join("|");
