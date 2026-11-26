@@ -32,8 +32,8 @@ ok("모든 기본 스테이지: normalize→export→parse→normalize 안정",(
     assert.strictEqual(exp2,exp,`stage ${i} roundtrip`);
   }
 });
-ok("C 고양이 중복 순찰·H/U·^ 타일 스테이지 검증 통과",()=>{
-  for(const i of [2,8,9,10]){
+ok("C 고양이 순찰·B 교대 감시 스테이지 검증 통과",()=>{
+  for(const i of [2,3,6,9]){
     const r=E(`(function(){var d=editorNormalize(JSON.parse(JSON.stringify(STAGES[${i}])));return editorValidate(d);})()`);
     assert.strictEqual(JSON.stringify(r.errors),"[]",`stage ${i} errors`);
   }
@@ -135,10 +135,14 @@ ok("벽은 기척(sense)을 차단 — 바닥에서는 감지됨",()=>{
   assert.strictEqual(JSON.stringify(r),"[true,false]");
 });
 
-ok("기본 스테이지 장롱(W) 맵 검증 통과 + 테마 보존",()=>{
-  const idx=E("STAGES.findIndex(s=>s.name==='안방 탈출')");
-  assert.ok(idx>=0,"안방 탈출 스테이지 존재");
-  const d=E(`editorNormalize(JSON.parse(JSON.stringify(STAGES[${idx}])))`);
+ok("장롱(W) 테마 맵 검증 통과 + 테마 보존",()=>{
+  const d=E(`(function(){
+    var d=editorNewDraft();
+    d.theme={W:"wardrobe"};
+    d.map[1]="#W.......";
+    d.start=[1,7]; d.goalPos=[7,1];
+    return editorNormalize(JSON.parse(JSON.stringify(d)));
+  })()`);
   assert.strictEqual(d.theme.W,"wardrobe");
   assert.ok(d.map[1].indexOf("W")>=0,"맵에 W 타일 존재");
   const v=E(`editorValidate(${JSON.stringify(d)})`);
@@ -229,6 +233,34 @@ ok("🍫 초콜릿 픽업: 에디터 팔레트·정규화·검증·내보내기 
   assert.strictEqual(r.order,3,"FISH_ORDER 끝에 추가(기존 3종 순서 불변)");
   /* 생선 3종 순서는 그대로 */
   assert.strictEqual(E(`FISH_ORDER.slice(0,3).join(",")`),"small,big,catnip");
+});
+
+ok("솔버: 빈 맵 직선 경로는 클리어 가능",()=>{
+  const r=E(`(function(){
+    var d=editorNewDraft(); d.start=[1,7]; d.goalPos=[7,1];
+    return editorSolve(d,20);
+  })()`);
+  assert.strictEqual(r.solved,true,"직선 경로 해결");
+  assert.ok(r.turns<=20,"턴 한도 안");
+  assert.ok(r.path.length>0,"경로 존재");
+  assert.strictEqual(r.path[r.path.length-1].t,"move","마지막은 골로 이동");
+});
+ok("솔버: 벽으로 막힌 골은 클리어 불가",()=>{
+  const r=E(`(function(){
+    var d=editorNewDraft(); d.start=[1,7];
+    /* 골을 벽으로 둘러싼 고립 칸 */
+    d.map[1]="#..###..#".replace(/./g,function(c,i){return i===4?".":c;});
+    d.map[1]="#..#.#..#"; d.map[2]="#..###..#"; d.goalPos=[4,1];
+    return editorSolve(d,15);
+  })()`);
+  assert.strictEqual(r.unsolvable,true,"봉인된 골은 불가");
+});
+ok("솔버: 6~10단계는 전부 클리어 가능",()=>{
+  for(const i of [5,6,7,8,9]){
+    const d=E(`editorNormalize(JSON.parse(JSON.stringify(STAGES[${i}])))`);
+    const r=E(`editorSolve(JSON.parse(${JSON.stringify(JSON.stringify(d))}),40)`);
+    assert.strictEqual(r.solved,true,`stage ${i+1} solvable (turns=${r.turns})`);
+  }
 });
 
 console.log(`\n${passed} tests passed`);

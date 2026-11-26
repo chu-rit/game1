@@ -331,3 +331,118 @@ function editorDangerTiles(draft){
   }
   return out;
 }
+
+/* ---------- 해법 탐색 (BFS 솔버) ----------
+   실제 모델(simStep)을 복제 상태 위에서 돌려 "클리어 가능한가"를 판정해요.
+   에디터 draft를 받아서, 게임 실행 없이 최단 해법을 찾아요. */
+
+/* draft → 시뮬레이션 상태 (loadStage와 동일한 필드, 뷰 호출만 없음) */
+function editorSolveState(draft){
+  var st=editorState(draft);
+  st.idx=-1;
+  st.inv={small:0,big:0,catnip:0,choco:0};
+  st.fishes=[]; st.turn=1; st.maxTurns=draft.maxTurns||20; st.stam=STAM_MAX;
+  if(st.player){ st.player.rx=st.player.x; st.player.ry=st.player.y; }
+  return st;
+}
+
+/* BFS 중복 방문 키 — 고양이 상태·냄새·먹이 TTL까지 전부 묶어요 */
+function edSolveKey(st){
+  var cats=st.cats.map(function(c){return [c.x,c.y,c.dir,c.state,c.pi,c.psign,c.freezeT||0,c.lureMem||0,
+    c.lureTgt?c.lureTgt.x+","+c.lureTgt.y:"-",c.chaseSteps||0,c.lureWait?1:0].join(":")}).join("|");
+  var fishes=st.fishes.map(function(f){return [f.x,f.y,f.kind,f.ttl==null?"":f.ttl,
+    f.eater==null?"":f.eater,f.eatLeft==null?"":f.eatLeft].join(":")}).join("|");
+  var pk=st.pickups.map(function(p){return p.x+","+p.y+","+p.kind}).join("|");
+  return [st.player.x,st.player.y,st.stam,JSON.stringify(st.inv),cats,fishes,pk].join(";");
+}
+
+/* 던지기 가능한 낙하 칸 — 모델의 사거리·low 타일 관통 규칙과 동일 */
+function edSolveFishTargets(st,kind){
+  var p=st.player,out=[];
+  var free=function(x,y){
+    if(!catWalkable(st,x,y)) return false;
+    for(var i=0;i<st.cats.length;i++){ if(st.cats[i].x===x&&st.cats[i].y===y) return false; }
+    for(var fi=0;fi<st.fishes.length;fi++){ if(st.fishes[fi].x===x&&st.fishes[fi].y===y) return false; }
+    for(var pi=0;pi<st.pickups.length;pi++){ if(st.pickups[pi].x===x&&st.pickups[pi].y===y) return false; }
+    return true;
+  };
+  var low=function(x,y){ var ft=FOREST_TILES[tileAt(st,x,y)]; return !!(ft&&ft.rule==="low"); };
+  var rng=(KIND[kind]&&KIND[kind].range!=null)?KIND[kind].range:FISH_RANGE;
+  for(var d=0;d<4;d++){ for(var s=1;s<=rng;s++){
+    var x=p.x+DIRS[d][0]*s,y=p.y+DIRS[d][1]*s;
+    if(low(x,y)) continue;
+    if(!free(x,y)) break;
+    out.push({x:x,y:y});
+  }}
+  return out;
+}
+
+/* 이 상태에서 취할 수 있는 행동 열 */
+function edSolveActs(st){
+  var out=[];
+  var chasing=st.cats.some(function(c){return c.state==="chase"});
+  if(chasing&&st.stam<=0){ return [{t:"wait"}]; }   /* 지구력 0 = 강제 휴식만 */
+  for(var d=0;d<4;d++){
+    var x=st.player.x+DIRS[d][0],y=st.player.y+DIRS[d][1];
+    if(canPlayerMoveTo(st,x,y)) out.push({t:"move",x:x,y:y});
+  }
+  if((st.inv.choco||0)>0) out.push({t:"wait",kind:"choco"});
+  ["small","big","catnip"].forEach(function(k){
+    if((st.inv[k]||0)<=0) return;
+    edSolveFishTargets(st,k).forEach(function(t){ out.push({t:"fish",x:t.x,y:t.y,kind:k}); });
+  });
+  return out;
+}
+
+function edSolveActName(a){
+  if(a.t==="move") return "M("+a.x+","+a.y+")";
+  if(a.t==="wait") return "W"+(a.kind?"("+a.kind+")":"");
+  return "F"+a.kind+"("+a.x+","+a.y+")";
+}
+
+/* 너비우선 탐색.
+   onDone(result) — result: {solved,path,turns,explored} | {unsolvable,explored} | {timeout,explored}
+   onProgress({depth,explored}) — 깊이 단계마다 (생략 가능)
+   onDone을 넘기지 않으면 동기 실행 후 결과를 반환해요 (테스트용). */
+function editorSolve(draft,maxDepth,onProgress,onDone){
+  var st=editorSolveState(draft);
+  var sync=(typeof onDone!=="function");
+  var seen={}, q=[{st:st,path:[]}], t0=Date.now(), depth=0, nSeen=1;
+  seen[edSolveKey(st)]=1;
+  if(!maxDepth||maxDepth>st.maxTurns) maxDepth=st.maxTurns;
+  var done;
+  function finish(r){ if(sync){ done=r; } else onDone(r); }
+  function step(){
+    var sliceEnd=Date.now()+40;
+    while(q.length&&depth<maxDepth){
+      var nq=[];
+      for(var i=0;i<q.length;i++){
+        var cur=q[i], as=edSolveActs(cur.st);
+        for(var a=0;a<as.length;a++){
+          var nst=cloneState(cur.st),ev=[];
+          simStep(nst,as[a],ev);
+          var dead=false,goal=false;
+          for(var e=0;e<ev.length;e++){ if(ev[e].k==="caught")dead=true; if(ev[e].k==="goal")goal=true; }
+          if(dead) continue;
+          nst.turn++;
+          if(nst.turn>nst.maxTurns&&!goal) continue;
+          if(goal) return finish({solved:true,path:cur.path.concat([as[a]]),turns:nst.turn,explored:nSeen});
+          var k=edSolveKey(nst);
+          if(seen[k]) continue; seen[k]=1; nSeen++;
+          nq.push({st:nst,path:cur.path.concat([as[a]])});
+        }
+      }
+      q=nq; depth++;
+      /* 탐색 한도는 비동기(브라우저) 모드에서만 — 동기 실행은 끝까지 파요 */
+      if(!sync&&(Date.now()-t0>60000||nSeen>800000)) return finish({timeout:true,explored:nSeen});
+      if(sync&&nSeen>3000000) return finish({timeout:true,explored:nSeen});
+      if(!sync&&Date.now()>sliceEnd){
+        if(onProgress) onProgress({depth:depth,explored:nSeen});
+        return setTimeout(step,0);
+      }
+    }
+    finish({unsolvable:true,explored:nSeen});
+  }
+  if(sync){ step(); return done; }
+  setTimeout(step,0);
+}

@@ -48,11 +48,12 @@ var SAVE_KEY="catStealthEditorDraft";
 
 var draft=null, tool={kind:"entity",id:"select"}, sel=null, patrolMode=-1;   /* 기본 도구는 '선택' / 순찰 지점 찍기: -1 끔 · 0=A · 1=B */
 var undoStack=[], redoStack=[], dirty=false, painting=false, paintSnap=null;
+var solPath=null;   /* 솔버가 찾은 해법 경로 표시 — {cellIdx:{n:단계번호,f:던지기칸}} */
 
 /* ---------- 상태/유틸 ---------- */
 function status(msg,bad){ var s=$("edStatus"); s.textContent=msg||""; s.className=bad?"err":""; }
 function snap(){ return JSON.stringify(draft); }
-function markDirty(){ dirty=true; autosave(); }
+function markDirty(){ dirty=true; solPath=null; solReplay=null; solStep=0; autosave(); }
 function autosave(){ try{ localStorage.setItem(SAVE_KEY,snap()); }catch(e){} }
 function pushUndo(){ undoStack.push(snap()); if(undoStack.length>80) undoStack.shift(); redoStack=[]; }
 function restore(json){ draft=JSON.parse(json); sel=null; patrolMode=-1; renderAll(); }
@@ -115,9 +116,15 @@ function buildGrid(){
 }
 
 /* 실제 게임 렌더러로 보드를 그려요 (low/board 프리베이크 없이 표시 컨텍스트에 직접) */
-function renderBoardArt(){ drawBoardArt(draft,dctx); }
-function drawBoardArt(d,g){
-  var st=editorState(d);
+function renderBoardArt(){
+  /* 솔버 리플레이 중에는 현재 단계의 게임 상태를, 아니면 편집 초안을 그려요 */
+  var rp=solReplay&&solReplay[solStep];
+  if(rp) drawStateArt(rp.st,dctx,{live:true});
+  else drawBoardArt(draft,dctx);
+}
+function drawBoardArt(d,g){ drawStateArt(editorState(d),g); }
+function drawStateArt(st,g,opt){
+  opt=opt||{};
   g.imageSmoothingEnabled=false; g.clearRect(0,0,CV,CV);
   paintFloor(g,st); paintWalls(g,st); paintWallShadow(g,st); paintGrid(g,st);
   paintFurniture(g,st); paintSpecial(g,st);
@@ -125,11 +132,13 @@ function drawBoardArt(d,g){
   paintTerrainEdges(g,st); paintFeatures(g,st);
   if(st.goal) paintGoalMat(g,st);
   drawPickupEntity(g,st,0);
+  if(opt.live) drawFishEntity(g,st,0);      /* 리플레이: 던져 둔 먹이도 표시 */
   var entities=st.cats.map(function(c){return {y:c.y,x:c.x,cat:c};});
   if(st.player) entities.push({y:st.player.y,x:st.player.x,player:true});
   entities.sort(function(a,b){return a.y-b.y||a.x-b.x;});
   entities.forEach(function(e){
     if(e.player) drawHuman(g,{rx:e.x,ry:e.y},0,2,false);
+    else if(opt.live) drawCatEntity(g,e.cat,0);
     else{
       var lift=(st.grid[e.y][e.x]==="^")?(e.y*CELL+CELL-3-perchTopPx(e.x,e.y)):0;
       drawCatAt(g,e.x*CELL+CELL/2,e.y*CELL+CELL-3-lift,COATS[e.cat.type],e.cat.dir,e.cat.type,0,{pose:'idle',noEmote:true});
@@ -153,7 +162,8 @@ function renderGrid(){
     var dk=danger[y*N+x];
     el.className="cell "+(TERRAIN_CLASS[ch]||"t-dot")+(dk&&dk.beam?" beam":"")+(dk&&dk.sense?" sense":"");
     el.textContent="";
-    var ent=entityAt(x,y), label=TILE_KO[ch]||ch;
+    /* 리플레이 중엔 초안 라벨 대신 캔버스 스프라이트만 — 텍스트 라벨은 끔 */
+    var ent=solReplay?null:entityAt(x,y), label=TILE_KO[ch]||ch;
     if(ent){
       if(ent.kind==="start") label="시작";
       else if(ent.kind==="goal") label="골";
@@ -167,6 +177,8 @@ function renderGrid(){
     }
     var pn=pnums[y*N+x];
     if(pn){ var ps=document.createElement("span"); ps.className="pnum"; ps.textContent=pn; el.appendChild(ps); }
+    var sn=solPath&&solPath[y*N+x];
+    if(sn){ var ss=document.createElement("span"); ss.className="sol"+(sn.f?" solf":""); ss.textContent=sn.n; el.appendChild(ss); }
     if(sel&&sel.kind==="cell"&&sel.x===x&&sel.y===y) el.classList.add("sel");
     if(sel&&sel.kind==="cat"&&draft.cats[sel.i]&&draft.cats[sel.i].x===x&&draft.cats[sel.i].y===y) el.classList.add("sel");
     el.setAttribute("aria-label","("+x+","+y+") "+label);
@@ -763,6 +775,7 @@ function buildStageSel(){
 }
 function loadDraft(d,msg){
   draft=d; sel=null; patrolMode=-1; undoStack=[]; redoStack=[]; dirty=false;
+  solPath=null; solReplay=null; solStep=0;
   autosave(); renderAll(); status(msg||"");
 }
 function loadBuiltin(i){
@@ -822,6 +835,82 @@ function doImport(){
   try{ d=editorParseImport($("edJson").value); }
   catch(e){ status("가져오기 실패: "+e.message,true); return; }
   loadDraft(d,"가져왔어요");
+}
+
+/* ---------- 해법 찾기 (BFS 솔버) ---------- */
+/* 해법 경로를 칸 번호 표식으로 — 이동·대기는 단계 번호, 던지기 낙하는 F+번호 */
+function buildSolPath(d,path){
+  var cells={}, pos=d.start?{x:d.start[0],y:d.start[1]}:null;
+  path.forEach(function(a,i){
+    if(a.t==="move"){ pos={x:a.x,y:a.y}; cells[a.y*N+a.x]={n:i+1}; }
+    else if(a.t==="fish"){ cells[a.y*N+a.x]={n:"F"+(i+1),f:true}; }
+    else if(pos){ cells[pos.y*N+pos.x]={n:i+1}; }
+  });
+  return cells;
+}
+
+/* 턴별 리플레이 — 해법 경로를 실제 모델로 다시 돌려 단계별 상태를 저장해요 */
+var solReplay=null, solStep=0;   /* [{st,act,ev}] — solReplay[0]은 시작 상태 */
+var SOL_EV_TXT={lure:"냄새 맡음",chain:"새 냄새로 갈아탐",spot:"! 발각",bite:"무는 중",
+  chew:"먹는 중",ate:"다 먹음",calm:"복귀",hide:"놓침",lost:"추격 포기",fade:"향기 사라짐",
+  goal:"🏁 골 도착",caught:"잡힘"};
+function buildSolReplay(d,path){
+  var cur=editorSolveState(d), out=[{st:cloneState(cur),act:null,ev:[]}];
+  path.forEach(function(a){
+    var nst=cloneState(cur), ev=[];
+    simStep(nst,a,ev); nst.turn++;
+    nst.cats.forEach(function(c){ c.rx=c.x; c.ry=c.y; });   /* 정지 포즈로 그리기 위해 렌더 위치 동기화 */
+    if(nst.player){ nst.player.rx=nst.player.x; nst.player.ry=nst.player.y; }
+    out.push({st:nst,act:a,ev:ev});
+    cur=nst;
+  });
+  return out;
+}
+function renderSolStep(){
+  var bar=$("edSolveBar");
+  if(!solReplay){ bar.hidden=true; return; }
+  bar.hidden=false;
+  var s=solReplay[solStep];
+  $("edSolveTurn").textContent=(solStep===0?"시작 상태":
+    "턴 "+solStep+"/"+(solReplay.length-1)+" · "+edSolveActName(s.act)
+    +(s.ev.length?" — "+s.ev.map(function(e){
+        var n=SOL_EV_TXT[e.k];
+        if(n&&e.id!=null){ var c=s.st.cats.filter(function(cc){return cc.id===e.id;})[0];
+          n=catName(c?c.type:"A")+" "+n; }
+        return n; }).filter(Boolean).join(" · "):""));
+  $("edSolvePrev").disabled=(solStep<=0);
+  $("edSolveNext").disabled=(solStep>=solReplay.length-1);
+  renderGrid();
+}
+function openSolReplay(path){
+  solReplay=buildSolReplay(draft,path); solStep=0;
+  renderSolStep();
+}
+function closeSolReplay(){
+  solReplay=null; solStep=0; renderSolStep(); renderGrid();
+}
+function stepSol(d){ if(!solReplay) return;
+  solStep=Math.min(solReplay.length-1,Math.max(0,solStep+d)); renderSolStep(); }
+function doSolve(){
+  if(painting) onPointerUp();
+  var ae=document.activeElement; if(ae&&ae.blur) ae.blur();
+  var v=editorValidate(draft);
+  if(v.errors.length){ status("구조 오류 "+v.errors.length+"개 — 먼저 고쳐 주세요",true); renderConn(); return; }
+  solPath=null; solReplay=null; solStep=0; renderSolStep(); renderGrid();
+  var btn=$("edSolve"); btn.disabled=true;
+  status("해법 탐색 중…");
+  editorSolve(draft,draft.maxTurns,function(p){
+    status("해법 탐색 중… "+p.depth+"턴 깊이 · "+p.explored.toLocaleString()+"개 상태");
+  },function(r){
+    btn.disabled=false;
+    if(r.solved){
+      solPath=buildSolPath(draft,r.path);
+      openSolReplay(r.path);
+      status("클리어 가능 — "+r.turns+"턴 (탐색 "+r.explored.toLocaleString()+") — ◀▶로 턴별 재생");
+    }
+    else if(r.timeout) status("판정 보류 — 탐색 한도 초과 ("+r.explored.toLocaleString()+"개 상태)",true);
+    else status("클리어 불가 — 어떤 수순으로도 골에 도달할 수 없어요 ("+r.explored.toLocaleString()+"개 상태)",true);
+  });
 }
 
 /* ---------- 테스트 플레이 ---------- */
@@ -928,6 +1017,10 @@ function init(){
     loadDraft(editorNewDraft(),"새 맵 — 시작과 골을 배치하세요");
   });
   $("edPlayTest").addEventListener("click",doPlaytest);
+  $("edSolve").addEventListener("click",doSolve);
+  $("edSolvePrev").addEventListener("click",function(){ stepSol(-1); });
+  $("edSolveNext").addEventListener("click",function(){ stepSol(1); });
+  $("edSolveClose").addEventListener("click",closeSolReplay);
   $("edPlayBack").addEventListener("click",closePlaytest);
   $("edPlayRestart").addEventListener("click",function(){
     /* 지금 편집 상태로 다시 테스트 — 이미 열린 게임에 새 스냅샷 주입 */
@@ -954,6 +1047,9 @@ function init(){
     if($("edPlayDialog").open) return;             /* 테스트 모달 동안 에디터 단축키 잠금 */
     var t=e.target, tag=t&&t.tagName;
     if(tag==="INPUT"||tag==="TEXTAREA"||tag==="SELECT"||(t&&t.isContentEditable)) return;
+    if(solReplay&&(e.key==="ArrowLeft"||e.key==="ArrowRight")){
+      e.preventDefault(); stepSol(e.key==="ArrowLeft"?-1:1); return;
+    }
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){ e.preventDefault(); e.shiftKey?doRedo():doUndo(); }
     if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="y"){ e.preventDefault(); doRedo(); }
     if(e.key==="Escape"&&tool.kind==="refpaste"){ setTool({kind:"entity",id:"select"}); status("붙여넣기 해제"); }

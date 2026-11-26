@@ -38,13 +38,13 @@ E(`var mk=function(catDefs,opts){
 let passed=0;
 function ok(name,fn){ fn(); passed++; console.log("ok -",name); }
 
-ok("1) 고양이 칸으로 진입 — 순찰 고양이는 자기 스텝으로 칸을 비우고 옆 칸에서 발각 + 실제 시뮬 일치 + 원본 불변",()=>{
+ok("1) 고양이 칸으로 진입 불가 — 비울 예정이어도 몸 비비기(스왑) 차단 + 원본 불변",()=>{
   const def=`[{type:"C",x:3,y:4,dir:2,patrol:[[3,4],[5,4]]}]`;
   const st0=E(`mk(${def})`);
   const snap=JSON.stringify(st0);
-  /* 발각은 이동 후 위치 기준 — 고양이가 순찰 스텝으로 (3,4)를 비우면 진입이 허용돼요 */
-  assert.strictEqual(E(`canPlayerMoveTo(mk(${def}),3,4)`),true);
-  assert.strictEqual(E(`canPlayerMoveTo(mk(${def}),3,4)`),true);   /* 반복 호출해도 원본 그대로 */
+  /* 고양이가 지금 서 있는 칸은 몸을 비비고 못 지나가요 — 순찰 스텝으로 비워도 불가 */
+  assert.strictEqual(E(`canPlayerMoveTo(mk(${def}),3,4)`),false);
+  assert.strictEqual(E(`canPlayerMoveTo(mk(${def}),3,4)`),false);  /* 반복 호출해도 원본 그대로 */
   /* 실제 후보 턴 시뮬레이션: 고양이는 (4,4)로 이동한 뒤 옆 칸에서 발각 → 아직 caught는 아님 */
   const r=E(`(function(){
     var st=mk(${def}), ev=[];
@@ -62,9 +62,10 @@ ok("2) 이번 턴 안 움직이는 고양이(A 고정·B 교대 방향·C 제자
   assert.strictEqual(E(`canPlayerMoveTo(mk([{type:"C",x:3,y:4,dir:0,patrol:[[3,4],[3,4]]}]),3,4)`),false);
 });
 
-ok("3) 먹이에 끌린 고양이는 비켜남 / 먹는 중 고양이는 자리 지킴",()=>{
+ok("3) 먹이에 끌린 고양이 칸도 진입 불가 / 먹는 중 고양이는 자리 지킴",()=>{
   const lured=`[{type:"A",x:3,y:4,dir:1,state:"lured"}]`;
-  assert.strictEqual(E(`canPlayerMoveTo(mk(${lured},{fishes:[{x:5,y:4,kind:"big"}]}),3,4)`),true);
+  /* 유인 고양이가 이번 턴 비워도 그 칸으로 진입 불가 (스왑 차단) */
+  assert.strictEqual(E(`canPlayerMoveTo(mk(${lured},{fishes:[{x:5,y:4,kind:"big"}]}),3,4)`),false);
   const r=E(`(function(){
     var st=mk(${lured},{fishes:[{x:5,y:4,kind:"big"}]}), ev=[];
     simStep(st,{t:"move",x:3,y:4},ev);
@@ -79,10 +80,10 @@ ok("3) 먹이에 끌린 고양이는 비켜남 / 먹는 중 고양이는 자리 
     {fishes:[{x:3,y:4,kind:"small",eatLeft:1}]}),3,4)`),false);
 });
 
-ok("4) 귀환 중 고양이도 이동 후 발각 — 귀환 스텝으로 칸을 비우고 옆 칸에서 발각, 집에 이미 있으면 차단",()=>{
+ok("4) 귀환 중 고양이 칸도 진입 불가 — 귀환 스텝으로 비울 예정이어도 차단",()=>{
   const ret=`[{type:"A",x:3,y:4,dir:1,state:"return",home:[5,4]}]`;
-  /* 귀환 스텝으로 (4,4)로 이동한 뒤 거기서 발각 — 칸이 비니까 진입 허용 */
-  assert.strictEqual(E(`canPlayerMoveTo(mk(${ret}),3,4)`),true);
+  /* 귀환 스텝으로 비울 예정이어도 서 있는 칸으로는 못 들어가요 */
+  assert.strictEqual(E(`canPlayerMoveTo(mk(${ret}),3,4)`),false);
   const r=E(`(function(){
     var st=mk(${ret}), ev=[];
     simStep(st,{t:"move",x:3,y:4},ev);
@@ -93,15 +94,14 @@ ok("4) 귀환 중 고양이도 이동 후 발각 — 귀환 스텝으로 칸을 
   assert.strictEqual(E(`canPlayerMoveTo(mk([{type:"A",x:3,y:4,dir:0,state:"return",home:[3,4]}]),3,4)`),false);
 });
 
-ok("5) 길 막힌 유인 고양이는 왔다갔다 하며 칸을 비움 — 진입 가능하지만 다음 턴 밟힘 (복도)",()=>{
+ok("5) 길 막힌 유인 고양이는 왔다갔다 하며 칸을 비움 — 진입 불가 (복도)",()=>{
   const st=`mk([
     {type:"A",x:3,y:4,dir:1,state:"lured"},
     {type:"A",x:4,y:4,dir:0,state:"eat"}],
     {fishes:[{x:5,y:4,kind:"big"},{x:4,y:4,kind:"big"}],
      grid:function(g){ for(var y=1;y<8;y++) for(var x=1;x<8;x++) if(y!==4) g[y][x]="#"; }})`;
-  /* 먹이가 다른 고양이에 막혀 못 가면 고양이는 제자리 대기가 아니라 한 발 물러나
-     왔다갔다(페이싱) — 그래서 칸이 비고, 들어가면 다음 턴 되돌아오는 발걸음에 밟혀 잡혀요 */
-  assert.strictEqual(E(`canPlayerMoveTo(${st},3,4)`),true);
+  /* 페이싱으로 칸이 비어도 서 있는 칸으로는 못 들어가요 — 들어갔다면 다음 턴 밟혀 잡혀요 */
+  assert.strictEqual(E(`canPlayerMoveTo(${st},3,4)`),false);
   const r=E(`(function(){var s=${st};var ev=[];simStep(s,{t:"move",x:3,y:4},ev);
     var evs=ev.map(function(e){return e.k});
     var c=s.cats[0];
@@ -151,8 +151,8 @@ ok("8) 판정이 실제 simStep 결과와 일치 + 픽업·원본 불변",()=>{
   const def=`[{type:"C",x:3,y:4,dir:2,patrol:[[3,4],[5,4]]}]`;
   const st=E(`(function(){var s=mk(${def});s.pickups=[{x:5,y:5,kind:"catnip"}];return s;})()`);
   const snap=JSON.stringify(st);
-  assert.strictEqual(E(`canPlayerMoveTo(${snap},3,4)`),true);   /* 이동 후 발각 — 순찰 스텝으로 칸을 비워서 허용 */
-  /* 실제 턴 실행과 같은 결과 */
+  assert.strictEqual(E(`canPlayerMoveTo(${snap},3,4)`),false);   /* 고양이가 서 있는 칸 — 비울 예정이어도 불가 */
+  /* 헬퍼가 상태를 오염시키지 않음 */
   const r=E(`(function(){
     var st=mk(${def}); st.pickups=[{x:5,y:5,kind:"catnip"}];
     var before=JSON.stringify(st);
@@ -160,7 +160,7 @@ ok("8) 판정이 실제 simStep 결과와 일치 + 픽업·원본 불변",()=>{
     var after=JSON.stringify(st);
     return [okm,before===after];
   })()`);
-  assert.strictEqual(JSON.stringify(r),"[true,true]","헬퍼가 st·pickups 를 오염시키지 않음");
+  assert.strictEqual(JSON.stringify(r),"[false,true]","헬퍼가 st·pickups 를 오염시키지 않음");
   /* 차단 경로도 원본 불변 */
   const r2=E(`(function(){
     var st=mk([{type:"A",x:3,y:4,dir:0}]); var before=JSON.stringify(st);

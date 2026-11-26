@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#141019">
 <title>TINY &amp; PAWS · 맵 에디터</title>
-<link rel="stylesheet" href="css/editor.css?v=20261124a2">
+<link rel="stylesheet" href="css/editor.css?v=20261124b3">
 </head>
 <body>
 <div id="edApp">
@@ -16,12 +16,19 @@
     <button id="edNew">새 맵</button>
     <span class="sp"></span>
     <button id="edPlayTest" class="accent" aria-label="만든 맵을 실제 게임으로 테스트">▶ 테스트 플레이</button>
+    <button id="edSolve" aria-label="솔버로 클리어 가능한지 검증하고 해법 경로를 표시">⌕ 해법 찾기</button>
     <button id="edUndo" aria-label="되돌리기">↩ 되돌리기</button>
     <button id="edRedo" aria-label="다시하기">↪ 다시하기</button>
   </div>
   <div id="edMain">
     <div id="edBoardCol">
       <div id="edBoardWrap"><canvas id="cv" width="360" height="360"></canvas><div id="edGrid" role="grid" aria-label="9x9 맵 격자"></div></div>
+      <div id="edSolveBar" hidden>
+        <button id="edSolvePrev" aria-label="이전 턴">◀</button>
+        <span id="edSolveTurn">-</span>
+        <button id="edSolveNext" aria-label="다음 턴">▶</button>
+        <button id="edSolveClose" aria-label="리플레이 닫기">✕</button>
+      </div>
       <div class="card" id="edRefCard">
         <h2>참고용 맵 <span class="refsub">읽기 전용 · 드래그로 영역 선택 → 위 맵에 붙여넣기</span></h2>
         <div class="frow">
@@ -82,11 +89,11 @@
   </div>
   <div id="edPlayBox"></div>
 </dialog>
-<script src="js/data.js?v=20261124a2"></script>
-<script src="js/model.js?v=20261124a2"></script>
-<script src="js/assets.js?v=20261124a2"></script>
-<script src="js/view.js?v=20261124a2"></script>
-<script src="js/editor-model.js?v=20261124a2"></script>
-<script src="js/editor.js?v=20261124a2"></script>
+<script src="js/data.js?v=20261124b3"></script>
+<script src="js/model.js?v=20261124b3"></script>
+<script src="js/assets.js?v=20261124b3"></script>
+<script src="js/view.js?v=20261124b3"></script>
+<script src="js/editor-model.js?v=20261124b3"></script>
+<script src="js/editor.js?v=20261124b3"></script>
 </body>
 </html>

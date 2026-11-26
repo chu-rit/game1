@@ -1,0 +1,20 @@
+module.exports={ w:16,h:16,
+  pal:{ ".":null, K:"#2a1f2e", B:"#5b8fd9", b:"#8fbef2", W:"#f4f1ea" },
+  rows:[
+    "................",
+    "................",
+    ".....KK.........",
+    "....KBBK........",
+    "...KBbbBK...KK..",
+    "..KBbbbBK..KWWK.",
+    ".KBbbbbBBKKWbbWK",
+    ".KBbWbbbBBBWbWWK",
+    ".KBbbbbBBKKWbbWK",
+    "..KBbbbBK..KWWK.",
+    "...KBbbBK...KK..",
+    "....KBBK........",
+    ".....KK.........",
+    "................",
+    "................",
+    "................"
+  ]};

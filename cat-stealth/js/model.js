@@ -59,25 +59,15 @@ function loadStage(idx){
 function cloneState(st){ return JSON.parse(JSON.stringify(st)); }
 
 /* 이동 규칙 판정 (안전성 판단 아님 — 들키는 칸도 합법 이동이에요).
-   목적지에 고양이가 있을 때만 실제 후보 턴 시뮬레이션을 돌려 턴 종료 시점의
-   점유를 확인해요(기존 simStep 이동 순서 그대로 — 새 교차/교환 규칙 없음).
-   시뮬레이션은 복제본에서만 돌고 원본 st는 바꾸지 않아요.
-   도착 칸에 고양이가 남으면 불가 — 추격 중 고양이는 bfs(from==목적지)→null 이라
-   자연히 제자리라 막히고, lured·귀환 등 비추격 고양이는 simStep이 처리해요. */
+   고양이가 서 있는 칸으로는 몸을 비비고 못 지나가요 — 고양이가 그 턴에
+   비울 예정이어도 자리 교환은 불가예요. */
 function canPlayerMoveTo(st,x,y){
   if(!st||!st.player||!Number.isInteger(x)||!Number.isInteger(y)) return false;
   if(Math.abs(x-st.player.x)+Math.abs(y-st.player.y)!==1||!humanWalkable(st,x,y)) return false;
-  var occupied=false;
   for(var i=0;i<st.cats.length;i++){
     var c=st.cats[i];
     if(st.stam<=0&&c.state==="chase") return false;
-    if(c.x===x&&c.y===y) occupied=true;
-  }
-  if(!occupied) return true;
-  var next=cloneState(st), events=[];
-  simStep(next,{t:"move",x:x,y:y},events);
-  for(var j=0;j<next.cats.length;j++){
-    if(next.cats[j].x===x&&next.cats[j].y===y) return false;
+    if(c.x===x&&c.y===y) return false;
   }
   return true;
 }

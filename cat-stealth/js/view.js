@@ -1413,6 +1413,27 @@ function stepBadge(g,x,y,n,amber){
 
 /* ================= 다음 수 의도 / 위험 표시 ================= */
 function catIntent(st,cat){
+  /* '?'를 띄운 뒤 자리로 돌아가는(return) 고양이도 다음 발걸음을 보여줘요 —
+     스턴(freezeT) 턴엔 아직 못 움직이니 궤적을 옅게 그려서 '풀리면 저리 간다'로 읽혀요 */
+  if(cat.state==="return"){
+    var tgt=(cat.type==="C"&&cat.patrol)?{x:cat.patrol[nearestPatrolIdx(cat)][0],y:cat.patrol[nearestPatrolIdx(cat)][1]}:cat.home;
+    var rstp=bfsNext(st,cat,tgt);
+    if(rstp) return {dir:dirFromTo(cat,rstp),next:{x:rstp.x,y:rstp.y},frozen:!!cat.freezeT};
+    return {dir:cat.dir,next:null,frozen:!!cat.freezeT};
+  }
+  /* 먹이 냄새에 '?'가 뜬(lured) 고양이 — 다음 턴 먹이 쪽으로 걸어가는 스텝을 보여줘요.
+     먹이 위에 이미 올라섰으면 다음 턴 물기라 제자리, 길이 막혔으면 최근접 칸까지. */
+  if(cat.state==="lured"){
+    var nf=nearestFish(st,cat);
+    if(!nf&&cat.lureTgt){ var mf=fishAt(st,cat.lureTgt.x,cat.lureTgt.y); if(mf&&(mf.eater==null||mf.ttl!=null)) nf=mf; }
+    if(!nf) return {dir:cat.dir,next:null};
+    if(cat.x===nf.x&&cat.y===nf.y) return {dir:cat.dir,next:null};
+    var lstp=bfsNext(st,cat,nf);
+    if(lstp) return {dir:dirFromTo(cat,lstp),next:{x:lstp.x,y:lstp.y}};
+    var lcp=closestReachable(st,cat,nf);
+    if(lcp&&(lcp.x!==cat.x||lcp.y!==cat.y)){ var lg=bfsNext(st,cat,lcp); if(lg) return {dir:dirFromTo(cat,lg),next:{x:lg.x,y:lg.y}}; }
+    return {dir:dirFromTo(cat,nf),next:null};
+  }
   if(cat.state!=="idle") return null;
   if(cat.type==="B"&&cat.dirs){
     return {dir:(cat.dir===cat.dirs[0])?cat.dirs[1]:cat.dirs[0],next:null};
@@ -1436,17 +1457,18 @@ function drawIntent(g,st,now){
   for(var i=0;i<st.cats.length;i++){
     var c=st.cats[i], it=catIntent(st,c);
     if(!it) continue;
+    var fa=it.frozen?0.5:1;
     var cx=c.x*CELL+CELL/2, cy=c.y*CELL+CELL/2;
     if(it.next){
       var nx=it.next.x*CELL+CELL/2, ny=it.next.y*CELL+CELL/2;
       for(var s=0.2;s<=1.001;s+=0.13){
-        pf(g,Math.round(cx+(nx-cx)*s)-1,Math.round(cy+(ny-cy)*s)-1,2,2,"rgba(120,226,190,"+(pu*0.55).toFixed(3)+")");
+        pf(g,Math.round(cx+(nx-cx)*s)-1,Math.round(cy+(ny-cy)*s)-1,2,2,"rgba(120,226,190,"+(pu*0.55*fa).toFixed(3)+")");
       }
       var mx=it.next.x*CELL+13, my=it.next.y*CELL+13;
-      pf(g,mx,my,8,1,"rgba(120,226,190,"+(pu*0.7).toFixed(3)+")");
-      pf(g,mx,my+7,8,1,"rgba(120,226,190,"+(pu*0.7).toFixed(3)+")");
-      pf(g,mx,my,1,8,"rgba(120,226,190,"+(pu*0.7).toFixed(3)+")");
-      pf(g,mx+7,my,1,8,"rgba(120,226,190,"+(pu*0.7).toFixed(3)+")");
+      pf(g,mx,my,8,1,"rgba(120,226,190,"+(pu*0.7*fa).toFixed(3)+")");
+      pf(g,mx,my+7,8,1,"rgba(120,226,190,"+(pu*0.7*fa).toFixed(3)+")");
+      pf(g,mx,my,1,8,"rgba(120,226,190,"+(pu*0.7*fa).toFixed(3)+")");
+      pf(g,mx+7,my,1,8,"rgba(120,226,190,"+(pu*0.7*fa).toFixed(3)+")");
     }
   }
 }
@@ -1593,10 +1615,21 @@ function drawSense(g,st,cat,now){
 /* ---------- 다음 턴 시야·기척 미리보기 ---------- */
 /* 고양이가 "이번 턴 이동을 마친 뒤" 서 있을 자리와 방향을 예측해요.
    chase는 플레이어 행동에 따라 달라져서 예측 불가 → 표시 안 함.
-   lured/eat는 시야·기척이 닫혀 있어 표시할 게 없어요. */
+   lured는 먹이 방향 다음 칸만, eat는 제자리라 표시할 게 없어요. */
 function nextCatPose(st,cat){
   if(cat.freezeT) return {x:cat.x,y:cat.y,dir:cat.dir};        /* 스턴 — 제자리 그대로 */
-  if(cat.state==="chase"||cat.state==="lured"||cat.state==="eat") return null;
+  if(cat.state==="chase"||cat.state==="eat") return null;
+  /* 유인 중: 먹이 쪽으로 걸어가는 다음 칸 — 시야·기척이 닫혀 있으니 위치만 예측해요 */
+  if(cat.state==="lured"){
+    var nf=nearestFish(st,cat);
+    if(!nf&&cat.lureTgt){ var mf=fishAt(st,cat.lureTgt.x,cat.lureTgt.y); if(mf&&(mf.eater==null||mf.ttl!=null)) nf=mf; }
+    if(!nf||(cat.x===nf.x&&cat.y===nf.y)) return {x:cat.x,y:cat.y,dir:cat.dir,blind:true};
+    var lf=bfsNext(st,cat,nf);
+    if(lf) return {x:lf.x,y:lf.y,dir:dirFromTo(cat,lf),blind:true};
+    var lcp=closestReachable(st,cat,nf);
+    if(lcp&&(lcp.x!==cat.x||lcp.y!==cat.y)){ var lg=bfsNext(st,cat,lcp); if(lg) return {x:lg.x,y:lg.y,dir:dirFromTo(cat,lg),blind:true}; }
+    return {x:cat.x,y:cat.y,dir:dirFromTo(cat,nf),blind:true};
+  }
   if(cat.state==="return"){
     var tgt=(cat.type==="C"&&cat.patrol)?{x:cat.patrol[nearestPatrolIdx(cat)][0],y:cat.patrol[nearestPatrolIdx(cat)][1]}:cat.home;
     var stp=bfsNext(st,cat,tgt);
@@ -1616,10 +1649,11 @@ function drawNextZones(g,st,now){
   for(var i=0;i<st.cats.length;i++){
     var c=st.cats[i], pose=nextCatPose(st,c);
     if(!pose) continue;
+    /* 유인 고양이는 시야·기척이 닫혀 있어서(blind) 영역 점선 없이 다음 위치만 찍어요 */
     var fake={x:pose.x,y:pose.y,dir:pose.dir,sense:c.sense};
-    var beam=beamTiles(st,fake), beamKey={};
+    var beam=pose.blind?[]:beamTiles(st,fake), beamKey={};
     for(var j=0;j<beam.length;j++) beamKey[beam[j].x+","+beam[j].y]=1;
-    var senseT=c.sense?senseTilesOf(st,fake):[];
+    var senseT=(!pose.blind&&c.sense)?senseTilesOf(st,fake):[];
     for(var s=0;s<senseT.length;s++){
       var t=senseT[s]; if(beamKey[t.x+","+t.y]) continue;
       zoneTileDash(g,t.x,t.y,"rgba(160,130,255,",0.42);
