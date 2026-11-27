@@ -212,10 +212,12 @@ function catWalkPose(now,walking){
    idle2는 idle 픽셀을 1~2px만 손댄 '초미세' 프레임(몸통·머리·발·외곽선 고정, 흔들림 0):
    A: 눈 깜빡임(정면·좌·우) / 뒷모습은 귀 끝 1px 접힘 — 2.4s / 0.18s
    B: 꼬리 끝 1~2px 살랑 — 0.9s / 0.9s
-   C: 나른한 눈(홍채 위쪽만 덮음) + 꼬리 끝 1px — 2.8s / 0.24s */
-var CAT_IDLE_CYCLE={A:[2400,180],B:[900,900],C:[2800,240]};
+   C: idle2 미사용 — 10프레임 대기 시퀀스(COOKIE_IDLE_SEQ: 웅크림→부르르→기상)가 대신해요.
+      그래서 표에 C가 없고 catIdlePose 는 C를 항상 "idle"로 돌려줘요(나른한 눈 깜빡임 없음). */
+var CAT_IDLE_CYCLE={A:[2400,180],B:[900,900]};
 function catIdlePose(cat,idleElapsed){
   if(cat.state&&cat.state!=="idle") return "idle";
+  if(cat.type==="C") return "idle";      /* 쿠키: 대기 중 눈 깜빡임(idle2) 없이 항상 idle */
   var cyc=CAT_IDLE_CYCLE[cat.type]||CAT_IDLE_CYCLE.A;
   var per=cyc[0]+cyc[1];
   var t=((idleElapsed||0)+(cat.id||0)*900)%per;
