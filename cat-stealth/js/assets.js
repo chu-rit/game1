@@ -230,7 +230,7 @@ function catWalkPose(now,walking){
    idle2는 idle 픽셀을 1~2px만 손댄 '초미세' 프레임(몸통·머리·발·외곽선 고정, 흔들림 0):
    A: 눈 깜빡임(정면·좌·우) / 뒷모습은 귀 끝 1px 접힘 — 2.4s / 0.18s
    B: 꼬리 끝 1~2px 살랑 — 0.9s / 0.9s
-   C: idle2 미사용 — 14프레임 대기 시퀀스(COOKIE_IDLE_SEQ: 기지개+떨림)가 대신해요.
+   C: idle2 미사용 — 17프레임 대기 시퀀스(COOKIE_IDLE_SEQ: 기지개+떨림)가 대신해요.
       그래서 표에 C가 없고 catIdlePose 는 C를 항상 "idle"로 돌려줘요(나른한 눈 깜빡임 없음). */
 var CAT_IDLE_CYCLE={A:[2400,180],B:[900,900]};
 function catIdlePose(cat,idleElapsed){
@@ -242,39 +242,41 @@ function catIdlePose(cat,idleElapsed){
   if(t<0) t+=per;
   return (t<cyc[0])?"idle":"idle2";
 }
-/* ================= 쿠키(C) 대기 시퀀스: 기지개 + 자연스러운 떨림 (14프레임) =================
-   서서 가만히 있던 시간(idleElapsed)이 주기 안의 시퀀스 구간에 들어서면, 14프레임을 차례로 그려요.
-   한 프레임 240ms → 시퀀스 총 3.36초, 주기 8.5초(앞 5.14초는 그냥 서 있음). cat.id 마다 2.6초씩
+/* ================= 쿠키(C) 대기 시퀀스: 기지개 + 자연스러운 떨림 (17프레임) =================
+   서서 가만히 있던 시간(idleElapsed)이 주기 안의 시퀀스 구간에 들어서면, 17프레임을 차례로 그려요.
+   프레임마다 지속 시간이 달라요(가변 템포): 시작·끝은 200ms 로 느긋하게, 부들부들 떠는 10프레임은
+   80ms 로 짧고 빠르게. → 시퀀스 총 2.2초, 주기 7.2초(앞 5.0초는 그냥 서 있음). cat.id 마다 2.6초씩
    시차를 둬서 한 화면의 쿠키들이 같이 움찔거리지 않게 했어요.
-   - 1      : 앉음(idle)
-   - 2~3    : 앞발을 앞으로 뻗으며 몸을 숙이기 시작(stretchHalf)
-   - 4      : 기지개 쭉 — 앞발 쭉, 가슴 낮게, 엉덩이·꼬리 위로(stretch)
-   - 5~11   : 기지개에 힘을 주며 생기는 떨림 — 꼬리 살랑(stretchB ↔ stretchC) + ±2px 좌우 흔들림 + 떨림선
-   - 12~13  : 힘을 빼고 돌아오는 중(stretchHalf)
-   - 14     : 다시 앉음(idle)
+   - 1~4    : 앉음(idle) → 앞발을 앞으로 뻗으며 숙이기(stretchHalf ×2) → 기지개 쭉(stretch)   [각 200ms]
+   - 5~14   : 부들부들 떠는 10프레임 — 꼬리 살랑(stretchB ↔ stretchC) + ±2px 좌우 흔들림 + 떨림선  [각 80ms]
+   - 15~17  : 힘을 빼고 돌아오기(stretchHalf ×2) → 다시 앉음(idle)                        [각 200ms]
    pose : 그 프레임에 쓸 스프라이트 키(idle / stretchHalf / stretch / stretchB / stretchC).
           stretchB·stretchC는 꼬리만 흔든 변형이라 몸통·얼굴은 그대로예요.
    jx   : 몸통 좌우 흔들림(±2px 정수)
-   shake: 떨림선 세기(0 없음 / 1 잔떨림 / 2 강한 떨림) */
-var COOKIE_SEQ_FRAME_MS=240;
-var COOKIE_SEQ_PERIOD=8500;
+   shake: 떨림선 세기(0 없음 / 1 잔떨림 / 2 강한 떨림)
+   ms   : 그 프레임의 지속 시간(ms) — 프레임마다 달라요 */
+var COOKIE_SEQ_PERIOD=7200;   /* 앞 5.0초 서 있음 + 2.2초 기지개 시퀀스 */
 var COOKIE_IDLE_SEQ=[
-  {pose:"idle",       jx:0, shake:0},   /* 1  앉아서 시작 */
-  {pose:"stretchHalf",jx:0, shake:0},   /* 2  앞발을 앞으로 뻗으며 숙이기 시작 */
-  {pose:"stretchHalf",jx:0, shake:0},   /* 3  반쯤 숙인 자세 유지 */
-  {pose:"stretch",    jx:0, shake:0},   /* 4  기지개 최대 — 쭉 펴기 */
-  {pose:"stretchB",   jx:2, shake:1},   /* 5  힘주며 떨림 — 꼬리 살랑 */
-  {pose:"stretchC",   jx:-2,shake:2},   /* 6  떨림 절정 */
-  {pose:"stretchB",   jx:2, shake:2},   /* 7  떨림 이어짐 */
-  {pose:"stretchC",   jx:-2,shake:2},   /* 8  떨림 이어짐 */
-  {pose:"stretchB",   jx:2, shake:1},   /* 9  떨림 풀리기 시작 */
-  {pose:"stretchC",   jx:-2,shake:1},   /* 10 잔떨림 */
-  {pose:"stretchB",   jx:2, shake:1},   /* 11 떨림 마무리 */
-  {pose:"stretchHalf",jx:0, shake:0},   /* 12 힘 빼고 돌아오기 시작 */
-  {pose:"stretchHalf",jx:0, shake:0},   /* 13 반쯤 숙인 채 몸 풀기 */
-  {pose:"idle",       jx:0, shake:0}    /* 14 다시 앉음 → 다음 프레임부터 idle */
+  {pose:"idle",       jx:0, shake:0, ms:200},   /* 1  앉아서 시작 */
+  {pose:"stretchHalf",jx:0, shake:0, ms:200},   /* 2  앞발을 앞으로 뻗으며 숙이기 시작 */
+  {pose:"stretchHalf",jx:0, shake:0, ms:200},   /* 3  반쯤 숙인 자세 유지 */
+  {pose:"stretch",    jx:0, shake:0, ms:200},   /* 4  기지개 최대 — 쭉 펴기 */
+  {pose:"stretchB",   jx:2, shake:1, ms:80},    /* 5  부들부들 시작 — 꼬리 살랑 */
+  {pose:"stretchC",   jx:-2,shake:2, ms:80},    /* 6  떨림 절정 */
+  {pose:"stretchB",   jx:2, shake:2, ms:80},    /* 7  떨림 이어짐 */
+  {pose:"stretchC",   jx:-2,shake:2, ms:80},    /* 8  떨림 이어짐 */
+  {pose:"stretchB",   jx:2, shake:2, ms:80},    /* 9  떨림 이어짐 */
+  {pose:"stretchC",   jx:-2,shake:2, ms:80},    /* 10 떨림 이어짐 */
+  {pose:"stretchB",   jx:2, shake:2, ms:80},    /* 11 떨림 이어짐 */
+  {pose:"stretchC",   jx:-2,shake:2, ms:80},    /* 12 떨림 이어짐 */
+  {pose:"stretchB",   jx:2, shake:1, ms:80},    /* 13 떨림 풀리기 시작 */
+  {pose:"stretchC",   jx:-2,shake:1, ms:80},    /* 14 잔떨림 마무리 */
+  {pose:"stretchHalf",jx:0, shake:0, ms:200},   /* 15 힘 빼고 돌아오기 시작 */
+  {pose:"stretchHalf",jx:0, shake:0, ms:200},   /* 16 반쯤 숙인 채 몸 풀기 */
+  {pose:"idle",       jx:0, shake:0, ms:200}    /* 17 다시 앉음 → 다음 프레임부터 idle */
 ];
-var COOKIE_SEQ_MS=COOKIE_IDLE_SEQ.length*COOKIE_SEQ_FRAME_MS;
+var COOKIE_SEQ_MS=0;                     /* 시퀀스 총 길이 = 프레임 ms 합계 (아래에서 자동 계산) */
+for(var _ci=0;_ci<COOKIE_IDLE_SEQ.length;_ci++) COOKIE_SEQ_MS+=COOKIE_IDLE_SEQ[_ci].ms;
 function cookieIdleFrame(cat,idleElapsed){
   if(!cat||cat.type!=="C") return -1;
   if(cat.state&&cat.state!=="idle") return -1;
@@ -282,8 +284,13 @@ function cookieIdleFrame(cat,idleElapsed){
   if(t<0) t+=COOKIE_SEQ_PERIOD;
   var at=COOKIE_SEQ_PERIOD-COOKIE_SEQ_MS;
   if(t<at) return -1;
-  var f=Math.floor((t-at)/COOKIE_SEQ_FRAME_MS);
-  return f<COOKIE_IDLE_SEQ.length?f:-1;
+  /* 프레임별 ms 를 누적해 지금이 몇 번째 프레임인지 찾아요(가변 템포) */
+  var e=t-at, acc=0;
+  for(var i=0;i<COOKIE_IDLE_SEQ.length;i++){
+    acc+=COOKIE_IDLE_SEQ[i].ms;
+    if(e<acc) return i;
+  }
+  return -1;
 }
 function drawCatAt(g,cx,gy,P,dir,type,now,opt){
   opt=opt||{};
@@ -423,7 +430,7 @@ function drawCatEntity(g,cat,now,opt){
   /* 쿠키(C)가 추격 중에 도약을 준비하는 턴 = 낮게 웅크린 자세 */
   else if(cat.type==="C"&&cat.crouch&&cat.state==="chase") pose="crouch";
   var airLift=opt.airLift||0;
-  /* 쿠키(C) 대기 시퀀스: 서 있던 시간이 시퀀스 구간에 들면 기지개+떨림을 14프레임으로.
+  /* 쿠키(C) 대기 시퀀스: 서 있던 시간이 시퀀스 구간에 들면 기지개+떨림을 17프레임(가변 템포)으로.
      포즈·좌우 흔들림·떨림선을 모두 프레임 표가 정해요(COOKIE_IDLE_SEQ).
      now>0 조건은 에디터/리플레이처럼 정지 시각(0)으로 그릴 때 고정 어긋남을 막아요. */
   var seq=null;
