@@ -226,28 +226,28 @@ function catIdlePose(cat,idleElapsed){
 }
 /* ================= 쿠키(C) 대기 시퀀스: 웅크림 → 부르르 → 기상 (10프레임) =================
    서서 가만히 있던 시간(idleElapsed)이 주기 안의 시퀀스 구간에 들어서면, 10프레임을 차례로 그려요.
-   한 프레임 120ms → 시퀀스 총 1.2초, 주기 7초(앞 5.8초는 그냥 서 있음). cat.id 마다 2.6초씩
+   한 프레임 200ms → 시퀀스 총 2.0초, 주기 7초(앞 5.0초는 그냥 서 있음). cat.id 마다 2.6초씩
    시차를 둬서 한 화면의 쿠키들이 같이 움찔거리지 않게 했어요.
    - 1~4  : 앉음(idle) → 반쯤 웅크림(mid) → 엎드림(crouch). 세로 스쿼시가 아니라 진짜 자세가
             한 단계씩 바뀌어서 '한 번에 엎드리는' 느낌이 없어요.
-   - 5~7  : 엎드린 채 부르르(±1px 정수 흔들림 + 잔떨림선) 겸 꼬리 흔들기(crouchB ↔ crouchC)
-   - 8~10 : 반쯤 일어나(mid) 다시 앉는(idle) 자세로
+   - 5~7  : 엎드린 채 부르르(±2px 정수 흔들림 + 잔떨림선) 겸 꼬리 흔들기(crouchB ↔ crouchC)
+   - 8~10 : 반쯤 일어나(mid) 다시 앉는(idle) 자세로 — 내려갈 때(midC→midB)와 꼬리 순서가 대칭
    pose : 그 프레임에 쓸 스프라이트 키(idle / mid / midB / midC / crouch / crouchB / crouchC).
           midB·midC·crouchB·crouchC는 꼬리만 흔든 변형이라 몸통·얼굴은 그대로예요.
-   jx   : 몸통 좌우 흔들림(±1~2px 정수) — 부르르 구간
+   jx   : 몸통 좌우 흔들림(±2px 정수) — 부르르 구간
    shake: 떨림선 세기(0 없음 / 1 잔떨림 / 2 강한 떨림) */
-var COOKIE_SEQ_FRAME_MS=120;
+var COOKIE_SEQ_FRAME_MS=200;
 var COOKIE_SEQ_PERIOD=7000;
 var COOKIE_IDLE_SEQ=[
   {pose:"idle",   jx:0, shake:0},   /* 1  앉아서 시작 */
   {pose:"midC",   jx:0, shake:0},   /* 2  몸을 낮추기 시작 — 반쯤 웅크림, 꼬리 왼쪽 */
   {pose:"midB",   jx:0, shake:0},   /* 3  반쯤 웅크림, 꼬리 오른쪽 */
   {pose:"crouch", jx:0, shake:0},   /* 4  배를 바닥에 붙임 */
-  {pose:"crouchB",jx:1, shake:1},   /* 5  부르르 — 꼬리 흔들기 */
-  {pose:"crouchC",jx:-1,shake:2},   /* 6  부르르 절정 */
-  {pose:"crouchB",jx:1, shake:1},   /* 7  부르르 마무리 */
-  {pose:"midC",   jx:0, shake:0},   /* 8  일어나기 시작 */
-  {pose:"midB",   jx:0, shake:0},   /* 9  반쯤 일어섬 */
+  {pose:"crouchB",jx:2, shake:1},   /* 5  부르르 — 꼬리 흔들기 */
+  {pose:"crouchC",jx:-2,shake:2},   /* 6  부르르 절정 */
+  {pose:"crouchB",jx:2, shake:1},   /* 7  부르르 마무리 */
+  {pose:"midB",   jx:0, shake:0},   /* 8  일어나기 시작 — 꼬리 오른쪽(내려갈 때 midC→midB의 역순) */
+  {pose:"midC",   jx:0, shake:0},   /* 9  반쯤 일어섬 — 꼬리 왼쪽 */
   {pose:"idle",   jx:0, shake:0}    /* 10 다시 앉음 → 다음 프레임부터 idle */
 ];
 var COOKIE_SEQ_MS=COOKIE_IDLE_SEQ.length*COOKIE_SEQ_FRAME_MS;
@@ -277,7 +277,7 @@ function drawCatAt(g,cx,gy,P,dir,type,now,opt){
   /* 걷기 밥만: 대기(idle)·먹기(eat) 중에는 위아래 1px 흔들림 없이 고정 */
   if(walking) bob=step?1:0;
   var sq=opt.landSq||0;
-  /* 부르르 떨기(만화 연출): opt.jx = 이 프레임의 좌우 흔들림(±1~2px 정수),
+  /* 부르르 떨기(만화 연출): opt.jx = 이 프레임의 좌우 흔들림(±2px 정수),
      opt.shake = 떨림선 세기(0/1/2) — 프레임 표(COOKIE_IDLE_SEQ)가 넘겨요.
      몸이 치우친 반대편에 2단 계단 떨림선(잔상)을 찍어요 — 그림자는 바닥에 고정. */
   var jx=opt.jx|0, shk=opt.shake|0;
