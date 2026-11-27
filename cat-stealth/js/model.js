@@ -291,6 +291,47 @@ function jumpPathLanding(st,cat,maxStep){
   }
   return best;
 }
+/* ================= 치즈(B) 8방향 추격 =================
+   치즈태비는 추격(chase)할 때만 대각선까지 섞어 8방향 1칸으로 따라와요.
+   · 대각선은 양옆 직교 두 칸이 '둘 다' 막혔을 때만 못 지나가요(한 칸이라도 열려 있으면 통과).
+   · 다른 고양이가 서 있는 칸은 직교와 똑같이 피해요. */
+var DIRS8=[[0,-1],[1,0],[0,1],[-1,0],[1,-1],[1,1],[-1,1],[-1,-1]];
+function stepOk8(st,fx,fy,nx,ny){
+  if(!catWalkable(st,nx,ny)) return false;
+  var dx=nx-fx, dy=ny-fy;
+  if(dx&&dy&&!catWalkable(st,fx+dx,fy)&&!catWalkable(st,fx,fy+dy)) return false;  /* 벽 모서리 꿰뚫기 방지 */
+  return true;
+}
+function bfsNext8(st,from,target,ignoreCats){
+  if(from.x===target.x&&from.y===target.y) return null;
+  var blockedCat=function(x,y){
+    if(ignoreCats) return false;
+    for(var i=0;i<st.cats.length;i++){ var c=st.cats[i]; if(c!==from&&c.x===x&&c.y===y) return true; }
+    return false;
+  };
+  var prev={}, key=function(x,y){return y*COLS+x;}, q=[{x:from.x,y:from.y}], qi=0;
+  prev[key(from.x,from.y)]=null;
+  var found=false;
+  while(qi<q.length){
+    var cur=q[qi++];
+    if(cur.x===target.x&&cur.y===target.y){ found=true; break; }
+    for(var d=0;d<DIRS8.length;d++){
+      var nx=cur.x+DIRS8[d][0], ny=cur.y+DIRS8[d][1];
+      if(!stepOk8(st,cur.x,cur.y,nx,ny)||blockedCat(nx,ny)) continue;
+      var k=key(nx,ny);
+      if(prev.hasOwnProperty(k)) continue;
+      prev[k]=cur; q.push({x:nx,y:ny});
+    }
+  }
+  if(!found) return null;
+  var node={x:target.x,y:target.y};
+  while(node && prev[key(node.x,node.y)] && !(prev[key(node.x,node.y)].x===from.x&&prev[key(node.x,node.y)].y===from.y)){
+    node=prev[key(node.x,node.y)];
+  }
+  if(!node) return null;
+  if(node.x===from.x&&node.y===from.y) return null;
+  return node;
+}
 /* 목표 칸 자체를 고양이가 못 밟을 때(수풀·구멍에 든 플레이어) —
    목표 옆의 밟을 수 있는 칸까지 다가가는 첫 스텝을 찾아요 */
 function bfsNextToAdj(st,from,target){
@@ -299,6 +340,26 @@ function bfsNextToAdj(st,from,target){
     var ax=target.x+DIRS[d][0], ay=target.y+DIRS[d][1];
     if(!catWalkable(st,ax,ay)) continue;
     var n=bfsNext(st,from,{x:ax,y:ay});
+    if(n) return n;
+  }
+  return null;
+}
+/* 같은 목표를 8방향(대각선 포함)으로 따라가는 첫 스텝 — 치즈(B) 추격 전용.
+   플레이어가 수풀·구멍에 있으면 그 주변 8칸 중 고양이에게 가장 가까운 칸부터 노려요. */
+function bfsNextToAdj8(st,from,target){
+  if(catWalkable(st,target.x,target.y)) return bfsNext8(st,from,target);
+  var cand=[], i;
+  for(i=0;i<DIRS8.length;i++){
+    var ax=target.x+DIRS8[i][0], ay=target.y+DIRS8[i][1];
+    if(!catWalkable(st,ax,ay)) continue;
+    cand.push({x:ax,y:ay});
+  }
+  cand.sort(function(p,q){
+    var dp=Math.abs(p.x-from.x)+Math.abs(p.y-from.y), dq=Math.abs(q.x-from.x)+Math.abs(q.y-from.y);
+    return dp-dq;
+  });
+  for(i=0;i<cand.length;i++){
+    var n=bfsNext8(st,from,cand[i]);
     if(n) return n;
   }
   return null;
@@ -479,8 +540,9 @@ function catStep(st,cat,events){
       cat.dir=dirFromTo(cat,st.player);
       return;
     }
-    /* 플레이어가 수풀·구멍에 있으면 그 칸까지가 아니라 가장자리까지 쫓아가요 */
-    var nxt=bfsNextToAdj(st,cat,st.player);
+    /* 플레이어가 수풀·구멍에 있으면 그 칸까지가 아니라 가장자리까지 쫓아가요.
+       치즈태비(B)만 대각선까지 섞은 8방향으로 따라와요(다른 고양이는 4방향 그대로). */
+    var nxt=(cat.type==="B")?bfsNextToAdj8(st,cat,st.player):bfsNextToAdj(st,cat,st.player);
     if(nxt){ cat.dir=dirFromTo(cat,nxt); cat.x=nxt.x; cat.y=nxt.y; }
     else{ cat.dir=dirFromTo(cat,st.player); }   /* 못 움직여도 쫓는 쪽은 바라봐요 */
   }else if(cat.state==="return"){
