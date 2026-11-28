@@ -83,6 +83,7 @@ function showItemTip(idx){
   for(var i=0;i<info.rows.length;i++){
     rows+='<div class="trow"><span class="tk">'+info.rows[i][0]+'</span><span class="tv">'+info.rows[i][1]+'</span></div>';
   }
+  $("tipEm").classList.remove("cat");
   $("tipEm").innerHTML=foodIconHtml(s.kind);
   $("tipNm").textContent=info.name;
   $("tipTag").textContent=info.tag||"";
@@ -101,26 +102,22 @@ function hideItemTip(){
   TIP.open=false;
   $("itemTip").classList.add("hidden");
 }
-/* 고양이 아이콘: 보드와 같은 도트 스프라이트(CATSPR) — 지금 상태(먹는 중이면 eat)와
-   바라보는 방향 그대로 <img>로 보여 줘요. */
+/* 고양이 아이콘: 보드와 같은 도트 스프라이트(CATSPR) — 아래(정면)를 보는 모습으로 고정해요 */
 function catIconHtml(cat){
   var sp=(typeof CATSPR!=="undefined"&&CATSPR[cat.type]);
   var pose=sp&&((cat.state==="eat"&&sp.eat)?sp.eat:sp.idle);
-  var b=pose&&(pose[cat.dir]!=null?pose[cat.dir]:pose[2]);
+  var b=pose&&pose[2];
   if(b) return '<img class="sp-ic" src="data:image/png;base64,'+b+'" alt="" draggable="false">';
   return "🐈";
 }
 /* 고양이 상세 정보 카드 — 고양이가 있는 칸을 콕 찍으면 떠요 (아이템 카드와 같은 틀) */
-var CAT_STATE_LABEL={ idle:"경계 중", chase:"추격 중 — 도망가세요!", "return":"자리로 돌아가는 중",
-                      lured:"먹이 냄새를 따라가는 중", eat:"먹는 중 — 시야·기척이 닫혀 있어요" };
 function showCatTip(cat){
   var info=(typeof CAT_INFO!=="undefined"&&CAT_INFO[cat.type])||{name:"고양이",tag:"",rows:[],tip:""};
-  var all=[["지금 상태",CAT_STATE_LABEL[cat.state]||cat.state],
-           ["바라보는 방향",["위 ↑","오른쪽 →","아래 ↓","왼쪽 ←"][cat.dir]||"-"]].concat(info.rows);
   var rows="";
-  for(var i=0;i<all.length;i++){
-    rows+='<div class="trow"><span class="tk">'+all[i][0]+'</span><span class="tv">'+all[i][1]+'</span></div>';
+  for(var i=0;i<info.rows.length;i++){
+    rows+='<div class="trow"><span class="tk">'+info.rows[i][0]+'</span><span class="tv">'+info.rows[i][1]+'</span></div>';
   }
+  $("tipEm").classList.add("cat");
   $("tipEm").innerHTML=catIconHtml(cat);
   $("tipNm").textContent=info.name;
   $("tipTag").textContent=info.tag||"";

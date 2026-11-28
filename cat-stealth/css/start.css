@@ -141,7 +141,7 @@
    그라데이션으로 흉내 낸 판이 아니라 그림 자체가 나무판자예요.
    글자는 판에 새긴 것처럼: 크림빛 글자 + 4방향 2px(도트 1칸) 짙은 갈색 외곽선 + 아래 그림자. */
 #stStart{
-  width:220px; height:60px;
+  width:260px; height:87px;
   display:flex; align-items:center; justify-content:center;
   padding:0 0 4px 2px; border:0; cursor:pointer;
   font-family:"Galmuri11Bold", "Apple SD Gothic Neo", sans-serif;
@@ -153,7 +153,7 @@
     2px 2px 0 #2a1808, -2px 2px 0 #2a1808, 2px -2px 0 #2a1808, -2px -2px 0 #2a1808,
     0 5px 0 rgba(20,10,2,.5);
   background-color:transparent;
-  background-image:url("../assets/start-btn-wood.png");
+  background-image:url("../assets/start-btn-sign.png");
   background-size:100% 100%; background-repeat:no-repeat;
   image-rendering:crisp-edges; image-rendering:pixelated;
   filter:drop-shadow(0 6px 7px rgba(4,14,9,.42));
@@ -351,6 +351,7 @@
     0 4px 0 rgba(10,6,2,.45);
 }
 .ss-prog{
+  position:absolute; right:0; top:50%; transform:translateY(-50%);
   flex:none; min-width:72px; text-align:right;
   font-size:11px; letter-spacing:1px; color:#f4e6c8;
   text-shadow:0 2px 0 rgba(0,0,0,.75);

@@ -1464,12 +1464,48 @@ function drawIntent(g,st,now){
       for(var s=0.2;s<=1.001;s+=0.13){
         pf(g,Math.round(cx+(nx-cx)*s)-1,Math.round(cy+(ny-cy)*s)-1,2,2,"rgba(120,226,190,"+(pu*0.55*fa).toFixed(3)+")");
       }
-      var mx=it.next.x*CELL+13, my=it.next.y*CELL+13;
-      pf(g,mx,my,8,1,"rgba(120,226,190,"+(pu*0.7*fa).toFixed(3)+")");
-      pf(g,mx,my+7,8,1,"rgba(120,226,190,"+(pu*0.7*fa).toFixed(3)+")");
-      pf(g,mx,my,1,8,"rgba(120,226,190,"+(pu*0.7*fa).toFixed(3)+")");
-      pf(g,mx+7,my,1,8,"rgba(120,226,190,"+(pu*0.7*fa).toFixed(3)+")");
     }
+  }
+}
+/* 쿠키(C) 순찰 — 지금 향하고 있는 지점을 표시해요.
+   고양이→목표 지점까지 실제로 걸어갈 경로(bfsNext 체인)를 옅은 점선으로 잇고,
+   끝 지점엔 통통 튀는 작은 화살표 — 여러 마리여도 누구의 목표인지 따라갈 수 있어요.
+   eat·chase·return 중엔 순찰이 아니니 숨기고, 제자리 초소(지점 1개)도 표시하지 않아요. */
+function drawPatrolTarget(g,st,now){
+  var bob=Math.round(Math.sin(now/300)*2);
+  var pulse=0.70+0.30*(0.5+0.5*Math.sin(now/300));
+  for(var i=0;i<st.cats.length;i++){
+    var c=st.cats[i];
+    if(c.type!=="C"||!c.patrol||c.state!=="idle") continue;
+    if(c.pi<0||c.pi>=c.patrol.length) continue;
+    var same=true;
+    for(var q=1;q<c.patrol.length;q++){ if(c.patrol[q][0]!==c.patrol[0][0]||c.patrol[q][1]!==c.patrol[0][1]){ same=false; break; } }
+    if(same) continue;
+    var pi=c.pi;
+    if(c.x===c.patrol[pi][0]&&c.y===c.patrol[pi][1]){ var nxi=pi+c.psign; if(nxi<0||nxi>=c.patrol.length){ nxi=pi-c.psign; } if(nxi<0||nxi>=c.patrol.length) continue; pi=nxi; }
+    var tx=c.patrol[pi][0], ty=c.patrol[pi][1];
+    /* 고양이 위치에서 목표까지 bfsNext를 이어 실제 경로를 따닥따닥한 1px 점선으로 — 어느 쿠키의 목표인지 이어져 보여요 */
+    var sim={x:c.x,y:c.y}, guard=0, pts=[[c.x*CELL+CELL/2,c.y*CELL+CELL/2]];
+    while(guard++<30){
+      if(sim.x===tx&&sim.y===ty) break;
+      var nx=bfsNext(st,sim,{x:tx,y:ty});
+      if(!nx) break;
+      pts.push([nx.x*CELL+CELL/2,nx.y*CELL+CELL/2]);
+      sim=nx;
+    }
+    /* 경로 전체를 따라 8px 간격으로 균일하게 — 칸 경계에서 끊기지 않게 거리를 누적해요 */
+    var carry=4;
+    for(var pi2=0;pi2<pts.length-1;pi2++){
+      var ax=pts[pi2][0], ay=pts[pi2][1], bx2=pts[pi2+1][0], by2=pts[pi2+1][1];
+      var dist=Math.abs(bx2-ax)+Math.abs(by2-ay);
+      for(var s=carry;s<dist;s+=8){
+        pf(g,Math.round(ax+(bx2-ax)*s/dist)-1,Math.round(ay+(by2-ay)*s/dist)-1,2,2,"rgba(255,200,90,0.62)");
+      }
+      carry=8-((dist-carry)%8);
+    }
+    var cx=tx*CELL+CELL/2, cy=ty*CELL+CELL/2;
+    pf(g,cx-3,cy-3,6,6,"rgba(40,22,6,"+(0.5*pulse).toFixed(3)+")");
+    pf(g,cx-2,cy-2,4,4,"rgba(255,200,90,"+pulse.toFixed(3)+")");
   }
 }
 /* 이동 방향 화살촉: dir 쪽으로 뾰족한 채워진 삼각형 */
@@ -1841,6 +1877,7 @@ function draw(){
 
   if(G.mode==="play"){
     drawIntent(ctx,st,now);
+    drawPatrolTarget(ctx,st,now);
     if(!G.fishMode) drawWarnMarks(ctx,st,now);
     if(G.nextPeek||G.peekAlways) drawNextZones(ctx,st,now);
   }
