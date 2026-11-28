@@ -479,7 +479,7 @@ function initRef(){
   var sel=$("edRefSel"), cv=$("edRefCv");
   STAGES.forEach(function(s,i){
     var o=document.createElement("option"); o.value=i;
-    o.textContent=(i+1)+"단계 · "+(s.name||("스테이지 "+(i+1)));
+    o.textContent="스테이지 "+(i+1)+" · "+(s.name||"");
     sel.appendChild(o);
   });
   $("edRefLoad").addEventListener("click",function(){ loadRefStage(+sel.value); });
@@ -769,7 +769,7 @@ function buildStageSel(){
   var s=$("edStageSel"); s.textContent="";
   STAGES.forEach(function(st,i){
     var o=document.createElement("option"); o.value=i;
-    o.textContent=(i+1)+"단계 · "+(st.name||"이름 없음");
+    o.textContent="스테이지 "+(i+1)+" · "+(st.name||"이름 없음");
     s.appendChild(o);
   });
 }

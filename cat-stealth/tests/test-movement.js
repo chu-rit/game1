@@ -302,28 +302,36 @@ ok("13) 쿠키 도약: 다른 고양이가 선 착지칸은 건너뛰고 그 앞
   assert.strictEqual(JSON.stringify(r),"[4,4]","(3,4)는 점유·(2,4)는 수풀이라 (4,4)로");
 });
 
-ok("14) 쿠키 도약: 대각선도 뛰고, 플레이어 칸에 내려오면 잡힘",()=>{
-  /* 유닛: 대각선 3칸(6,6)→(3,3)도 착지 후보에 들어요 */
+ok("14) 쿠키 도약: 대각선 포함 총 이동 거리는 최대 3칸 — 비스듬 4칸은 못 뛰어요",()=>{
+  /* 유닛: (6,6)→(3,3)은 대각선이지만 총 6칸이라 착지 후보가 아니에요 */
   const land=E(`(function(){
     var st=mk([{type:"C",x:6,y:6,dir:0}],{player:[3,3]});
     var l=jumpLanding(st,st.cats[0]);
     return l?[l.x,l.y]:null;
   })()`);
-  assert.strictEqual(JSON.stringify(land),"[3,3]","대각선 3칸 착지 가능");
-  /* 실제 추격: (6,4)에서 플레이어 (4,2)로 대각선 2칸 도약 → 덮침 */
+  assert.notStrictEqual(JSON.stringify(land),"[3,3]","대각선 6칸은 도약 불가");
+  /* 비스듬 3칸(dx2·dy1)은 예산 안 — 플레이어 칸에 내려오면 잡힘 */
   const r=E(`(function(){
-    var st=mk([{type:"C",x:6,y:4,dir:0,state:"chase"}],{player:[4,2]});
+    var st=mk([{type:"C",x:6,y:4,dir:0,state:"chase"}],{player:[4,3]});
     st.cats[0].crouch=true;
     var ev=[]; simStep(st,{t:"wait"},ev);
     var j=ev.filter(function(e){return e.k==="jump";})[0]||null;
     return {jump:j?[j.fromX,j.fromY,j.toX,j.toY]:null,
             caught:ev.some(function(e){return e.k==="caught"}),pos:[st.cats[0].x,st.cats[0].y]};
   })()`);
-  assert.strictEqual(JSON.stringify(r.jump),"[6,4,4,2]","대각선 2칸 도약");
+  assert.strictEqual(JSON.stringify(r.jump),"[6,4,4,3]","비스듬 3칸 도약");
   assert.strictEqual(r.caught,true,"플레이어 칸에 착지 = 덮침");
-  assert.strictEqual(JSON.stringify(r.pos),"[4,2]");
+  assert.strictEqual(JSON.stringify(r.pos),"[4,3]");
+  /* 대각선 2칸(dx2·dy2, 총 4칸)은 예산 초과 — 옆 칸까지만 와요 */
+  const r2=E(`(function(){
+    var st=mk([{type:"C",x:6,y:4,dir:0,state:"chase"}],{player:[4,2]});
+    st.cats[0].crouch=true;
+    var ev=[]; simStep(st,{t:"wait"},ev);
+    return {caught:ev.some(function(e){return e.k==="caught"}),pos:[st.cats[0].x,st.cats[0].y]};
+  })()`);
+  assert.strictEqual(r2.caught,false,"총 4칸 자리엔 못 내려와요");
+  assert.notStrictEqual(JSON.stringify(r2.pos),"[4,2]");
 });
-
 ok("15) 쿠키: 추격을 벗어나면(거리·수풀) 웅크림이 풀려요",()=>{
   const far=E(`(function(){
     var st=mk([{type:"C",x:7,y:4,dir:3,state:"chase"}],{player:[2,4]});

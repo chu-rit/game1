@@ -165,6 +165,7 @@ function beamTiles(st,cat){
   for(var i=0;i<SIGHT_LEN;i++){
     x+=d[0]; y+=d[1];
     if(isBlocked(st,x,y)) break;
+    if(catAt(st,x,y,cat)) break;   /* 다른 고양이가 서 있으면 그 뒤는 안 보여요 */
     out.push({x:x,y:y});
   }
   return out;
@@ -252,6 +253,7 @@ function jumpLanding(st,cat){
   var best=null, bd=man(cat,st.player);
   for(var dy=-C_JUMP;dy<=C_JUMP;dy++)for(var dx=-C_JUMP;dx<=C_JUMP;dx++){
     if(!dx&&!dy) continue;
+    if(Math.abs(dx)+Math.abs(dy)>C_JUMP) continue;   /* 대각선 포함 총 이동 거리는 최대 3칸 */
     var lx=cat.x+dx, ly=cat.y+dy;
     var d=Math.abs(lx-st.player.x)+Math.abs(ly-st.player.y);
     if(d>=bd) continue;                        /* 플레이어에게서 멀어지는 도약은 안 해요 */
@@ -748,8 +750,10 @@ function simStep(st,action,events){
   for(var hf=0;hf<hidCats.length;hf++){ hidCats[hf].freezeT=1; }
   for(var k3=0;k3<st.cats.length;k3++){
     var c3=st.cats[k3];
-    /* 어떤 상태의 고양이든 사람 칸에 올라가면 잡혀요 — 순찰·복귀 중에도 겹치면 끝 */
-    if(c3.x===st.player.x&&c3.y===st.player.y){ events.push({k:"caught",id:c3.id}); }
+    /* 어떤 상태의 고양이든 사람 칸에 올라가면 잡혀요 — 순찰·복귀 중에도 겹치면 끝.
+       단 출구 칸에 들어선 플레이어는 이미 탈출한 몸 — 겹쳐도 잡히지 않아요 */
+    var escaped=(st.player.x===st.goal.x&&st.player.y===st.goal.y);
+    if(!escaped&&c3.x===st.player.x&&c3.y===st.player.y){ events.push({k:"caught",id:c3.id}); }
   }
   if(st.player.x===st.goal.x&&st.player.y===st.goal.y){ events.push({k:"goal"}); }
   /* 🌿 시간제 먹이(캣닢) 카운트다운 — ttl턴이 지나면 향기가 사라져요.

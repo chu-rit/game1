@@ -111,7 +111,7 @@
       var bh="";
       /* 위 구간부터 그려요 — 지도 위에서부터 쌓이니 마지막 구간이 첫 번째 자식 */
       for(var b=g.bands-1;b>=0;b--){
-        bh+='<div class="ss-band'+(b%2?" flip":"")+'" style="height:'+g.bandH+'px"></div>';
+        bh+='<div class="ss-band'+(b%2?" flip b2":"")+'" style="height:'+g.bandH+'px"></div>';
       }
       bands.innerHTML=bh;
     }

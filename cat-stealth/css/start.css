@@ -374,6 +374,7 @@
   background:#0d1a12 url("../assets/stage-map-bg.png") 50% 50% / 100% 100% no-repeat;
 }
 .ss-band.flip{transform:scaleX(-1);}
+.ss-band.b2{background-image:url("../assets/stage-map-bg2.jpg");}
 .ss-nodes{position:absolute; inset:0;}
 
 /* ---- 길 위 숫자 노드 ---- */

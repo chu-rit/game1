@@ -16,7 +16,7 @@ const E=n=>vm.runInContext(n,ctx);
 let passed=0;
 function ok(name,fn){ fn(); passed++; console.log("ok -",name); }
 
-/* 유효한 기본 초안(1단계 정규화)에 패치를 얹어 잘못된 입력을 만든다 */
+/* 유효한 기본 초안(스테이지 1 정규화)에 패치를 얹어 잘못된 입력을 만든다 */
 const base=E(`editorNormalize(JSON.parse(JSON.stringify(STAGES[0])))`);
 const baseJson=JSON.stringify(base);
 function patched(patch){
@@ -94,7 +94,7 @@ ok("가짜 벽 틈 맵은 지형 연결 끊김 경고",()=>{
   const v=E(`editorValidate(${JSON.stringify(d)})`);
   assert.ok(v.warnings.some(w=>w.indexOf("지형 연결")>=0));
 });
-ok("1단계: 고양이 피한 연결 포함 모두 연결됨",()=>{
+ok("스테이지 1: 고양이 피한 연결 포함 모두 연결됨",()=>{
   const d=E(`editorNormalize(JSON.parse(JSON.stringify(STAGES[0])))`);
   const st=E(`editorState(${JSON.stringify(d)})`);
   assert.strictEqual(E(`editorReachable(${JSON.stringify(st)},false)`),true);
@@ -202,7 +202,7 @@ ok("배열 행 안의 레거시 한 글자(\"^\")는 허용",()=>{
     rows[7][3]="^"; return editorParseImport(JSON.stringify({map:rows,start:[1,7],goalPos:[7,1]}));})()`);
   assert.strictEqual(d.map[7].charAt(3),"^");
 });
-ok("1단계 맵은 정규화 후 mapRowToCodes로 원본 2xx 코드 왕복",()=>{
+ok("스테이지 1 맵은 정규화 후 mapRowToCodes로 원본 2xx 코드 왕복",()=>{
   const rows=E(`(function(){var st=editorNormalize(JSON.parse(JSON.stringify(STAGES[0])));
     return {rows:st.map.map(mapRowToCodes), src:STAGES[0].map};})()`);
   assert.strictEqual(rows.rows.length,9);
@@ -255,7 +255,7 @@ ok("솔버: 벽으로 막힌 골은 클리어 불가",()=>{
   })()`);
   assert.strictEqual(r.unsolvable,true,"봉인된 골은 불가");
 });
-ok("솔버: 6~10단계는 전부 클리어 가능",()=>{
+ok("솔버: 6~스테이지 10는 전부 클리어 가능",()=>{
   for(const i of [5,6,7,8,9]){
     const d=E(`editorNormalize(JSON.parse(JSON.stringify(STAGES[${i}])))`);
     const r=E(`editorSolve(JSON.parse(${JSON.stringify(JSON.stringify(d))}),40)`);
