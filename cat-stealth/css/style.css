@@ -40,27 +40,67 @@ body{
   overflow:hidden;
   box-shadow:0 0 0 1px rgba(255,255,255,.05), 0 24px 70px rgba(0,0,0,.65);
 }
-#hud{display:flex;align-items:center;justify-content:space-between;padding:0 12px 6px;gap:8px;position:relative;z-index:3;}
-.hb{display:flex;flex-direction:column;gap:3px;min-width:64px;}
-.hb.mid{align-items:center;flex:1;gap:0;}
-.hb.right{align-items:flex-end;}
-.hb .k{font-size:9px;letter-spacing:.22em;font-weight:800;color:#b9a99c;text-shadow:0 1px 3px rgba(0,0,0,.75);}
-.hb .v{font-size:20px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;text-shadow:0 1px 5px rgba(0,0,0,.65);}
-.hb .v.stage{color:var(--amber);text-shadow:0 1px 4px rgba(0,0,0,.75),0 0 16px rgba(255,176,46,.55);}
-#hName{font-size:14px;font-weight:800;color:var(--cream);letter-spacing:.045em;text-align:center;
-  text-shadow:0 1px 4px rgba(0,0,0,.7),0 0 12px rgba(0,0,0,.45);}
-/* 우측 TURN 숫자 — 좌측 STAGE와 같은 크기·줄맞춤, 색만 차분한 크림색 */
-.hb .v.turnnum{color:var(--cream);text-shadow:0 1px 4px rgba(0,0,0,.7),0 0 14px rgba(255,255,255,.12);}
-/* 인게임 HUD 왼쪽: 스테이지 선택으로 돌아가기 ‹ 목록 — 스테이지 숫자 왼쪽의 작은 알약 버튼 */
-.hb .srow{display:flex;align-items:center;gap:6px;}
-.sback{position:relative;display:inline-flex;align-items:center;gap:1px;height:20px;padding:0 7px 0 3px;border-radius:7px;
-  font-size:10px;font-weight:800;line-height:1;letter-spacing:.01em;color:#d3c6b6;
-  background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);
-  transition:transform .1s ease-out,color .1s ease-out;}
-/* 보이는 크기는 HUD 톤에 맞게 작게 두고, 손가락이 닿는 범위만 넓혀요 */
-.sback::after{content:"";position:absolute;inset:-8px -6px;}
-.sback .ar{font-size:13px;line-height:1;margin-top:-1px;}
-.sback:active{transform:translateY(1px);color:var(--amber);}
+/* ================= 인게임 상단 HUD — 다크 포레스트 + 금테 배지 =================
+   왼쪽 STAGE(100×40, assets/hud-badge-dark-l.png) · 가운데 명판(144×40, assets/hud-plate-dark.png)
+   · 오른쪽 TURN(90×40, assets/hud-badge-dark-r.png). 짙은 숲색 판 위에 얇은 황동 테두리,
+   모서리의 작은 잎, 명판 양 끝의 ✦ 만 남긴 정갈한 톤. 스프라이트는 1:1 CSS 픽셀로 깔아요. */
+#hud{
+  position:relative; z-index:3; flex:none;
+  display:flex; align-items:center; justify-content:space-between;
+  height:40px; margin-bottom:4px; padding:0 10px;
+  font-family:"Galmuri11Bold","Apple SD Gothic Neo",sans-serif;
+  font-synthesis:none; -webkit-font-smoothing:none;
+  background:none; box-shadow:none;
+}
+.hud-back,.hud-sign,.hud-turn{
+  position:relative; display:flex; align-items:center; justify-content:center;
+  margin:0; border:0; padding:0; background-color:transparent;
+  background-repeat:no-repeat; background-position:center center;
+  image-rendering:crisp-edges; image-rendering:pixelated;
+  color:#f6eedb; line-height:1;
+  font-family:inherit; font-synthesis:none; font-weight:400;
+  text-shadow:0 1px 0 rgba(6,12,9,.75);
+}
+/* 왼쪽: 원형 문장(‹ 로 스테이지 선택으로 돌아가기) + STAGE 1/10 */
+.hud-back{
+  flex:none; width:100px; height:40px;
+  padding:0 4px 0 34px;
+  background-image:url("../assets/hud-badge-dark-l.png");
+  background-size:100px 40px;
+  cursor:pointer; -webkit-appearance:none; appearance:none;
+  transition:transform .1s ease-out, filter .1s ease-out;
+}
+/* 판은 그대로, 손가락이 닿는 범위만 위아래로 넓혀요 (44px 이상) */
+.hud-back::after{content:"";position:absolute;inset:-6px -4px;}
+.hud-back:active,.hud-back.pressed{transform:translateY(1px);filter:brightness(.9);}
+/* 오른쪽: 시계 + TURN 1/20 */
+.hud-turn{
+  flex:none; width:90px; height:40px;
+  padding:0 4px 0 34px;
+  background-image:url("../assets/hud-badge-dark-r.png");
+  background-size:90px 40px;
+}
+/* 두 줄 라벨 — 위는 은은한 라벨, 아래는 크림 숫자 */
+.hud-col{display:flex; flex-direction:column; align-items:center; gap:2px; min-width:0;}
+.hud-k{font-size:9px; letter-spacing:.06em; color:#b9b29a; line-height:1;}
+.hud-v{font-size:13px; letter-spacing:.02em; color:#f6eedb; line-height:1;
+  font-variant-numeric:tabular-nums;}
+/* 가운데: 스테이지 이름 — 양 끝 ✦ 사이 가운데 */
+.hud-sign{
+  flex:none; width:144px; height:40px;
+  padding:0 25px;
+  background-image:url("../assets/hud-plate-dark.png");
+  background-size:144px 40px;
+  overflow:hidden;
+}
+.hud-name{
+  min-width:0; font-size:13px; letter-spacing:.02em; color:#f6eedb;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+/* 아주 좁은 화면(320 등)에서는 HUD 세 판이 넘치지 않도록 통째로 살짝 줄여요 */
+@media (max-width:359px){
+  #hud{transform:scale(.87);transform-origin:top center;}
+}
 #pReset{width:100%;padding:14px;border-radius:13px;font-size:15px;margin-top:8px;background:linear-gradient(#2a2030,#211a26);
   box-shadow:inset 0 0 0 1.5px #45343d,0 8px 20px rgba(0,0,0,.4);color:#cbbfae;}
 #pReset .kc{color:#cbbfae;background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);}

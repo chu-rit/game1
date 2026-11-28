@@ -144,7 +144,7 @@ function sBeepTip(){ if(typeof beep==="function") beep(720,0.06,"sine",0.035,0);
 /* ================= HUD ================= */
 function updateHUD(){
   var s=STAGES[G.stageIdx];
-  $("hStage").textContent=(G.stageIdx+1)+"/"+STAGES.length;
+  $("hStage").textContent=(G.stageIdx+1);
   $("hName").textContent=s.name;
   $("hTurn").textContent=G.st.turn+"/"+G.st.maxTurns;
   /* 수풀에 숨어 있는 동안은 하단 힌트가 은신 상태를 알려줘요 */
@@ -539,7 +539,20 @@ function backToStageSelect(){
   if(typeof window.openStageSelect==="function"){ window.openStageSelect("ingame"); return; }
   G.mode="play";
 }
-$("bBack").addEventListener("click",function(){ this.blur(); backToStageSelect(); });
+$("bBack").addEventListener("click",function(){ this.blur(); this.classList.remove("pressed"); backToStageSelect(); });
+/* ‹ 목록 나무판도 스타트·클리어 버튼처럼 손을 대는 순간 눌린 모양(.pressed)을 붙였다 뗀다.
+   iOS 사파리는 :active 가 아주 짧게 끝나거나 안 먹는 때가 있어서 이렇게 한 번 더 챙긴다. */
+(function(){
+  var b=$("bBack");
+  var on=function(){ b.classList.add("pressed"); };
+  var off=function(){ b.classList.remove("pressed"); };
+  b.addEventListener("pointerdown",on);
+  b.addEventListener("pointerup",off);
+  b.addEventListener("pointercancel",off);
+  b.addEventListener("pointerleave",off);
+  b.addEventListener("touchstart",on,{passive:true});
+  b.addEventListener("touchend",off);
+})();
 
 /* ================= 하단 버튼 조작 ================= */
 /* 방향키: 이동 / 먹이 조준 / 지침(지구력 0) 상태에선 제자리 대기 */
