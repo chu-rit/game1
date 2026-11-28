@@ -158,8 +158,6 @@ function updateHUD(){
   renderInv(inv,busy);
   $("bUndo").disabled=busy||G.undoStack.length===0||!live;
   $("bReset").disabled=busy||!live;
-  $("sPrev").disabled=G.stageIdx<=0;
-  $("sNext").disabled=G.stageIdx>=STAGES.length-1;
   /* 하단 방향키·🎯 버튼 상태: 플레이 중이 아니면 전부 잠그고, 이동 가능한 방향만 밝게 */
   var ready=(G.mode==="play")&&!G.pending;
   var tired=(G.st&&G.st.stam<=0&&anyChasing());
@@ -520,15 +518,28 @@ cvEl.addEventListener("pointerdown",function(e){
 });
 $("bUndo").addEventListener("click",function(){ this.blur(); undo(); });
 $("bReset").addEventListener("click",function(){ this.blur(); resetStage(); });
-/* 개발용 스테이지 넘기기 (‹ ›) — 앞뒤 자유 이동 */
-function stageNav(d){
-  var ni=G.stageIdx+d;
-  if(ni<0||ni>=STAGES.length) return;
-  cancelExitAnim();            /* 연출 타이머가 남아 다음 스테이지에 끼어들지 않게 */
-  hidePanel(); G.stageIdx=ni; G.mode="play"; loadStage(ni); setWarn("");
+/* 스테이지 선택으로 돌아가기 (HUD ‹ 목록)
+   진행 중인 턴 연출·출구 연출·타이머·상세 카드·클리어 창을 모두 접고 스테이지 선택 화면을 열어요.
+   돌아온 판은 이어서 하는 게 아니라 선택 화면에서 다시 고르는 흐름이라
+   게임 입력은 잠가 두고(G.mode="menu" — 취소·리셋·방향키 모두 잠김) 새 스테이지를 loadStage 로 시작해요. */
+function backToStageSelect(){
+  if(EDITOR_PLAYTEST) return;
+  if(typeof lpAbort==="function") lpAbort();          /* 인벤토리 롱프레스 타이머 */
+  cancelExitAnim();                                   /* 출구 점프 연출 타이머 */
+  hideItemTip();
+  if(G.panelTimer){ clearTimeout(G.panelTimer); G.panelTimer=null; }
+  hidePanel();
+  G.pending=null;                                     /* 턴 애니메이션 중이었어도 끊어요 */
+  G.fishMode=false; G.fishKind=null; G.fishAim=null;
+  G.mode="menu";
+  setWarn("");
+  updateHUD();
+  /* 곧바로 스테이지를 고를 수 있게, 남아 있는 타이틀 아웃트로를 기다리지 않고 확정 */
+  if(typeof window.startScreenSettle==="function") window.startScreenSettle();
+  if(typeof window.openStageSelect==="function"){ window.openStageSelect("ingame"); return; }
+  G.mode="play";
 }
-$("sPrev").addEventListener("click",function(){ this.blur(); stageNav(-1); });
-$("sNext").addEventListener("click",function(){ this.blur(); stageNav(1); });
+$("bBack").addEventListener("click",function(){ this.blur(); backToStageSelect(); });
 
 /* ================= 하단 버튼 조작 ================= */
 /* 방향키: 이동 / 먹이 조준 / 지침(지구력 0) 상태에선 제자리 대기 */

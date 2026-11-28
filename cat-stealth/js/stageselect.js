@@ -1,7 +1,7 @@
 "use strict";
 /* ================= 스테이지 선택 화면 (숲길 월드맵) =================
-   시작하기(또는 Enter) → 이 화면 → 길 위 숫자 노드 탭 → 수풀 아웃트로(playOutro) → 게임
-   ‹ 타이틀(또는 Esc) → 타이틀 화면으로 돌아가요.
+   시작하기(또는 Enter) → 타이틀 수풀 아웃트로 → 이 화면 → 길 위 숫자 노드 탭 → 바로 게임
+   ‹ 타이틀(또는 Esc) → 타이틀 화면으로 돌아가요. 인게임 HUD 의 ‹ 목록 은 openStageSelect("ingame") 로 열려요.
 
    배경은 이 화면 전용 숲길 그림(assets/stage-map-bg.png) 한 장이에요. 화면 아래에서 시작해
    위로 S자로 굽이치는 흙길이 그림 안에 이미 그려져 있고, 길은 위 가장자리 밖으로 이어져요.
@@ -31,6 +31,7 @@
   var back=document.getElementById("ssBack");
   var FOOT_NOTE=foot?foot.textContent:"";
   var open=false, entering=false, footTmr=0;
+  var origin="title";          /* 어디서 들어왔나 — "title" | "ingame" (인게임 HUD 의 ‹ 목록) */
 
   /* 그림 한 장(stage-map-bg.png) 위 흙길 좌표 — 그림 기준 %.
      1번이 아래 입구, 10번이 위 숲길 끝. 순서대로 이으면 낮은 곳에서 숲 위쪽으로
@@ -147,9 +148,10 @@
 
 
   /* ---------- 열기 / 닫기 ---------- */
-  function openSelect(){
+  function openSelect(from){
     if(open||entering) return;
     open=true;
+    origin=(from==="ingame")?"ingame":"title";
     if(footTmr){ clearTimeout(footTmr); footTmr=0; }
     if(foot) foot.textContent=FOOT_NOTE;
     el.classList.remove("hidden");
@@ -170,13 +172,19 @@
     if(entering) return;
     entering=true;
     closeSelect();
-    /* 뒤에 있던 타이틀 화면이 수풀 아웃트로를 재생하면서 게임으로 넘어가요 */
-    if(typeof window.startAtStage==="function"){
-      window.startAtStage(i);
+    /* 고른 스테이지는 아웃트로 없이 바로 시작해요 (js/start.js) */
+    if(typeof window.startStageNow==="function"){
+      window.startStageNow(i);
     }else{
       G.stageIdx=i; G.mode="play"; loadStage(i); setWarn("");
     }
     setTimeout(function(){ entering=false; },400);
+  }
+  /* ‹ 타이틀 — 타이틀에서 왔으면 그대로 타이틀, 인게임에서 왔으면 숨겨 둔 타이틀 화면을 다시 보여 줘요.
+     (게임 판은 HUD 의 돌아가기에서 이미 끝내 두었으니 이어서 하지 않아요) */
+  function leaveSelect(){
+    if(origin==="ingame"&&typeof window.startScreenShow==="function") window.startScreenShow();
+    closeSelect();
   }
   function lockedNode(node){
     node.classList.remove("shake");
@@ -200,11 +208,11 @@
     b.blur();
     enterStage(i);
   });
-  if(back) back.addEventListener("click",function(){ back.blur(); closeSelect(); });
+  if(back) back.addEventListener("click",function(){ back.blur(); leaveSelect(); });
 
   document.addEventListener("keydown",function(e){
     if(!open) return;
-    if(e.key==="Escape"){ e.preventDefault(); e.stopPropagation(); closeSelect(); return; }
+    if(e.key==="Escape"){ e.preventDefault(); e.stopPropagation(); leaveSelect(); return; }
     if(e.ctrlKey||e.metaKey||e.altKey) return;
     var k=e.key;
     var isActivate=(k==="Enter"||k===" "||k==="Spacebar"||e.code==="Space");

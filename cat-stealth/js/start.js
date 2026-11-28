@@ -159,43 +159,90 @@
   var OUT_FADE=370;                            /* start.css #start.fading 과 같은 0.37초 */
   var OUT_TOTAL=OUT_FADE_AT+OUT_FADE+20;       /* 이때 스타트 화면을 display:none 으로 */
   var isExit=false;
+  var outTimers=[];                    /* 아웃트로 타이머 — 스테이지 선택을 다녀올 때 곧바로 정리하려고 모아 둡니다 */
+  function clearOutTimers(){
+    for(var i=0;i<outTimers.length;i++) clearTimeout(outTimers[i]);
+    outTimers=[];
+  }
 
-  function playOutro(then){
+  function playOutro(then,onFade){
     if(isExit||!elStart) return false;
     isExit=true;
     if(!state) finishIntro(false);
     elStart.classList.remove("snap");
     if(then) then();                    /* 게임 화면은 원래 뒤에 그려져 있어요 */
-    setTimeout(function(){ elStart.classList.add("exiting"); },OUT_HOLD);
-    setTimeout(function(){ elStart.classList.add("fading"); },OUT_FADE_AT);
-    setTimeout(function(){
+    outTimers.push(setTimeout(function(){ elStart.classList.add("exiting"); },OUT_HOLD));
+    outTimers.push(setTimeout(function(){
+      elStart.classList.add("fading");
+      /* 타이틀이 빠지기 시작하는 순간 다음 화면(스테이지 선택)이 함께 떠올라요 */
+      if(onFade) onFade();
+    },OUT_FADE_AT));
+    outTimers.push(setTimeout(function(){
+      outTimers=[];
       elStart.classList.add("hidden");
       elStart.classList.remove("exiting","fading");
       isExit=false;                     /* 스타트 화면은 이제 display:none — 상태만 되돌려 둬요 */
-    },OUT_TOTAL);
+    },OUT_TOTAL));
     return true;
   }
 
   function hideStart(){ return playOutro(); }
   window.startScreenHide=hideStart;
 
-  function startAtStage(i){
-    if(isExit) return;
-    closeOptions();                     /* 패널이 닫히면서 바로 아웃트로 */
-    playOutro(function(){
-      G.stageIdx=i; G.mode="play";
-      loadStage(i);
-      setWarn("");
-      try{ beep(600,0.10,"triangle",0.05,200); }catch(e){}
-    });
+  /* 스테이지 선택 화면에서 스테이지를 골랐을 때 — 수풀 아웃트로 없이 바로 그 스테이지로 들어가요.
+     (아웃트로는 타이틀에서 시작하기를 누를 때 한 번 재생되고, 고른 판은 바로 시작하는 편이 짧고 깔끔해요) */
+  function startStageNow(i){
+    if(!elStart) return;
+    closeOptions();
+    settleHidden();                     /* 남아 있는 아웃트로 타이머를 정리하고 타이틀은 숨김으로 확정 */
+    G.stageIdx=i; G.mode="play";
+    loadStage(i);
+    setWarn("");
+    try{ beep(600,0.10,"triangle",0.05,200); }catch(e){}
   }
-  window.startAtStage=startAtStage;     /* 스테이지 선택 화면(js/stageselect.js)이 부른다 */
+  window.startStageNow=startStageNow;   /* 스테이지 선택 화면(js/stageselect.js)이 부른다 */
 
-  /* 시작하기·Enter → 스테이지 선택 화면. 선택 화면이 없으면 예전처럼 1스테이지로 */
+  /* ---- 인게임 ↔ 스테이지 선택 ----
+     게임 중 HUD 의 ‹ 목록 으로 선택 화면에 들어가면 타이틀 화면은 이미 숨김 상태예요.
+     그때 남아 있는 아웃트로 타이머를 그대로 두면, 곧바로 다음 스테이지를 고를 때 startStageNow 가
+     isExit 에 막혀 아무 일도 일어나지 않아요. 그래서 다녀오는 순간 숨김 상태로 확정해 둡니다. */
+  function settleHidden(){
+    if(!elStart) return;
+    clearOutTimers();
+    elStart.classList.add("hidden");
+    elStart.classList.remove("exiting","fading","snap");
+    isExit=false;
+  }
+  window.startScreenSettle=settleHidden;
+
+  /* 선택 화면의 ‹ 타이틀 — 게임에서 들어왔더라도 타이틀 화면으로 돌아가요.
+     인트로는 다시 돌리지 않고 아까 그 최종 화면(고양이 3마리·작은 인간·시작하기)을 그대로 보여 줍니다. */
+  function showTitle(){
+    if(!elStart) return;
+    clearOutTimers();
+    isExit=false;
+    elStart.classList.remove("hidden","exiting","fading","snap");
+    if(!state) finishIntro(false);
+    for(var i=0;i<CHARS.length;i++){
+      var el=document.getElementById(CHARS[i].id);
+      if(el) el.classList.add("up");
+    }
+    if(tWrap) tWrap.classList.add("on");
+    if(btnBox) btnBox.classList.add("on");
+    if(skipEl) skipEl.classList.add("gone");
+    applyCam(camEnd);
+  }
+  window.startScreenShow=showTitle;
+
+  /* 시작하기·Enter → 타이틀 수풀 아웃트로가 먼저 재생되고, 타이틀이 빠지면서 스테이지 선택 화면이 열려요.
+     선택 화면이 없으면 예전처럼 바로 1스테이지로 */
   var _startGame=(typeof startGame==="function")?startGame:null;
   function goStart(){
-    if(typeof window.openStageSelect==="function"){ window.openStageSelect(); return; }
-    playOutro(function(){ if(_startGame) _startGame(); });
+    if(typeof window.openStageSelect!=="function"){
+      playOutro(function(){ if(_startGame) _startGame(); });
+      return;
+    }
+    playOutro(null,function(){ window.openStageSelect(); });
   }
   window.startGame=function(){ goStart(); };
 

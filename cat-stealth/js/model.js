@@ -54,7 +54,7 @@ function loadStage(idx){
   updateHUD(); computeDanger();
   /* 스테이지 크기가 바뀌었으니 표시 크기도 다시 맞춰요 */
   if(typeof resize==="function") resize();
-  /* 클리어 타임 측정 시작 — 스타트 화면 진입·다음 방·‹ ›·리셋·옵션 선택까지 모두 이 한 곳을 지나요 */
+  /* 클리어 타임 측정 시작 — 스타트 화면 진입·다음 방·스테이지 선택·리셋·옵션 선택까지 모두 이 한 곳을 지나요 */
   G.tT0=performance.now(); G.clearMs=null;
 }
 function cloneState(st){ return JSON.parse(JSON.stringify(st)); }

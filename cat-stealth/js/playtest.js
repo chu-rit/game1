@@ -25,9 +25,9 @@ function playtestReady(){
     /* 캡처 단계 — 아이템 팁(TIP.open)이 아직 열려 있으면 게임 Escape 처리에 양보 */
     if(e.key==="Escape"&&!TIP.open){ e.preventDefault(); playtestReturn(); }
   },true);
-  /* 커스텀 맵 1개뿐이라 스테이지 넘기기 버튼은 숨겨요 */
-  document.getElementById("sPrev").style.display="none";
-  document.getElementById("sNext").style.display="none";
+  /* 커스텀 맵 1개뿐 — 스테이지 선택으로 돌아가기 버튼도 숨겨요(에디터 테스트 흐름 유지) */
+  var backBtn=document.getElementById("bBack");
+  if(backBtn) backBtn.style.display="none";
   /* 스냅샷이 오기 전 대기 상태에서는 되돌리기·리셋이 동작할 수 없게 */
   document.getElementById("bUndo").disabled=true;
   document.getElementById("bReset").disabled=true;

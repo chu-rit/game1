@@ -51,13 +51,16 @@ body{
   text-shadow:0 1px 4px rgba(0,0,0,.7),0 0 12px rgba(0,0,0,.45);}
 /* 우측 TURN 숫자 — 좌측 STAGE와 같은 크기·줄맞춤, 색만 차분한 크림색 */
 .hb .v.turnnum{color:var(--cream);text-shadow:0 1px 4px rgba(0,0,0,.7),0 0 14px rgba(255,255,255,.12);}
-/* 개발용 스테이지 넘기기 ‹ › — 스테이지 숫자 양옆 작은 버튼 */
+/* 인게임 HUD 왼쪽: 스테이지 선택으로 돌아가기 ‹ 목록 — 스테이지 숫자 왼쪽의 작은 알약 버튼 */
 .hb .srow{display:flex;align-items:center;gap:6px;}
-.snav{width:20px;height:20px;padding:0;border-radius:7px;font-size:13px;line-height:1;color:var(--dim);
-  background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px rgba(255,255,255,.10);
-  display:flex;align-items:center;justify-content:center;}
-.snav:active{transform:translateY(1px);}
-.snav:disabled{opacity:.3;}
+.sback{position:relative;display:inline-flex;align-items:center;gap:1px;height:20px;padding:0 7px 0 3px;border-radius:7px;
+  font-size:10px;font-weight:800;line-height:1;letter-spacing:.01em;color:#d3c6b6;
+  background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);
+  transition:transform .1s ease-out,color .1s ease-out;}
+/* 보이는 크기는 HUD 톤에 맞게 작게 두고, 손가락이 닿는 범위만 넓혀요 */
+.sback::after{content:"";position:absolute;inset:-8px -6px;}
+.sback .ar{font-size:13px;line-height:1;margin-top:-1px;}
+.sback:active{transform:translateY(1px);color:var(--amber);}
 #pReset{width:100%;padding:14px;border-radius:13px;font-size:15px;margin-top:8px;background:linear-gradient(#2a2030,#211a26);
   box-shadow:inset 0 0 0 1.5px #45343d,0 8px 20px rgba(0,0,0,.4);color:#cbbfae;}
 #pReset .kc{color:#cbbfae;background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.18);}
