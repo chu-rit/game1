@@ -231,6 +231,8 @@
     if(btnBox) btnBox.classList.add("on");
     if(skipEl) skipEl.classList.add("gone");
     applyCam(camEnd);
+    /* 첫 화면과 같은 상태로 — 타이틀에서 Enter/스페이스로도 다시 시작할 수 있게 */
+    if(typeof G!=="undefined") G.mode="title";
   }
   window.startScreenShow=showTitle;
 
