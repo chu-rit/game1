@@ -299,121 +299,193 @@
 }
 #start.exiting .st-ch img{animation:none;}
 #start.fading{opacity:0; transition:opacity .37s ease-out;}
-
-/* ================= 스테이지 선택 화면 =================
-   시작하기 → 이 화면 → 스테이지 탭 → 수풀 아웃트로 → 게임.
-   톤은 옵션 패널과 같은 숲 패널(#1c3527~#112318) + Galmuri11 Bold + 크림/금색 글자.
-   카드는 2열 × 5행으로 390×844 세로 화면에 스크롤 없이 한눈에 들어와요. */
+/* ================= 스테이지 선택 화면 (숲길 월드맵) =================
+   시작하기 → 이 화면 → 길 위 숫자 노드 탭 → 수풀 아웃트로 → 게임.
+   배경은 이 화면 전용 숲길 그림(assets/stage-map-bg.png) 한 장 — 화면 아래에서 시작해
+   위로 S자로 굽이치는 흙길이 그림 안에 이미 그려져 있어요(길은 위 가장자리 밖으로 이어짐).
+   노드·이름표는 DOM 이라 터치·키보드 포커스·Galmuri 폰트가 그대로 살아 있고,
+   좌표는 그림(390×844) 기준 % 라서 배경과 1:1 로 맞물려요.
+   스테이지가 10개를 넘으면 그림을 한 화면 높이씩 위로 이어 붙여(홀수 구간은 좌우 반전)
+   세로 스크롤 지도가 돼요. 10개일 때는 390×844 한 화면에 스크롤 없이 다 들어옵니다. */
 #stageSel{
-  position:fixed; inset:0; z-index:40; display:flex; flex-direction:column;
-  padding:calc(env(safe-area-inset-top,0px) + 14px) 14px calc(env(safe-area-inset-bottom,0px) + 12px);
+  position:fixed; inset:0; z-index:40; display:block;
   font-family:"Galmuri11Bold", "Apple SD Gothic Neo", sans-serif;
   font-synthesis:none; -webkit-font-smoothing:none;
-  color:#ffeec4;
-  background:
-    radial-gradient(72% 42% at 50% 6%, rgba(48,92,64,.52), rgba(10,20,16,0) 72%),
-    linear-gradient(180deg,#12241a 0%,#0d1b14 55%,#0a1410 100%);
-  box-shadow:inset 0 0 0 3px rgba(47,90,60,.45), inset 0 0 70px rgba(0,0,0,.5);
+  color:#ffeec4; background:#0b1710;
   -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none;
   opacity:0; visibility:hidden;
-  transition:opacity .18s ease-out, visibility .18s;
+  transition:opacity .2s ease-out, visibility .2s;
+}
+/* 그림 위 아주 옅은 위·아래 그늘 — HUD·안내 글자만 살짝 눕히고 숲은 밝게 */
+#stageSel::before{
+  content:""; position:absolute; inset:0; z-index:2; pointer-events:none;
+  background:
+    linear-gradient(180deg, rgba(6,16,12,.62) 0%, rgba(6,16,12,.26) 4%, rgba(6,16,12,0) 10%),
+    linear-gradient(0deg, rgba(6,16,12,.54) 0%, rgba(6,16,12,.22) 3.5%, rgba(6,16,12,0) 8.5%);
 }
 #stageSel.open{opacity:1; visibility:visible;}
 #stageSel.hidden{display:none;}
 
-/* ---- 헤더: ‹ 타이틀 · 진행도 / 제목 ---- */
-.ss-head{display:flex; align-items:center; justify-content:space-between; gap:8px; flex:none;}
+/* ---- 상단 HUD 한 줄: ‹ 타이틀 · 스테이지 선택 · N / 10 ★ ---- */
+.ss-hud{
+  position:absolute; z-index:3; left:12px; right:12px;
+  top:calc(env(safe-area-inset-top,0px) + 8px);
+  display:flex; align-items:center; gap:6px;
+}
 .ss-back{
-  display:inline-flex; align-items:center; justify-content:center; min-height:34px; padding:0 12px;
-  border:0; border-radius:8px; cursor:pointer;
-  font-family:inherit; font-synthesis:none; font-size:12px; font-weight:400; letter-spacing:1px;
+  flex:none; display:inline-flex; align-items:center; justify-content:center;
+  min-height:32px; padding:0 10px; border:0; border-radius:8px; cursor:pointer;
+  font-family:inherit; font-synthesis:none; font-size:11px; font-weight:400; letter-spacing:1px;
   color:#dcecd2; text-shadow:0 2px 0 rgba(0,0,0,.45);
   background:linear-gradient(180deg,#2c4b36,#223c2b);
   box-shadow:inset 0 0 0 1.5px rgba(150,210,140,.28), 0 3px 0 rgba(0,0,0,.4);
   transition:transform .1s ease-out, color .1s ease-out;
 }
 .ss-back:active,.ss-back.pressed{transform:translateY(2px); color:#ffd24c;}
-.ss-prog{
-  font-size:12px; letter-spacing:1px; color:#cbb894; text-shadow:0 2px 0 rgba(0,0,0,.5);
-}
-.ss-prog b{font-weight:400; color:#ffd24c;}
-.ss-title-wrap{flex:none; text-align:center; margin:12px 0 12px;}
 .ss-title{
-  font-size:24px; line-height:1; letter-spacing:2px; color:#ffeec4;
+  flex:1 1 auto; text-align:center;
+  font-size:18px; line-height:1; letter-spacing:2px; color:#ffeec4;
   text-shadow:
     2px 0 0 #2a1808, -2px 0 0 #2a1808, 0 2px 0 #2a1808, 0 -2px 0 #2a1808,
     2px 2px 0 #2a1808, -2px 2px 0 #2a1808, 2px -2px 0 #2a1808, -2px -2px 0 #2a1808,
-    0 5px 0 rgba(12,6,2,.4);
+    0 4px 0 rgba(10,6,2,.45);
 }
-.ss-rule{
-  width:132px; height:4px; margin:9px auto 0;
-  background:linear-gradient(90deg, rgba(168,196,105,0), #a8c469 22%, #ffd24c 50%, #a8c469 78%, rgba(168,196,105,0));
-  box-shadow:0 2px 0 rgba(0,0,0,.35);
+.ss-prog{
+  flex:none; min-width:72px; text-align:right;
+  font-size:11px; letter-spacing:1px; color:#f4e6c8;
+  text-shadow:0 2px 0 rgba(0,0,0,.75);
+}
+.ss-prog b{font-weight:400; color:#ffd24c;}
+
+/* ---- 지도: 화면 전체를 채우고, 그림이 한 화면보다 길면 세로 스크롤 ---- */
+.ss-map{
+  position:absolute; inset:0; z-index:1;
+  overflow-y:auto; overflow-x:hidden;
+  -webkit-overflow-scrolling:touch; overscroll-behavior-y:contain;
+  scrollbar-width:none;
+}
+.ss-map::-webkit-scrollbar{width:0; height:0; display:none;}
+.ss-world{position:relative; width:100%;}
+.ss-bands{position:absolute; inset:0;}
+/* 구간 한 장 = 화면 높이. 그림을 1:1 로 꽉 채워 노드 % 좌표가 길 위에 그대로 얹혀요. */
+.ss-band{
+  width:100%;
+  background:#0d1a12 url("../assets/stage-map-bg.png") 50% 50% / 100% 100% no-repeat;
+}
+.ss-band.flip{transform:scaleX(-1);}
+.ss-nodes{position:absolute; inset:0;}
+
+/* ---- 길 위 숫자 노드 ---- */
+.ss-node{
+  position:absolute; width:42px; height:42px; padding:0; border:0; border-radius:11px;
+  display:flex; align-items:center; justify-content:center;
+  transform:translate(-50%,-50%);
+  font-family:inherit; font-synthesis:none; font-weight:400; font-size:22px; line-height:1;
+  color:#ffeec4; cursor:pointer;
+  background:linear-gradient(180deg,#3e7a46,#2c5735 58%,#22452a);
+  box-shadow:
+    inset 0 0 0 2px #6fc06a, inset 0 2px 0 rgba(232,255,220,.22),
+    0 3px 0 #0b1a10, 0 7px 12px rgba(0,0,0,.42);
+  text-shadow:2px 0 0 #12241a, -2px 0 0 #12241a, 0 2px 0 #12241a, 0 -2px 0 #12241a;
+  transition:transform .1s ease-out, box-shadow .12s;
+}
+.ss-node:active{
+  transform:translate(-50%,-50%) translateY(2px);
+  box-shadow:inset 0 0 0 2px #6fc06a, inset 0 2px 0 rgba(232,255,220,.22), 0 1px 0 #0b1a10;
+}
+.ss-num{display:block; transform:translateY(-1px);}
+
+/* 클리어 — 금빛 테두리 + ★ */
+.ss-node.clear{
+  background:linear-gradient(180deg,#a07c2a,#6a5219 58%,#4b3a10);
+  box-shadow:
+    inset 0 0 0 2px #f0c65c, inset 0 2px 0 rgba(255,248,206,.35),
+    0 3px 0 #0d0a04, 0 7px 12px rgba(0,0,0,.42), 0 0 16px rgba(255,205,80,.26);
+}
+.ss-node.clear .ss-num{color:#fff6d0;}
+.ss-node.clear:active{
+  box-shadow:inset 0 0 0 2px #e8bd52, inset 0 2px 0 rgba(255,244,196,.28), 0 1px 0 #0d0a04;
+}
+/* 작은 ★ — 금빛 원 배지로 노드 모서리에 붙여요 */
+.ss-star{
+  position:absolute; top:-4px; right:-4px; width:13px; height:13px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:9px; line-height:1; color:#ffd24c;
+  background:#2b2009; box-shadow:0 0 0 1.5px #8a6425, 0 2px 0 rgba(0,0,0,.45);
 }
 
-/* ---- 카드 격자 2열 × 5행 ---- */
-.ss-grid{
-  flex:1 1 auto; min-height:0;
-  display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
-  grid-auto-rows:minmax(84px,1fr); gap:10px;
-  overflow-y:auto; -webkit-overflow-scrolling:touch;
-}
-.ss-card{
-  position:relative; display:flex; flex-direction:column; align-items:flex-start; justify-content:center;
-  gap:5px; padding:10px 12px; border:0; border-radius:10px; cursor:pointer; text-align:left;
-  font-family:inherit; font-synthesis:none; -webkit-tap-highlight-color:transparent;
-  color:#ffeec4; background:linear-gradient(180deg,#21402c,#172c20 62%,#112318);
+/* 잠김 — 어두운 회녹색 + 작은 자물쇠 */
+.ss-node.lock{
+  background:linear-gradient(180deg,rgba(32,46,36,.94),rgba(20,31,24,.94));
   box-shadow:
-    inset 0 0 0 2px #2f5a3c, inset 0 2px 0 rgba(200,230,180,.10),
-    0 4px 0 #08130d, 0 8px 14px rgba(0,0,0,.32);
-  transition:transform .1s ease-out, box-shadow .12s, filter .12s;
+    inset 0 0 0 2px #35493b, inset 0 2px 0 rgba(200,230,180,.06),
+    0 3px 0 rgba(6,12,9,.85), 0 6px 10px rgba(0,0,0,.35);
+  color:#7c8f78; cursor:default;
 }
-.ss-card:active{transform:translateY(2px);
-  box-shadow:inset 0 0 0 2px #2f5a3c, inset 0 2px 0 rgba(200,230,180,.10), 0 2px 0 #08130d;}
-.ss-no{font-size:11px; line-height:1; letter-spacing:1px; color:#a8c469; text-shadow:0 2px 0 rgba(0,0,0,.45);}
-.ss-nm{
-  font-size:15px; line-height:1.15; letter-spacing:.5px; color:#ffeec4; word-break:keep-all;
-  text-shadow:1px 0 0 #2a1808, -1px 0 0 #2a1808, 0 1px 0 #2a1808, 0 -1px 0 #2a1808, 0 2px 0 rgba(0,0,0,.35);
+.ss-node.lock .ss-num{color:#77896f; text-shadow:2px 0 0 #0c150f, -2px 0 0 #0c150f, 0 2px 0 #0c150f, 0 -2px 0 #0c150f;}
+.ss-lk{
+  position:absolute; right:4px; bottom:4px; width:9px; height:10px;
+  color:#8fa08a; filter:drop-shadow(0 1px 0 rgba(0,0,0,.7));
 }
-.ss-badge{
-  font-size:11px; line-height:1; letter-spacing:1px; padding:4px 7px; border-radius:6px;
-  color:#cbb894; background:rgba(0,0,0,.30);
-  box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.10);
-}
-.ss-best{font-size:11px; line-height:1; letter-spacing:.5px; color:#cbb894; text-shadow:0 2px 0 rgba(0,0,0,.45);}
-.ss-best.dim{color:#7d8a72;}
 
-/* 클리어 · 도전 · 잠금 */
-.ss-card.clear{
-  box-shadow:
-    inset 0 0 0 2px #b98a2e, inset 0 2px 0 rgba(255,238,196,.10),
-    0 4px 0 #08130d, 0 8px 14px rgba(0,0,0,.32);
+/* 지금 도전할 수 있는 가장 앞 스테이지 — 살짝 맥동 */
+.ss-node.next{animation:ssNextPulse 2.4s ease-in-out infinite;}
+@keyframes ssNextPulse{
+  0%,100%{
+    box-shadow:
+      inset 0 0 0 2px #6fc06a, inset 0 2px 0 rgba(232,255,220,.22),
+      0 3px 0 #0b1a10, 0 7px 12px rgba(0,0,0,.42), 0 0 0 rgba(214,255,180,0);
+  }
+  50%{
+    box-shadow:
+      inset 0 0 0 2px #c9f4a8, inset 0 2px 0 rgba(240,255,230,.35),
+      0 3px 0 #0b1a10, 0 7px 12px rgba(0,0,0,.42), 0 0 16px rgba(190,255,150,.55);
+  }
 }
-.ss-card.clear .ss-no{color:#ffd24c;}
-.ss-card.clear .ss-badge{
-  color:#2a1808; background:linear-gradient(180deg,#ffe27a,#ffd24c);
-  box-shadow:inset 0 0 0 1.5px rgba(120,80,10,.45);
+
+/* ---- 노드 아래 이름표 ---- */
+.ss-lbl{
+  position:absolute; left:50%; top:100%; margin-top:3px; transform:translateX(-50%);
+  font-size:11px; line-height:1.2; letter-spacing:0; white-space:nowrap;
+  color:#fff8e2;
+  text-shadow:
+    1.5px 0 0 #22150a, -1.5px 0 0 #22150a, 0 1.5px 0 #22150a, 0 -1.5px 0 #22150a,
+    1.5px 1.5px 0 #22150a, -1.5px 1.5px 0 #22150a, 1.5px -1.5px 0 #22150a, -1.5px -1.5px 0 #22150a,
+    0 3px 4px rgba(0,0,0,.55);
+  pointer-events:none;
 }
-.ss-card.open .ss-badge{
-  color:#f4ffe9; background:linear-gradient(180deg,#4f9a4e,#357a3c);
-  box-shadow:inset 0 0 0 1.5px rgba(226,255,214,.35);
-}
-.ss-card.lock{cursor:default; filter:grayscale(.85) brightness(.72);}
-.ss-card.lock:active{transform:none;}
-.ss-card.lock .ss-badge{color:#9aa895;}
+.ss-node.lock .ss-lbl{color:#d8e2cc; text-shadow:
+    1.5px 0 0 #161d13, -1.5px 0 0 #161d13, 0 1.5px 0 #161d13, 0 -1.5px 0 #161d13,
+    1.5px 1.5px 0 #161d13, -1.5px 1.5px 0 #161d13, 1.5px -1.5px 0 #161d13, -1.5px -1.5px 0 #161d13,
+    0 3px 4px rgba(0,0,0,.55);}
+.ss-node.clear .ss-lbl{color:#fff2c6;}
+
+/* ---- 잠김 흔들림 ---- */
 @keyframes ssShake{
-  0%,100%{transform:translateX(0);}
-  20%{transform:translateX(-3px);}
-  40%{transform:translateX(3px);}
-  60%{transform:translateX(-2px);}
-  80%{transform:translateX(2px);}
+  0%,100%{transform:translate(-50%,-50%) translateX(0);}
+  20%{transform:translate(-50%,-50%) translateX(-3px);}
+  40%{transform:translate(-50%,-50%) translateX(3px);}
+  60%{transform:translate(-50%,-50%) translateX(-2px);}
+  80%{transform:translate(-50%,-50%) translateX(2px);}
 }
-.ss-card.shake{animation:ssShake .32s ease-in-out;}
+.ss-node.shake{animation:ssShake .32s ease-in-out;}
 
 /* ---- 아래 안내 한 줄 ---- */
 .ss-foot{
-  flex:none; margin-top:10px; text-align:center;
-  font-family:"Galmuri11Bold", "Apple SD Gothic Neo", sans-serif;
-  font-synthesis:none; font-size:11px; line-height:1.5; letter-spacing:.5px;
-  color:#8fb394; word-break:keep-all; text-shadow:0 2px 0 rgba(0,0,0,.45);
+  position:absolute; z-index:3; left:12px; right:12px;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 8px);
+  text-align:center;
+  font-size:11px; line-height:1.5; letter-spacing:.3px;
+  color:#f2f8e6; word-break:keep-all;
+  text-shadow:0 1.5px 0 rgba(0,0,0,.85), 0 0 7px rgba(0,0,0,.65);
 }
+
+/* 지도에 쓸 수 있는 높이가 줄면(노치 안전영역·작은 기기) 배지·이름표를 줄여
+   노드끼리 붙지 않게 해요. js/stageselect.js 가 지도 높이를 재서 클래스를 붙입니다. */
+#stageSel.compact .ss-node{width:38px; height:38px; border-radius:10px; font-size:20px;}
+#stageSel.compact .ss-star{top:-3px; right:-3px; width:12px; height:12px; font-size:8px;}
+#stageSel.compact .ss-lbl{font-size:10px; margin-top:2px;}
+#stageSel.tight .ss-node{width:34px; height:34px; border-radius:9px; font-size:18px;}
+#stageSel.tight .ss-star{top:-3px; right:-3px; width:11px; height:11px; font-size:7px;}
+#stageSel.tight .ss-lbl{font-size:9px; margin-top:2px;}
+#stageSel.tight .ss-title{font-size:16px;}
