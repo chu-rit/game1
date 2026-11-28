@@ -17,7 +17,6 @@
   var btnBox=document.getElementById("stBtns");
   var skipEl=document.getElementById("stSkip");
   var optWrap=document.getElementById("stOptPanel");
-  var optGrid=document.getElementById("stGrid");
   var optSfx=document.getElementById("stSfx");
   var optClose=document.getElementById("stPClose");
 
@@ -190,17 +189,19 @@
       try{ beep(600,0.10,"triangle",0.05,200); }catch(e){}
     });
   }
+  window.startAtStage=startAtStage;     /* 스테이지 선택 화면(js/stageselect.js)이 부른다 */
 
-  /* 기존 시작 흐름(패널·Enter)도 스타트 화면을 닫고 1스테이지로 */
+  /* 시작하기·Enter → 스테이지 선택 화면. 선택 화면이 없으면 예전처럼 1스테이지로 */
   var _startGame=(typeof startGame==="function")?startGame:null;
-  window.startGame=function(){
+  function goStart(){
+    if(typeof window.openStageSelect==="function"){ window.openStageSelect(); return; }
     playOutro(function(){ if(_startGame) _startGame(); });
-  };
+  }
+  window.startGame=function(){ goStart(); };
 
   /* ---------- 옵션 ---------- */
   function openOptions(){
     if(!optWrap) return;
-    buildGrid();
     syncSfx();
     optWrap.classList.remove("hidden");
     void optWrap.offsetWidth;
@@ -210,20 +211,6 @@
     if(!optWrap) return;
     optWrap.classList.remove("open");
     setTimeout(function(){ if(!optWrap.classList.contains("open")) optWrap.classList.add("hidden"); },230);
-  }
-  function buildGrid(){
-    if(!optGrid||optGrid.childNodes.length) return;
-    if(typeof STAGES==="undefined") return;
-    var html="";
-    for(var i=0;i<STAGES.length;i++){
-      html+='<button type="button" data-i="'+i+'" aria-label="'+(i+1)+'스테이지 시작">'+(i+1)+'</button>';
-    }
-    optGrid.innerHTML=html;
-    optGrid.addEventListener("click",function(e){
-      var b=e.target.closest?e.target.closest("button[data-i]"):null;
-      if(!b) return;
-      startAtStage(parseInt(b.getAttribute("data-i"),10));
-    });
   }
   function syncSfx(){
     if(!optSfx) return;
@@ -295,7 +282,7 @@
     startBtn.addEventListener("touchcancel",pressOff,{passive:true});
     startBtn.addEventListener("click",function(e){
       e.preventDefault(); e.stopPropagation();
-      playOutro(function(){ if(_startGame) _startGame(); });
+      goStart();
     });
   }
   var optBtn=document.getElementById("stOpts");

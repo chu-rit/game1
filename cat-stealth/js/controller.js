@@ -363,6 +363,23 @@ function beginTurn(action){
     }
   }
 }
+/* 클리어 기록 저장 — 스테이지 선택 화면의 해금·최고 기록이 이 값을 읽어요.
+   localStorage "tp_cleared" = {스테이지 인덱스: {bestMs, bestTurns}}
+   시간은 더 짧은 쪽, 턴은 더 적은 쪽을 각각 남겨요. 에디터 테스트 플레이 기록은 저장하지 않아요. */
+function recordClear(idx,ms,turns){
+  if(EDITOR_PLAYTEST) return;
+  try{
+    var all=JSON.parse(localStorage.getItem("tp_cleared")||"{}");
+    if(!all||typeof all!=="object") all={};
+    var rec=all[idx]||{};
+    var t=Math.max(0,Math.round(ms||0));
+    if(!(rec.bestMs>=0)||t<rec.bestMs) rec.bestMs=t;
+    var n=Math.max(1,Math.round(turns||1));
+    if(!(rec.bestTurns>=0)||n<rec.bestTurns) rec.bestTurns=n;
+    all[idx]=rec;
+    localStorage.setItem("tp_cleared",JSON.stringify(all));
+  }catch(e){}
+}
 function finishTurn(){
   var p=G.pending;
   if(!p) return;
@@ -386,6 +403,7 @@ function finishTurn(){
     /* 클리어 타임: 출구로 들어선 순간(이번 턴을 시작한 시각)에 멈춰요.
        턴 애니메이션과 아래 출구 점프 0.7초 연출은 시간에 들어가지 않아요. */
     G.clearMs=Math.max(0, p.t0-G.tT0);
+    recordClear(G.stageIdx,G.clearMs,G.st.turn-1);
     /* 바로 클리어 창을 띄우지 않고, 점프 → 구멍 속으로 '뽕' 연출을 먼저 재생해요.
        (연출이 끝난 뒤 startExitAnim 이 클리어/완탈출 창을 띄웁니다) */
     updateHUD();

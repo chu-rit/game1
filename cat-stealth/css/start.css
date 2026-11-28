@@ -257,17 +257,6 @@
 }
 .st-sw[aria-checked="true"]{background:linear-gradient(180deg,#4f9a4e,#357a3c);}
 .st-sw[aria-checked="true"] i{transform:translateX(24px); background:linear-gradient(180deg,#f6fff0,#c9e8c4);}
-.st-plabel{text-align:left; font-size:10.5px; font-weight:800; letter-spacing:.16em; color:#8fb394; margin:0 2px 8px;}
-.st-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:6px;}
-.st-grid button{
-  aspect-ratio:1/1; padding:0; border:0; border-radius:8px; cursor:pointer;
-  font-family:inherit; font-size:13px; font-weight:900; color:#dff0d6;
-  background:linear-gradient(180deg,#2c4b36,#223c2b);
-  box-shadow:inset 0 0 0 1.5px rgba(150,210,140,.22), 0 2px 0 rgba(0,0,0,.35);
-}
-.st-grid button:active{transform:translateY(1px);}
-.st-grid button.cur{background:linear-gradient(180deg,#4f9a4e,#357a3c); color:#f4ffe9;
-  box-shadow:inset 0 0 0 1.5px rgba(226,255,214,.5), 0 2px 0 #1c421f;}
 .st-pclose{
   width:100%; margin-top:16px; padding:12px; border:0; border-radius:10px; cursor:pointer;
   font-family:inherit; font-size:14px; font-weight:800; color:#e8f5de;
@@ -310,3 +299,121 @@
 }
 #start.exiting .st-ch img{animation:none;}
 #start.fading{opacity:0; transition:opacity .37s ease-out;}
+
+/* ================= 스테이지 선택 화면 =================
+   시작하기 → 이 화면 → 스테이지 탭 → 수풀 아웃트로 → 게임.
+   톤은 옵션 패널과 같은 숲 패널(#1c3527~#112318) + Galmuri11 Bold + 크림/금색 글자.
+   카드는 2열 × 5행으로 390×844 세로 화면에 스크롤 없이 한눈에 들어와요. */
+#stageSel{
+  position:fixed; inset:0; z-index:40; display:flex; flex-direction:column;
+  padding:calc(env(safe-area-inset-top,0px) + 14px) 14px calc(env(safe-area-inset-bottom,0px) + 12px);
+  font-family:"Galmuri11Bold", "Apple SD Gothic Neo", sans-serif;
+  font-synthesis:none; -webkit-font-smoothing:none;
+  color:#ffeec4;
+  background:
+    radial-gradient(72% 42% at 50% 6%, rgba(48,92,64,.52), rgba(10,20,16,0) 72%),
+    linear-gradient(180deg,#12241a 0%,#0d1b14 55%,#0a1410 100%);
+  box-shadow:inset 0 0 0 3px rgba(47,90,60,.45), inset 0 0 70px rgba(0,0,0,.5);
+  -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none;
+  opacity:0; visibility:hidden;
+  transition:opacity .18s ease-out, visibility .18s;
+}
+#stageSel.open{opacity:1; visibility:visible;}
+#stageSel.hidden{display:none;}
+
+/* ---- 헤더: ‹ 타이틀 · 진행도 / 제목 ---- */
+.ss-head{display:flex; align-items:center; justify-content:space-between; gap:8px; flex:none;}
+.ss-back{
+  display:inline-flex; align-items:center; justify-content:center; min-height:34px; padding:0 12px;
+  border:0; border-radius:8px; cursor:pointer;
+  font-family:inherit; font-synthesis:none; font-size:12px; font-weight:400; letter-spacing:1px;
+  color:#dcecd2; text-shadow:0 2px 0 rgba(0,0,0,.45);
+  background:linear-gradient(180deg,#2c4b36,#223c2b);
+  box-shadow:inset 0 0 0 1.5px rgba(150,210,140,.28), 0 3px 0 rgba(0,0,0,.4);
+  transition:transform .1s ease-out, color .1s ease-out;
+}
+.ss-back:active,.ss-back.pressed{transform:translateY(2px); color:#ffd24c;}
+.ss-prog{
+  font-size:12px; letter-spacing:1px; color:#cbb894; text-shadow:0 2px 0 rgba(0,0,0,.5);
+}
+.ss-prog b{font-weight:400; color:#ffd24c;}
+.ss-title-wrap{flex:none; text-align:center; margin:12px 0 12px;}
+.ss-title{
+  font-size:24px; line-height:1; letter-spacing:2px; color:#ffeec4;
+  text-shadow:
+    2px 0 0 #2a1808, -2px 0 0 #2a1808, 0 2px 0 #2a1808, 0 -2px 0 #2a1808,
+    2px 2px 0 #2a1808, -2px 2px 0 #2a1808, 2px -2px 0 #2a1808, -2px -2px 0 #2a1808,
+    0 5px 0 rgba(12,6,2,.4);
+}
+.ss-rule{
+  width:132px; height:4px; margin:9px auto 0;
+  background:linear-gradient(90deg, rgba(168,196,105,0), #a8c469 22%, #ffd24c 50%, #a8c469 78%, rgba(168,196,105,0));
+  box-shadow:0 2px 0 rgba(0,0,0,.35);
+}
+
+/* ---- 카드 격자 2열 × 5행 ---- */
+.ss-grid{
+  flex:1 1 auto; min-height:0;
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+  grid-auto-rows:minmax(84px,1fr); gap:10px;
+  overflow-y:auto; -webkit-overflow-scrolling:touch;
+}
+.ss-card{
+  position:relative; display:flex; flex-direction:column; align-items:flex-start; justify-content:center;
+  gap:5px; padding:10px 12px; border:0; border-radius:10px; cursor:pointer; text-align:left;
+  font-family:inherit; font-synthesis:none; -webkit-tap-highlight-color:transparent;
+  color:#ffeec4; background:linear-gradient(180deg,#21402c,#172c20 62%,#112318);
+  box-shadow:
+    inset 0 0 0 2px #2f5a3c, inset 0 2px 0 rgba(200,230,180,.10),
+    0 4px 0 #08130d, 0 8px 14px rgba(0,0,0,.32);
+  transition:transform .1s ease-out, box-shadow .12s, filter .12s;
+}
+.ss-card:active{transform:translateY(2px);
+  box-shadow:inset 0 0 0 2px #2f5a3c, inset 0 2px 0 rgba(200,230,180,.10), 0 2px 0 #08130d;}
+.ss-no{font-size:11px; line-height:1; letter-spacing:1px; color:#a8c469; text-shadow:0 2px 0 rgba(0,0,0,.45);}
+.ss-nm{
+  font-size:15px; line-height:1.15; letter-spacing:.5px; color:#ffeec4; word-break:keep-all;
+  text-shadow:1px 0 0 #2a1808, -1px 0 0 #2a1808, 0 1px 0 #2a1808, 0 -1px 0 #2a1808, 0 2px 0 rgba(0,0,0,.35);
+}
+.ss-badge{
+  font-size:11px; line-height:1; letter-spacing:1px; padding:4px 7px; border-radius:6px;
+  color:#cbb894; background:rgba(0,0,0,.30);
+  box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.10);
+}
+.ss-best{font-size:11px; line-height:1; letter-spacing:.5px; color:#cbb894; text-shadow:0 2px 0 rgba(0,0,0,.45);}
+.ss-best.dim{color:#7d8a72;}
+
+/* 클리어 · 도전 · 잠금 */
+.ss-card.clear{
+  box-shadow:
+    inset 0 0 0 2px #b98a2e, inset 0 2px 0 rgba(255,238,196,.10),
+    0 4px 0 #08130d, 0 8px 14px rgba(0,0,0,.32);
+}
+.ss-card.clear .ss-no{color:#ffd24c;}
+.ss-card.clear .ss-badge{
+  color:#2a1808; background:linear-gradient(180deg,#ffe27a,#ffd24c);
+  box-shadow:inset 0 0 0 1.5px rgba(120,80,10,.45);
+}
+.ss-card.open .ss-badge{
+  color:#f4ffe9; background:linear-gradient(180deg,#4f9a4e,#357a3c);
+  box-shadow:inset 0 0 0 1.5px rgba(226,255,214,.35);
+}
+.ss-card.lock{cursor:default; filter:grayscale(.85) brightness(.72);}
+.ss-card.lock:active{transform:none;}
+.ss-card.lock .ss-badge{color:#9aa895;}
+@keyframes ssShake{
+  0%,100%{transform:translateX(0);}
+  20%{transform:translateX(-3px);}
+  40%{transform:translateX(3px);}
+  60%{transform:translateX(-2px);}
+  80%{transform:translateX(2px);}
+}
+.ss-card.shake{animation:ssShake .32s ease-in-out;}
+
+/* ---- 아래 안내 한 줄 ---- */
+.ss-foot{
+  flex:none; margin-top:10px; text-align:center;
+  font-family:"Galmuri11Bold", "Apple SD Gothic Neo", sans-serif;
+  font-synthesis:none; font-size:11px; line-height:1.5; letter-spacing:.5px;
+  color:#8fb394; word-break:keep-all; text-shadow:0 2px 0 rgba(0,0,0,.45);
+}
